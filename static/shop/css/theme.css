@@ -1,0 +1,342 @@
+/* ================= GLOBAL ================= */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Inter',sans-serif;
+    background:#faf9f6;
+    color:#1a1c1a;
+}
+
+a{
+    text-decoration:none;
+    color:inherit;
+}
+
+/* ================= ROOT ================= */
+
+:root{
+
+    --primary:#7c5357;
+    --background:#faf9f6;
+    --surface:#ffffff;
+
+    --text-dark:#1a1c1a;
+    --text-light:#504444;
+
+    --border:#e3e2e0;
+
+    --glass-bg:rgba(255,255,255,0.55);
+
+    --shadow:0px 10px 30px rgba(232,180,184,0.10);
+
+    --radius:24px;
+
+    --transition:all .35s ease;
+}
+
+/* ================= NAVBAR ================= */
+
+.navbar{
+
+    width:100%;
+    height:88px;
+
+    position:sticky;
+    top:0;
+    z-index:999;
+
+    backdrop-filter:blur(20px);
+
+    background:var(--glass-bg);
+
+    border-bottom:1px solid rgba(255,255,255,0.2);
+
+}
+
+.nav-wrapper{
+
+    max-width:1280px;
+
+    height:100%;
+
+    margin:auto;
+
+    padding:0 48px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+
+/* LEFT */
+
+.nav-left{
+
+    display:flex;
+    align-items:center;
+    gap:60px;
+}
+
+.logo{
+
+    font-family:'Noto Serif',serif;
+
+    font-size:46px;
+
+    color:var(--primary);
+
+    font-weight:500;
+}
+
+.nav-links{
+
+    display:flex;
+    align-items:center;
+    gap:36px;
+}
+
+.nav-links a{
+
+    position:relative;
+
+    font-size:14px;
+
+    color:var(--text-light);
+
+    transition:var(--transition);
+}
+
+.nav-links a::after{
+
+    content:'';
+
+    position:absolute;
+
+    left:0;
+    bottom:-8px;
+
+    width:0%;
+    height:1px;
+
+    background:var(--primary);
+
+    transition:var(--transition);
+}
+
+.nav-links a:hover{
+    color:var(--primary);
+}
+
+.nav-links a:hover::after{
+    width:100%;
+}
+
+/* RIGHT */
+
+.nav-right{
+
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.nav-icon{
+
+    width:42px;
+    height:42px;
+
+    border-radius:50%;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-size:20px;
+
+    cursor:pointer;
+
+    transition:var(--transition);
+}
+
+.nav-icon:hover{
+
+    background:rgba(124,83,87,0.08);
+
+    color:var(--primary);
+
+    transform:translateY(-2px);
+}
+
+.profile-image{
+
+    width:42px;
+    height:42px;
+
+    border-radius:50%;
+
+    overflow:hidden;
+}
+
+.profile-image img{
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+}
+
+/* ================= MOBILE ================= */
+
+.menu-btn{
+
+    display:none;
+
+    font-size:30px;
+
+    cursor:pointer;
+}
+
+.mobile-menu{
+
+    position:fixed;
+
+    top:0;
+    left:-100%;
+
+    width:280px;
+    height:100vh;
+
+    background:white;
+
+    z-index:2000;
+
+    padding:28px;
+
+    transition:.4s ease;
+
+    box-shadow:var(--shadow);
+}
+
+.mobile-menu.active{
+    left:0;
+}
+
+.mobile-top{
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    margin-bottom:50px;
+}
+
+.close-menu{
+    font-size:30px;
+    cursor:pointer;
+}
+
+.mobile-links{
+
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+}
+
+.mobile-links a{
+
+    font-size:17px;
+}
+
+.overlay{
+
+    position:fixed;
+    inset:0;
+
+    background:rgba(0,0,0,0.3);
+
+    opacity:0;
+    visibility:hidden;
+
+    transition:.3s;
+
+    z-index:1500;
+}
+
+.overlay.active{
+
+    opacity:1;
+    visibility:visible;
+}
+
+/* ================= HERO ================= */
+
+.hero{
+
+    min-height:90vh;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    text-align:center;
+
+    padding:80px 20px;
+}
+
+.hero h1{
+
+    font-family:'Noto Serif',serif;
+
+    font-size:72px;
+
+    max-width:900px;
+
+    line-height:1.1;
+
+    color:var(--primary);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:992px){
+
+    .nav-links{
+        display:none;
+    }
+
+    .menu-btn{
+        display:block;
+    }
+
+    .nav-wrapper{
+        padding:0 24px;
+    }
+}
+
+@media(max-width:768px){
+
+    .navbar{
+        height:76px;
+    }
+
+    .logo{
+        font-size:36px;
+    }
+
+    .hero h1{
+        font-size:46px;
+    }
+
+    .mobile-menu{
+        width:260px;
+    }
+
+    .nav-wrapper{
+        padding:0 20px;
+    }
+}
