@@ -1,10 +1,764 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Product — Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#080c18; --surface:#0f1623; --surface2:#131d2e; --border:#1a2438;
+      --accent:#4f8ef7; --accent2:#7c5cfc; --text:#e8edf5; --muted:#8896a8;
+      --muted2:#4a5568; --success:#34d399; --warning:#fbbf24; --danger:#f87171;
+      --inp:#080c18; --sidebar-w:240px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; display:flex; }
+
+    /* ── Sidebar (same as dashboard) ── */
+    .sidebar { width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:10; }
+    .sidebar-brand { padding:22px 20px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .brand-logo { width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:17px; }
+    .brand-name { font-size:14px; font-weight:600; }
+    .brand-sub  { font-size:11px; color:var(--muted); margin-top:2px; }
+    .nav-section { padding:14px 12px 4px; }
+    .nav-label { font-size:10px; font-weight:600; color:var(--muted2); text-transform:uppercase; letter-spacing:.8px; padding:0 8px; margin-bottom:6px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-size:13.5px; color:var(--muted); text-decoration:none; transition:background .15s,color .15s; margin-bottom:2px; }
+    .nav-item:hover { background:var(--surface2); color:var(--text); }
+    .nav-item.active { background:rgba(79,142,247,.12); color:var(--accent); }
+    .nav-badge { margin-left:auto; background:var(--accent2); color:#fff; font-size:10px; font-weight:600; padding:1px 7px; border-radius:10px; }
+    .sidebar-footer { margin-top:auto; padding:14px 12px; border-top:1px solid var(--border); }
+    .admin-pill { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; background:var(--surface2); }
+    .admin-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:#fff; }
+    .admin-info { flex:1; }
+    .admin-name-t { font-size:13px; font-weight:500; }
+    .admin-role  { font-size:11px; color:var(--muted); }
+    .logout-btn  { background:none; border:none; cursor:pointer; color:var(--muted); font-size:16px; text-decoration:none; transition:color .15s; }
+    .logout-btn:hover { color:var(--danger); }
+
+    /* ── Main ── */
+    .main { margin-left:var(--sidebar-w); flex:1; display:flex; flex-direction:column; }
+    .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:58px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:5; }
+    .topbar-left { display:flex; align-items:center; gap:10px; }
+    .back-btn { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; text-decoration:none; padding:6px 12px; border-radius:7px; border:1px solid var(--border); transition:all .15s; }
+    .back-btn:hover { color:var(--text); border-color:var(--accent); }
+    .topbar h1 { font-size:17px; font-weight:600; }
+    .breadcrumb { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+    .breadcrumb a { color:var(--muted); text-decoration:none; }
+    .breadcrumb a:hover { color:var(--accent); }
+
+    .content { padding:28px; flex:1; }
+
+    /* ── Two-column form layout ── */
+    .form-grid { display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start; }
+
+    /* ── Cards ── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:20px; }
+    .card-hd { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .card-hd h3 { font-size:14px; font-weight:600; }
+    .card-hd .hd-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+    .card-body { padding:20px; }
+ .cat-opt {
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text);
+    transition: background .12s;
+  }
+  .cat-opt:hover { background: var(--surface2); }
+  .cat-opt .cat-slug { font-size: 11px; color: var(--muted); }
+  .cat-creating {
+    padding: 10px 14px; font-size: 13px;
+    color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+  .mini-spinner {
+    width: 12px; height: 12px;
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+    /* ── Form fields ── */
+    .field { margin-bottom:18px; }
+    .field:last-child { margin-bottom:0; }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+    label { display:block; font-size:11.5px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:7px; }
+    label .req { color:var(--danger); margin-left:2px; }
+    input[type=text], input[type=number], textarea, select {
+      width:100%; background:var(--inp); border:1px solid var(--border);
+      color:var(--text); font-size:14px; padding:10px 14px;
+      border-radius:8px; outline:none; transition:border-color .18s,box-shadow .18s;
+      font-family:inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color:var(--accent2);
+      box-shadow:0 0 0 3px rgba(124,92,252,.15);
+    }
+    input::placeholder, textarea::placeholder { color:#2a3850; }
+    textarea { resize:vertical; min-height:110px; }
+    select option { background:var(--surface); }
+
+    /* ── Price fields with prefix ── */
+    .inp-prefix { position:relative; }
+    .inp-prefix .prefix { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; pointer-events:none; }
+    .inp-prefix input { padding-left:30px; }
+
+    /* ── Status toggle buttons ── */
+    .status-group { display:flex; gap:8px; }
+    .status-btn { flex:1; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:13px; cursor:pointer; text-align:center; transition:all .15s; font-family:inherit; }
+    .status-btn.active-avail  { border-color:var(--success); color:var(--success); background:rgba(52,211,153,.08); }
+    .status-btn.active-out    { border-color:var(--warning); color:var(--warning); background:rgba(251,191,36,.08); }
+    .status-btn.active-disc   { border-color:var(--danger);  color:var(--danger);  background:rgba(248,113,113,.08); }
+    #status-input { display:none; }
+
+    /* ── Color tags ── */
+    .color-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+    .color-tag { display:inline-flex; align-items:center; gap:5px; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:4px 10px; font-size:12px; }
+    .color-tag button { background:none; border:none; cursor:pointer; color:var(--muted); font-size:14px; padding:0; line-height:1; transition:color .15s; }
+    .color-tag button:hover { color:var(--danger); }
+
+    /* ── Image upload zone ── */
+    .upload-zone { border:2px dashed var(--border); border-radius:10px; padding:28px 20px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; position:relative; }
+    .upload-zone:hover { border-color:var(--accent2); background:rgba(124,92,252,.04); }
+    .upload-zone.drag-over { border-color:var(--accent); background:rgba(79,142,247,.06); }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .upload-icon { font-size:28px; margin-bottom:8px; }
+    .upload-text { font-size:13px; color:var(--muted); line-height:1.6; }
+    .upload-text span { color:var(--accent); }
+
+    /* ── Image preview grid ── */
+    .img-previews { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+    .img-preview { position:relative; border-radius:8px; overflow:hidden; aspect-ratio:1; background:var(--surface2); border:1px solid var(--border); }
+    .img-preview img { width:100%; height:100%; object-fit:cover; }
+    .img-preview .remove-img { position:absolute; top:4px; right:4px; background:rgba(0,0,0,.7); border:none; color:#fff; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; }
+    .img-preview .primary-badge { position:absolute; bottom:4px; left:4px; background:var(--accent2); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:4px; }
+
+    /* ── Submit bar ── */
+    .submit-bar { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:16px 20px; background:var(--surface); border-top:1px solid var(--border); }
+    .btn-cancel { padding:10px 20px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; transition:all .15s; font-family:inherit; }
+    .btn-cancel:hover { color:var(--text); border-color:var(--muted); }
+    .btn-submit { padding:10px 24px; border-radius:8px; border:none; background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#fff; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:opacity .15s; font-family:inherit; }
+    .btn-submit:hover { opacity:.88; }
+    .btn-submit:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* ── Alert / error ── */
+    .alert { display:flex; align-items:flex-start; gap:9px; padding:11px 14px; border-radius:10px; font-size:13px; margin-bottom:20px; line-height:1.5; }
+    .alert.err  { background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:#fca5a5; }
+    .alert.succ { background:rgba(52,211,153,.08);  border:1px solid rgba(52,211,153,.2);  color:#6ee7b7; }
+    .field-err  { font-size:11.5px; color:var(--danger); margin-top:5px; }
+    .inp-error  { border-color:var(--danger) !important; }
+
+    /* ── Loading spinner on submit ── */
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Char counter ── */
+    .char-counter { font-size:11px; color:var(--muted2); text-align:right; margin-top:4px; }
+  </style>
 </head>
 <body>
 
-</body>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">🛡️</div>
+    <div><div class="brand-name">AdminPanel</div><div class="brand-sub">ecommerce</div></div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Main</div>
+    <a href="{% url 'admin_dashboard' %}" class="nav-item">📊 Dashboard</a>
+    <a href="{% url 'admin_products' %}" class="nav-item active">📦 Products</a>
+    <a href="#" class="nav-item">🛒 Orders</a>
+    <a href="#" class="nav-item">👥 Customers</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Security</div>
+    <a href="{% url 'admin_login_logs' %}" class="nav-item">🔐 Login Logs</a>
+    <a href="#" class="nav-item">⚙️ Settings</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="admin-pill">
+      <div class="admin-avatar">{{ admin_name|slice:":1"|upper }}</div>
+      <div class="admin-info">
+        <div class="admin-name-t">{{ admin_name }}</div>
+        <div class="admin-role">Superadmin</div>
+      </div>
+      <a href="{% url 'admin_logout' %}" class="logout-btn" title="Logout">⏏</a>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <a href="{% url 'admin_products' %}" class="back-btn">← Back</a>
+      <div>
+        <h1>Add product</h1>
+        <div class="breadcrumb">
+          <a href="{% url 'admin_dashboard' %}">Dashboard</a> /
+          <a href="{% url 'admin_products' %}">Products</a> /
+          <span style="color:var(--text)">Add new</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Success / error from django messages -->
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert {% if 'error' in msg.tags %}err{% else %}succ{% endif %}">
+          {% if 'error' in msg.tags %}⛔{% else %}✅{% endif %} {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- API error banner (shown by JS) -->
+    <div id="api-error" class="alert err" style="display:none"></div>
+    <!-- API success banner -->
+    <div id="api-success" class="alert succ" style="display:none"></div>
+
+    <div class="form-grid">
+
+      <!-- LEFT COLUMN -->
+      <div>
+
+        <!-- Basic info -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(79,142,247,.12)">📝</div>
+            <h3>Basic information</h3>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label for="f-name">Product name <span class="req">*</span></label>
+              <input type="text" id="f-name" placeholder="e.g. Wireless Headphones Pro" maxlength="255"/>
+              <div class="field-err" id="err-name"></div>
+            </div>
+            <div class="field">
+              <label for="f-desc">Description <span class="req">*</span></label>
+              <textarea id="f-desc" placeholder="Describe the product in detail..." maxlength="2000" oninput="updateChar(this,'char-desc',2000)"></textarea>
+              <div class="char-counter"><span id="char-desc">0</span>/2000</div>
+              <div class="field-err" id="err-desc"></div>
+            </div>
+            <div class="field">
+              <label for="f-offer">Offer / badge <span style="color:var(--muted2);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+              <input type="text" id="f-offer" placeholder="e.g. 10% off this weekend, Free shipping"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(52,211,153,.1)">💰</div>
+            <h3>Pricing</h3>
+          </div>
+          <div class="card-body">
+            <div class="field-row">
+              <div class="field" style="margin:0">
+                <label for="f-price">Original price <span class="req">*</span></label>
+                <div class="inp-prefix">
+                  <span class="prefix">₹</span>
+                  <input type="number" id="f-price" placeholder="0.00" min="0" step="0.01"/>
+                </div>
+                <div class="field-err" id="err-price"></div>
+              </div>
+              <div class="field" style="margin:0">
+                <label for="f-discount">Discount price <span style="color:var(--muted2);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
+                <div class="inp-prefix">
+                  <span class="prefix">₹</span>
+                  <input type="number" id="f-discount" placeholder="0.00" min="0" step="0.01"/>
+                </div>
+                <div class="field-err" id="err-discount"></div>
+              </div>
+            </div>
+            <!-- Live discount % preview -->
+            <div id="discount-preview" style="display:none;font-size:12px;color:var(--success);margin-top:6px"></div>
+          </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(251,191,36,.1)">📦</div>
+            <h3>Inventory & status</h3>
+          </div>
+          <div class="card-body">
+            <div class="field-row">
+             <div class="field" style="margin:0;position:relative">
+  <label for="f-category">Category <span class="req">*</span></label>
+
+  <!-- Visible input -->
+  <input
+    type="text"
+    id="f-category-input"
+    placeholder="Search or type new category..."
+    autocomplete="off"
+    oninput="categorySearch(this.value)"
+    onfocus="categorySearch(this.value)"
+    onblur="setTimeout(hideCatDrop, 180)"
+  />
+
+  <!-- Hidden value sent to API -->
+  <input type="hidden" id="f-category"/>
+
+  <!-- Dropdown -->
+  <div id="cat-drop" style="
+    display:none;
+    position:absolute;
+    top:100%; left:0; right:0;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-top:4px;
+    z-index:50;
+    max-height:200px;
+    overflow-y:auto;
+  ">
+    <div id="cat-list"></div>
+    <div id="cat-create" style="display:none;
+      padding:10px 14px; cursor:pointer; font-size:13px;
+      color:var(--accent); border-top:1px solid var(--border);
+      display:flex; align-items:center; gap:6px;"
+      onmousedown="createCategory()"
+    >
+      <span style="font-size:16px">+</span>
+      <span id="cat-create-label">Create category</span>
+    </div>
+  </div>
+
+  <div class="field-err" id="err-category"></div>
+</div>
+              <div class="field" style="margin:0">
+                <label for="f-stock">Stock quantity <span class="req">*</span></label>
+                <input type="number" id="f-stock" placeholder="0" min="0" step="1"/>
+                <div class="field-err" id="err-stock"></div>
+              </div>
+            </div>
+            <div class="field" style="margin-top:18px">
+              <label>Status <span class="req">*</span></label>
+              <input type="hidden" id="status-input" value="available"/>
+              <div class="status-group">
+                <button type="button" class="status-btn active-avail" onclick="setStatus('available',this)">● Available</button>
+                <button type="button" class="status-btn" onclick="setStatus('out_of_stock',this)">● Out of stock</button>
+                <button type="button" class="status-btn" onclick="setStatus('discontinued',this)">● Discontinued</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colors -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(124,92,252,.12)">🎨</div>
+            <h3>Colors <span style="font-weight:400;font-size:12px;color:var(--muted)">(optional)</span></h3>
+          </div>
+          <div class="card-body">
+            <div id="color-tags" class="color-tags"></div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="color-input" placeholder="Type a color e.g. Red, #FF5733" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addColor()}"/>
+              <button type="button" onclick="addColor()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:inherit;font-size:13px;white-space:nowrap">+ Add</button>
+            </div>
+            <div style="font-size:11.5px;color:var(--muted2);margin-top:6px">Press Enter or click Add after each color</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+
+        <!-- Image upload -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(79,142,247,.1)">🖼</div>
+            <h3>Product images <span class="req">*</span></h3>
+          </div>
+          <div class="card-body">
+            <div class="upload-zone" id="upload-zone">
+              <input type="file" id="f-images" accept="image/*" multiple onchange="handleImages(this.files)"/>
+              <div class="upload-icon">⬆️</div>
+              <div class="upload-text">
+                <span>Click to upload</span> or drag & drop<br>
+                PNG, JPG, WEBP up to 5MB each<br>
+                <span style="color:var(--muted2);font-size:11px">First image will be set as primary</span>
+              </div>
+            </div>
+            <div id="img-previews" class="img-previews"></div>
+            <div class="field-err" id="err-images" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- Submit summary card -->
+        <div class="card">
+          <div class="card-hd">
+            <div class="hd-icon" style="background:rgba(52,211,153,.1)">✅</div>
+            <h3>Ready to publish</h3>
+          </div>
+          <div class="card-body">
+            <div id="summary" style="font-size:13px;color:var(--muted);line-height:2">
+              <div>Name: <span id="s-name" style="color:var(--text)">—</span></div>
+              <div>Price: <span id="s-price" style="color:var(--text)">—</span></div>
+              <div>Category: <span id="s-cat" style="color:var(--text)">—</span></div>
+              <div>Stock: <span id="s-stock" style="color:var(--text)">—</span></div>
+              <div>Images: <span id="s-imgs" style="color:var(--text)">0 selected</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /form-grid -->
+
+  </div><!-- /content -->
+
+  <!-- Submit bar -->
+  <div class="submit-bar">
+    <a href="{% url 'admin_products' %}" class="btn-cancel">Cancel</a>
+    <button type="button" class="btn-submit" id="submit-btn" onclick="submitProduct()">
+      <span id="submit-icon">🚀</span>
+      <span id="submit-text">Add product</span>
+    </button>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+  // ── State ──────────────────────────────────────────────────
+  let selectedFiles = [];
+  let colors        = [];
+
+  // Categories from Django — filled by template
+  const ALL_CATEGORIES = [
+    {% for cat in categories %}
+      { id: {{ cat.id }}, name: "{{ cat.name|escapejs }}", slug: "{{ cat.slug|escapejs }}" },
+    {% endfor %}
+  ];
+
+  // ── Char counter ───────────────────────────────────────────
+  function updateChar(el, id, max) {
+    document.getElementById(id).textContent = el.value.length;
+  }
+
+  // ── Status selector ────────────────────────────────────────
+  function setStatus(val, btn) {
+    document.getElementById('status-input').value = val;
+    document.querySelectorAll('.status-btn').forEach(b => b.className = 'status-btn');
+    if (val === 'available')    btn.classList.add('active-avail');
+    if (val === 'out_of_stock') btn.classList.add('active-out');
+    if (val === 'discontinued') btn.classList.add('active-disc');
+  }
+
+  // ── Color tags ─────────────────────────────────────────────
+  function addColor() {
+    const inp = document.getElementById('color-input');
+    const val = inp.value.trim();
+    if (!val || colors.includes(val)) { inp.value = ''; return; }
+    colors.push(val);
+    renderColors();
+    inp.value = '';
+  }
+  function removeColor(c) {
+    colors = colors.filter(x => x !== c);
+    renderColors();
+  }
+  function renderColors() {
+    document.getElementById('color-tags').innerHTML = colors.map(c =>
+      `<span class="color-tag">
+        <span style="width:10px;height:10px;border-radius:50%;background:${c};border:1px solid rgba(255,255,255,.2);display:inline-block"></span>
+        ${c}
+        <button onclick="removeColor('${c}')" title="Remove">×</button>
+      </span>`
+    ).join('');
+  }
+
+  // ── Image upload & preview ─────────────────────────────────
+  function handleImages(files) {
+    Array.from(files).forEach(f => {
+      if (!selectedFiles.find(x => x.name === f.name)) selectedFiles.push(f);
+    });
+    renderPreviews();
+    updateSummary();
+  }
+  function removeImage(name) {
+    selectedFiles = selectedFiles.filter(f => f.name !== name);
+    renderPreviews();
+    updateSummary();
+  }
+  function renderPreviews() {
+    const wrap = document.getElementById('img-previews');
+    wrap.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const div = document.createElement('div');
+        div.className = 'img-preview';
+        div.innerHTML = `
+          <img src="${e.target.result}" alt="${f.name}"/>
+          ${i === 0 ? '<div class="primary-badge">Primary</div>' : ''}
+          <button class="remove-img" onclick="removeImage('${f.name}')" title="Remove">×</button>`;
+        wrap.appendChild(div);
+      };
+      reader.readAsDataURL(f);
+    });
+    document.getElementById('err-images').textContent = '';
+  }
+
+  // Drag & drop
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    handleImages(e.dataTransfer.files);
+  });
+
+  // ── Live discount preview ──────────────────────────────────
+  document.getElementById('f-price').addEventListener('input', calcDiscount);
+  document.getElementById('f-discount').addEventListener('input', calcDiscount);
+  function calcDiscount() {
+    const p  = parseFloat(document.getElementById('f-price').value);
+    const d  = parseFloat(document.getElementById('f-discount').value);
+    const el = document.getElementById('discount-preview');
+    if (p > 0 && d > 0 && d < p) {
+      const pct = Math.round((1 - d / p) * 100);
+      el.textContent   = `✓ Customer saves ${pct}% (₹${(p - d).toFixed(2)} off)`;
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // ── Live summary ───────────────────────────────────────────
+  // Listen on name, price, stock — category is updated via selectCategory()
+  ['f-name', 'f-price', 'f-stock'].forEach(id => {
+    document.getElementById(id).addEventListener('input',  updateSummary);
+    document.getElementById(id).addEventListener('change', updateSummary);
+  });
+  function updateSummary() {
+    const name  = document.getElementById('f-name').value || '—';
+    const price = document.getElementById('f-price').value;
+    const stock = document.getElementById('f-stock').value || '—';
+    // ✅ Category now reads from the text input, not a select
+    const cat   = document.getElementById('f-category-input').value || '—';
+
+    document.getElementById('s-name').textContent  = name.length > 24 ? name.slice(0, 24) + '…' : name;
+    document.getElementById('s-price').textContent = price ? `₹${parseFloat(price).toFixed(2)}` : '—';
+    document.getElementById('s-cat').textContent   = cat;
+    document.getElementById('s-stock').textContent = stock;
+    document.getElementById('s-imgs').textContent  = `${selectedFiles.length} selected`;
+  }
+
+  // ── Category combobox ──────────────────────────────────────
+  let catQuery = '';
+
+  function categorySearch(val) {
+    catQuery = val.trim();
+    const drop        = document.getElementById('cat-drop');
+    const list        = document.getElementById('cat-list');
+    const createRow   = document.getElementById('cat-create');
+    const createLabel = document.getElementById('cat-create-label');
+
+    const filtered = catQuery
+      ? ALL_CATEGORIES.filter(c => c.name.toLowerCase().includes(catQuery.toLowerCase()))
+      : ALL_CATEGORIES;
+
+    list.innerHTML = filtered.length
+      ? filtered.map(c =>
+          `<div class="cat-opt" onmousedown="selectCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">
+            <span>${highlight(c.name, catQuery)}</span>
+            <span class="cat-slug">${c.slug}</span>
+          </div>`
+        ).join('')
+      : `<div style="padding:10px 14px;font-size:13px;color:var(--muted)">No match found</div>`;
+
+    const exactMatch = ALL_CATEGORIES.some(
+      c => c.name.toLowerCase() === catQuery.toLowerCase()
+    );
+    if (catQuery && !exactMatch) {
+      createLabel.textContent  = `Create "${catQuery}"`;
+      createRow.style.display  = 'flex';
+    } else {
+      createRow.style.display = 'none';
+    }
+
+    drop.style.display = 'block';
+    // Clear the hidden ID so validation catches incomplete selection
+    document.getElementById('f-category').value = '';
+    document.getElementById('err-category').textContent = '';
+  }
+
+  function highlight(text, query) {
+    if (!query) return text;
+    const re = new RegExp(
+      `(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'
+    );
+    return text.replace(re, '<strong>$1</strong>');
+  }
+
+  function selectCategory(id, name) {
+    document.getElementById('f-category-input').value = name;
+    document.getElementById('f-category').value       = id;   // hidden — sent to API
+    document.getElementById('err-category').textContent = '';
+    hideCatDrop();
+    updateSummary();   // ✅ refresh the summary card immediately
+  }
+
+  function hideCatDrop() {
+    document.getElementById('cat-drop').style.display = 'none';
+  }
+
+  async function createCategory() {
+    if (!catQuery) return;
+    const list      = document.getElementById('cat-list');
+    const createRow = document.getElementById('cat-create');
+
+    list.innerHTML = `<div class="cat-creating">
+      <div class="mini-spinner"></div> Creating "${catQuery}"...
+    </div>`;
+    createRow.style.display = 'none';
+
+    const slug = catQuery.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+
+    try {
+      const res  = await fetch('/api/categories/', {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken':  '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ name: catQuery, slug }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const newCat = data.data;
+        ALL_CATEGORIES.push({ id: newCat.id, name: newCat.name, slug: newCat.slug });
+        selectCategory(newCat.id, newCat.name);
+        hideCatDrop();
+      } else {
+        const msg = data.errors?.name?.[0] || data.errors?.slug?.[0] || 'Could not create category.';
+        list.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--danger)">${msg}</div>`;
+      }
+    } catch (e) {
+      list.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--danger)">Network error. Try again.</div>`;
+    }
+  }
+
+  // ── Validation ─────────────────────────────────────────────
+  function clearErrors() {
+    document.querySelectorAll('.field-err').forEach(e => e.textContent = '');
+    document.querySelectorAll('.inp-error').forEach(e => e.classList.remove('inp-error'));
+  }
+  function showErr(fieldId, errId, msg) {
+    document.getElementById(errId).textContent = msg;
+    document.getElementById(fieldId)?.classList.add('inp-error');
+  }
+  function validate() {
+    clearErrors();
+    let ok = true;
+
+    const name  = document.getElementById('f-name').value.trim();
+    const price = document.getElementById('f-price').value;
+    const disc  = document.getElementById('f-discount').value;
+    const catId = document.getElementById('f-category').value;   // hidden ID
+    const stock = document.getElementById('f-stock').value;
+
+    if (!name)  { showErr('f-name',  'err-name',  'Product name is required'); ok = false; }
+    if (!price) { showErr('f-price', 'err-price', 'Price is required');        ok = false; }
+    if (disc && parseFloat(disc) >= parseFloat(price)) {
+      showErr('f-discount', 'err-discount', 'Discount must be less than original price'); ok = false;
+    }
+    // ✅ Validate hidden ID, not visible text input
+    if (!catId) { showErr('f-category-input', 'err-category', 'Please select or create a category'); ok = false; }
+    if (stock === '' || Number(stock) < 0) {
+      showErr('f-stock', 'err-stock', 'Stock quantity is required'); ok = false;
+    }
+    if (selectedFiles.length === 0) {
+      document.getElementById('err-images').textContent = 'At least one image is required'; ok = false;
+    }
+    return ok;
+  }
+
+  // ── Submit via API ─────────────────────────────────────────
+  async function submitProduct() {
+    if (!validate()) return;
+
+    const btn        = document.getElementById('submit-btn');
+    const txt        = document.getElementById('submit-text');
+    const errBanner  = document.getElementById('api-error');
+    const succBanner = document.getElementById('api-success');
+
+    btn.disabled     = true;
+    document.getElementById('submit-icon').outerHTML = '<span class="spinner" id="submit-icon"></span>';
+    txt.textContent  = 'Saving...';
+    errBanner.style.display  = 'none';
+    succBanner.style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('name',        document.getElementById('f-name').value.trim());
+    fd.append('description', document.getElementById('f-desc').value.trim());
+    fd.append('price',       document.getElementById('f-price').value);
+    fd.append('category',    document.getElementById('f-category').value);  // hidden ID
+    fd.append('stock',       document.getElementById('f-stock').value);
+    fd.append('status',      document.getElementById('status-input').value);
+    fd.append('offer',       document.getElementById('f-offer').value.trim());
+
+    const disc = document.getElementById('f-discount').value;
+    if (disc) fd.append('discount_price', disc);
+
+    if (colors.length) fd.append('colors', JSON.stringify(colors));
+
+    selectedFiles.forEach(f => fd.append('uploaded_images', f));
+
+    try {
+      const res  = await fetch('/api/products/', {
+        method:  'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        body:    fd,
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        succBanner.textContent   = '✅ Product added successfully! Redirecting...';
+        succBanner.style.display = 'block';
+        setTimeout(() => {
+          window.location.href = "{% url 'admin_products' %}?msg=Product+added&type=success";
+        }, 1200);
+      } else {
+        const errs = data.errors || {};
+        if (errs.name)            showErr('f-name',           'err-name',     errs.name[0]);
+        if (errs.price)           showErr('f-price',          'err-price',    errs.price[0]);
+        if (errs.discount_price)  showErr('f-discount',       'err-discount', errs.discount_price[0]);
+        if (errs.category)        showErr('f-category-input', 'err-category', errs.category[0]);
+        if (errs.stock)           showErr('f-stock',          'err-stock',    errs.stock[0]);
+        if (errs.uploaded_images) document.getElementById('err-images').textContent = errs.uploaded_images[0];
+
+        errBanner.textContent    = '⛔ ' + (data.message || 'Failed to save product.');
+        errBanner.style.display  = 'block';
+        btn.disabled             = false;
+        document.getElementById('submit-icon').outerHTML = '<span id="submit-icon">🚀</span>';
+        txt.textContent          = 'Add product';
+      }
+    } catch (e) {
+      errBanner.textContent   = '⛔ Network error. Please check your connection and try again.';
+      errBanner.style.display = 'block';
+      btn.disabled            = false;
+      document.getElementById('submit-icon').outerHTML = '<span id="submit-icon">🚀</span>';
+      txt.textContent         = 'Add product';
+    }
+  }
+</script></body>
 </html>

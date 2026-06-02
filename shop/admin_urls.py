@@ -2,9 +2,29 @@ from django.urls import path
 from . import admin_views
 
 urlpatterns = [
-    path('',          admin_views.admin_dashboard, name='admin_dashboard'),  # /admin-panel/
-    path('login/',    admin_views.admin_login,      name='admin_login'),      # /admin-panel/login/
-    path('logout/',   admin_views.admin_logout,     name='admin_logout'),     # /admin-panel/logout/
-    path('products/', admin_views.admin_products,   name='admin_products'),   # /admin-panel/products/
-    path('add-product/', admin_views.add_product,   name='add_product'),      # /admin-panel/add-product/
+    # Auth
+    path('login/',   admin_views.admin_login,  name='admin_login'),
+    path('logout/',  admin_views.admin_logout, name='admin_logout'),
+
+    # Dashboard
+    path('',         admin_views.admin_dashboard, name='admin_dashboard'),
+
+    # Products
+    path('products/',                  admin_views.admin_products,  name='admin_products'),
+    path('products/add/',              admin_views.add_product,     name='add_product'),
+    path('products/<int:pk>/edit/',    admin_views.edit_product,    name='edit_product'),
+    path('products/<int:pk>/delete/',  admin_views.delete_product,  name='delete_product'),
+
+    # Security
+    path('login-logs/',  admin_views.admin_login_logs, name='admin_login_logs'),
 ]
+
+# ─── Full URL map ─────────────────────────────────────────────
+# /admin-panel/               → dashboard
+# /admin-panel/login/         → login page
+# /admin-panel/logout/        → logout
+# /admin-panel/products/      → product list
+# /admin-panel/products/add/  → add product form
+# /admin-panel/products/3/edit/   → edit product id=3
+# /admin-panel/products/3/delete/ → delete product id=3  (POST only)
+# /admin-panel/login-logs/    → security logs

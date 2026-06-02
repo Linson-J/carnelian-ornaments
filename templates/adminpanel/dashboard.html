@@ -1,4 +1,4 @@
-{# shop/templates/shop/admin_dashboard.html #}
+{# templates/adminpanel/admin_dashboard.html #}
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -9,256 +9,91 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:        #080c18;
-      --surface:   #0f1623;
-      --surface2:  #131d2e;
-      --border:    #1a2438;
-      --accent:    #4f8ef7;
-      --accent2:   #7c5cfc;
-      --text:      #e8edf5;
-      --muted:     #8896a8;
-      --muted2:    #4a5568;
-      --success:   #34d399;
-      --warning:   #fbbf24;
-      --danger:    #f87171;
-      --sidebar-w: 240px;
+      --bg:#080c18; --surface:#0f1623; --surface2:#131d2e; --border:#1a2438;
+      --accent:#4f8ef7; --accent2:#7c5cfc; --text:#e8edf5; --muted:#8896a8;
+      --muted2:#4a5568; --success:#34d399; --warning:#fbbf24; --danger:#f87171;
+      --sidebar-w:240px;
     }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
-      min-height: 100vh;
-      display: flex;
-    }
-
-    /* ── Sidebar ── */
-    .sidebar {
-      width: var(--sidebar-w);
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; left: 0; bottom: 0;
-      z-index: 10;
-    }
-    .sidebar-brand {
-      padding: 22px 20px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 10px;
-    }
-    .brand-logo {
-      width: 36px; height: 36px; border-radius: 8px;
-      background: linear-gradient(135deg, var(--accent2), var(--accent));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px; flex-shrink: 0;
-    }
-    .brand-name { font-size: 14px; font-weight: 600; }
-    .brand-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    .nav-section { padding: 14px 12px 4px; }
-    .nav-label {
-      font-size: 10px; font-weight: 600; color: var(--muted2);
-      text-transform: uppercase; letter-spacing: .8px;
-      padding: 0 8px; margin-bottom: 6px;
-    }
-    .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px; border-radius: 8px;
-      font-size: 13.5px; color: var(--muted);
-      cursor: pointer; text-decoration: none;
-      transition: background .15s, color .15s;
-      margin-bottom: 2px;
-    }
-    .nav-item:hover        { background: var(--surface2); color: var(--text); }
-    .nav-item.active       { background: rgba(79,142,247,.12); color: var(--accent); }
-    .nav-item .nav-icon    { font-size: 17px; width: 20px; text-align: center; }
-    .nav-item .nav-badge   {
-      margin-left: auto; background: var(--accent2);
-      color: #fff; font-size: 10px; font-weight: 600;
-      padding: 1px 7px; border-radius: 10px;
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding: 14px 12px;
-      border-top: 1px solid var(--border);
-    }
-    .admin-pill {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px; border-radius: 9px;
-      background: var(--surface2);
-    }
-    .admin-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent2), var(--accent));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0;
-    }
-    .admin-info { flex: 1; min-width: 0; }
-    .admin-name { font-size: 13px; font-weight: 500; }
-    .admin-role { font-size: 11px; color: var(--muted); }
-    .logout-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--muted); font-size: 16px;
-      padding: 4px; border-radius: 5px;
-      transition: color .15s;
-    }
-    .logout-btn:hover { color: var(--danger); }
-
-    /* ── Main ── */
-    .main {
-      margin-left: var(--sidebar-w);
-      flex: 1;
-      display: flex; flex-direction: column;
-      min-height: 100vh;
-    }
-
-    /* Topbar */
-    .topbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      height: 58px;
-      display: flex; align-items: center;
-      gap: 16px;
-      position: sticky; top: 0; z-index: 5;
-    }
-    .topbar h1 { font-size: 17px; font-weight: 600; }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-    .secure-dot {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 12px; color: var(--success);
-      background: rgba(52,211,153,.08);
-      border: 1px solid rgba(52,211,153,.2);
-      padding: 4px 10px; border-radius: 20px;
-    }
-    .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: p 2s infinite; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; display:flex; }
+    .sidebar { width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:10; }
+    .sidebar-brand { padding:22px 20px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .brand-logo { width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+    .brand-name { font-size:14px; font-weight:600; }
+    .brand-sub  { font-size:11px; color:var(--muted); margin-top:2px; }
+    .nav-section { padding:14px 12px 4px; }
+    .nav-label { font-size:10px; font-weight:600; color:var(--muted2); text-transform:uppercase; letter-spacing:.8px; padding:0 8px; margin-bottom:6px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-size:13.5px; color:var(--muted); cursor:pointer; text-decoration:none; transition:background .15s,color .15s; margin-bottom:2px; }
+    .nav-item:hover { background:var(--surface2); color:var(--text); }
+    .nav-item.active { background:rgba(79,142,247,.12); color:var(--accent); }
+    .nav-icon { font-size:17px; width:20px; text-align:center; }
+    .nav-badge { margin-left:auto; background:var(--accent2); color:#fff; font-size:10px; font-weight:600; padding:1px 7px; border-radius:10px; }
+    .sidebar-footer { margin-top:auto; padding:14px 12px; border-top:1px solid var(--border); }
+    .admin-pill { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; background:var(--surface2); }
+    .admin-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--accent2),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; color:#fff; flex-shrink:0; }
+    .admin-info { flex:1; min-width:0; }
+    .admin-name-text { font-size:13px; font-weight:500; }
+    .admin-role { font-size:11px; color:var(--muted); }
+    .logout-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:16px; padding:4px; border-radius:5px; transition:color .15s; text-decoration:none; }
+    .logout-btn:hover { color:var(--danger); }
+    .main { margin-left:var(--sidebar-w); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+    .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:58px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:5; }
+    .topbar h1 { font-size:17px; font-weight:600; }
+    .topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+    .secure-dot { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--success); background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); padding:4px 10px; border-radius:20px; }
+    .pulse { width:6px; height:6px; border-radius:50%; background:var(--success); animation:p 2s infinite; }
     @keyframes p { 0%,100%{opacity:1} 50%{opacity:.2} }
-    .topbar-time { font-size: 12px; color: var(--muted); }
+    .topbar-time { font-size:12px; color:var(--muted); }
+    .content { padding:28px; flex:1; }
+    .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+    .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--card-accent,linear-gradient(90deg,var(--accent2),var(--accent))); }
+    .stat-label { font-size:12px; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+    .stat-val   { font-size:28px; font-weight:700; letter-spacing:-1px; margin-bottom:6px; }
+    .stat-sub   { font-size:12px; color:var(--muted); }
+    .stat-sub .up { color:var(--success); }
+    .stat-icon  { position:absolute; top:16px; right:16px; width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; background:var(--icon-bg,rgba(79,142,247,.1)); }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:24px; }
+    .card-hd { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .card-hd h3 { font-size:14px; font-weight:600; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { padding:10px 20px; text-align:left; font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+    tbody td { padding:13px 20px; font-size:13.5px; border-bottom:1px solid rgba(26,36,56,.6); }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover td { background:rgba(255,255,255,.02); }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:500; }
+    .badge.success { background:rgba(52,211,153,.1); color:var(--success); border:1px solid rgba(52,211,153,.2); }
+    .badge.warning { background:rgba(251,191,36,.1);  color:var(--warning); border:1px solid rgba(251,191,36,.2); }
+    .badge.danger  { background:rgba(248,113,113,.1); color:var(--danger);  border:1px solid rgba(248,113,113,.2); }
+    .mini-chart { display:flex; align-items:flex-end; gap:4px; height:50px; }
+    .bar { flex:1; border-radius:3px 3px 0 0; background:linear-gradient(180deg,var(--accent2),var(--accent)); opacity:.7; transition:opacity .2s; }
+    .bar:hover { opacity:1; }
+    .feed-item { display:flex; align-items:flex-start; gap:12px; padding:12px 20px; border-bottom:1px solid rgba(26,36,56,.6); }
+    .feed-item:last-child { border-bottom:none; }
+    .feed-dot { width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+    .feed-text { font-size:13px; line-height:1.5; }
+    .feed-time { font-size:11px; color:var(--muted); margin-top:2px; }
+    .btn-sm { font-size:12px; padding:6px 14px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; transition:border-color .15s,color .15s; text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+    .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-sm.danger:hover { border-color:var(--danger); color:var(--danger); }
+    .btn-primary { background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; color:#fff; font-size:13px; padding:9px 18px; border-radius:8px; cursor:pointer; font-weight:500; transition:opacity .15s; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary:hover { opacity:.88; }
+    .product-thumb { width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid var(--border); }
+    .product-thumb-placeholder { width:40px; height:40px; border-radius:6px; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:18px; }
 
-    /* Content */
-    .content { padding: 28px; flex: 1; }
+    /* toast */
+    .toast { position:fixed; bottom:24px; right:24px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 18px; font-size:13px; z-index:999; opacity:0; transform:translateY(8px); transition:all .2s; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.success { border-color:rgba(52,211,153,.4); color:var(--success); }
+    .toast.danger  { border-color:rgba(248,113,113,.4); color:var(--danger); }
 
-    /* Stat cards */
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      position: relative;
-      overflow: hidden;
-    }
-    .stat-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: var(--card-accent, linear-gradient(90deg, var(--accent2), var(--accent)));
-    }
-    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
-    .stat-val   { font-size: 28px; font-weight: 700; letter-spacing: -1px; margin-bottom: 6px; }
-    .stat-sub   { font-size: 12px; color: var(--muted); }
-    .stat-sub .up   { color: var(--success); }
-    .stat-sub .down { color: var(--danger); }
-    .stat-icon  {
-      position: absolute; top: 16px; right: 16px;
-      width: 36px; height: 36px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      background: var(--icon-bg, rgba(79,142,247,.1));
-    }
-
-    /* Section header */
-    .section-hd {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .section-hd h2 { font-size: 15px; font-weight: 600; }
-    .btn-sm {
-      font-size: 12px; padding: 6px 14px; border-radius: 7px;
-      border: 1px solid var(--border); background: var(--surface);
-      color: var(--muted); cursor: pointer;
-      transition: border-color .15s, color .15s;
-      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
-    }
-    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent2), var(--accent));
-      border: none; color: #fff; font-size: 13px;
-      padding: 9px 18px; border-radius: 8px; cursor: pointer;
-      font-weight: 500; transition: opacity .15s;
-    }
-    .btn-primary:hover { opacity: .88; }
-
-    /* Two-col grid */
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-
-    /* Table card */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 24px;
-    }
-    .card-hd {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .card-hd h3 { font-size: 14px; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      padding: 10px 20px; text-align: left;
-      font-size: 11px; font-weight: 500; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .5px;
-      background: rgba(255,255,255,.02);
-      border-bottom: 1px solid var(--border);
-    }
-    tbody td {
-      padding: 13px 20px;
-      font-size: 13.5px;
-      border-bottom: 1px solid rgba(26,36,56,.6);
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: rgba(255,255,255,.02); }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px; border-radius: 20px;
-      font-size: 11px; font-weight: 500;
-    }
-    .badge.success { background: rgba(52,211,153,.1);  color: var(--success); border: 1px solid rgba(52,211,153,.2); }
-    .badge.warning { background: rgba(251,191,36,.1);  color: var(--warning); border: 1px solid rgba(251,191,36,.2); }
-    .badge.danger  { background: rgba(248,113,113,.1); color: var(--danger);  border: 1px solid rgba(248,113,113,.2); }
-
-    /* Mini bar chart */
-    .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 50px; }
-    .bar {
-      flex: 1; border-radius: 3px 3px 0 0;
-      background: linear-gradient(180deg, var(--accent2), var(--accent));
-      opacity: .7; transition: opacity .2s;
-    }
-    .bar:hover { opacity: 1; }
-
-    /* Activity feed */
-    .feed-item {
-      display: flex; align-items: flex-start; gap: 12px;
-      padding: 12px 20px;
-      border-bottom: 1px solid rgba(26,36,56,.6);
-    }
-    .feed-item:last-child { border-bottom: none; }
-    .feed-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      margin-top: 4px; flex-shrink: 0;
-    }
-    .feed-text { font-size: 13px; line-height: 1.5; }
-    .feed-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    /* confirm modal */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:none; align-items:center; justify-content:center; }
+    .overlay.open { display:flex; }
+    .modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:28px; width:360px; }
+    .modal h3 { font-size:16px; font-weight:600; margin-bottom:8px; }
+    .modal p  { font-size:13px; color:var(--muted); margin-bottom:22px; line-height:1.6; }
+    .modal-btns { display:flex; gap:10px; justify-content:flex-end; }
   </style>
 </head>
 <body>
@@ -275,10 +110,11 @@
 
   <div class="nav-section">
     <div class="nav-label">Main</div>
-    <a href="#" class="nav-item active">
+    <!-- ✅ All href now point to real named URLs -->
+    <a href="{% url 'admin_dashboard' %}" class="nav-item active">
       <span class="nav-icon">📊</span> Dashboard
     </a>
-    <a href="#" class="nav-item">
+    <a href="{% url 'admin_products' %}" class="nav-item">
       <span class="nav-icon">📦</span> Products
       <span class="nav-badge">{{ product_count }}</span>
     </a>
@@ -292,7 +128,7 @@
 
   <div class="nav-section">
     <div class="nav-label">Security</div>
-    <a href="#" class="nav-item">
+    <a href="{% url 'admin_login_logs' %}" class="nav-item">
       <span class="nav-icon">🔐</span> Login Logs
     </a>
     <a href="#" class="nav-item">
@@ -304,9 +140,10 @@
     <div class="admin-pill">
       <div class="admin-avatar">{{ admin_name|slice:":1"|upper }}</div>
       <div class="admin-info">
-        <div class="admin-name">{{ admin_name }}</div>
+        <div class="admin-name-text">{{ admin_name }}</div>
         <div class="admin-role">Superadmin</div>
       </div>
+      <!-- ✅ Logout wired to real URL -->
       <a href="{% url 'admin_logout' %}" class="logout-btn" title="Logout">⏏</a>
     </div>
   </div>
@@ -314,43 +151,37 @@
 
 <!-- ── Main ── -->
 <div class="main">
-
-  <!-- Topbar -->
   <div class="topbar">
     <h1>Dashboard</h1>
     <div class="topbar-right">
       <span class="topbar-time" id="clock"></span>
-      <div class="secure-dot">
-        <div class="pulse"></div>
-        API Verified
-      </div>
+      <div class="secure-dot"><div class="pulse"></div> API Verified</div>
     </div>
   </div>
 
-  <!-- Content -->
   <div class="content">
 
     <!-- Stat cards -->
     <div class="stat-grid">
-      <div class="stat-card" style="--card-accent: linear-gradient(90deg,#7c5cfc,#4f8ef7)">
+      <div class="stat-card" style="--card-accent:linear-gradient(90deg,#7c5cfc,#4f8ef7)">
         <div class="stat-icon" style="--icon-bg:rgba(124,92,252,.12)">📦</div>
         <div class="stat-label">Total Products</div>
         <div class="stat-val">{{ product_count }}</div>
-        <div class="stat-sub"><span class="up">↑ 3</span> added this week</div>
+        <div class="stat-sub"><span class="up">↑ {{ new_this_week }}</span> added this week</div>
       </div>
-      <div class="stat-card" style="--card-accent: linear-gradient(90deg,#10b981,#34d399)">
+      <div class="stat-card" style="--card-accent:linear-gradient(90deg,#10b981,#34d399)">
         <div class="stat-icon" style="--icon-bg:rgba(52,211,153,.1)">✅</div>
         <div class="stat-label">Successful Logins</div>
         <div class="stat-val">{{ success_logins }}</div>
         <div class="stat-sub">Last 30 days</div>
       </div>
-      <div class="stat-card" style="--card-accent: linear-gradient(90deg,#f87171,#fbbf24)">
+      <div class="stat-card" style="--card-accent:linear-gradient(90deg,#f87171,#fbbf24)">
         <div class="stat-icon" style="--icon-bg:rgba(248,113,113,.1)">⚠️</div>
         <div class="stat-label">Failed Attempts</div>
         <div class="stat-val">{{ failed_logins }}</div>
         <div class="stat-sub">Last 30 days</div>
       </div>
-      <div class="stat-card" style="--card-accent: linear-gradient(90deg,#fbbf24,#f97316)">
+      <div class="stat-card" style="--card-accent:linear-gradient(90deg,#fbbf24,#f97316)">
         <div class="stat-icon" style="--icon-bg:rgba(251,191,36,.1)">🕐</div>
         <div class="stat-label">Last Login</div>
         <div class="stat-val" style="font-size:16px;margin-top:4px">{{ last_login|date:"d M, H:i" }}</div>
@@ -360,12 +191,8 @@
 
     <!-- Chart + Activity -->
     <div class="two-col">
-
-      <!-- Mini chart card -->
       <div class="card">
-        <div class="card-hd">
-          <h3>Login activity — last 7 days</h3>
-        </div>
+        <div class="card-hd"><h3>Login activity — last 7 days</h3></div>
         <div style="padding:20px">
           <div class="mini-chart">
             {% for h in daily_attempts %}
@@ -381,6 +208,9 @@
             {% endfor %}
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:6px">
+            {% for d in week_labels %}
+            <span style="font-size:11px;color:var(--muted)">{{ d }}</span>
+            {% empty %}
             <span style="font-size:11px;color:var(--muted)">Mon</span>
             <span style="font-size:11px;color:var(--muted)">Tue</span>
             <span style="font-size:11px;color:var(--muted)">Wed</span>
@@ -388,11 +218,11 @@
             <span style="font-size:11px;color:var(--muted)">Fri</span>
             <span style="font-size:11px;color:var(--muted)">Sat</span>
             <span style="font-size:11px;color:var(--muted)">Sun</span>
+            {% endfor %}
           </div>
         </div>
       </div>
 
-      <!-- Recent activity -->
       <div class="card">
         <div class="card-hd"><h3>Recent login activity</h3></div>
         {% for attempt in recent_attempts %}
@@ -419,15 +249,18 @@
     <!-- Products table -->
     <div class="card">
       <div class="card-hd">
-        <h3>Products</h3>
-        <a href="#" class="btn-primary">+ Add product</a>
+        <h3>Recent Products</h3>
+        <!-- ✅ Add product button → real URL -->
+        <a href="{% url 'add_product' %}" class="btn-primary">+ Add product</a>
       </div>
       <table>
         <thead>
           <tr>
+            <th>Image</th>
             <th>Name</th>
             <th>Price</th>
-            <th>Description</th>
+            <th>Category</th>
+            <th>Stock</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -435,19 +268,60 @@
         <tbody>
           {% for product in products %}
           <tr>
-            <td>{{ product.name }}</td>
-            <td>₹{{ product.price }}</td>
-            <td style="color:var(--muted);max-width:260px">{{ product.description|truncatechars:60 }}</td>
-            <td><span class="badge success">● Active</span></td>
             <td>
-              <a href="#" class="btn-sm">✏ Edit</a>
-              <a href="#" class="btn-sm" style="color:var(--danger);margin-left:4px">🗑</a>
+              <!-- ✅ Shows primary image thumbnail -->
+              {% with img=product.images.all|first %}
+                {% if img %}
+                  <img src="{{ img.image.url }}" class="product-thumb" alt="{{ product.name }}">
+                {% else %}
+                  <div class="product-thumb-placeholder">📦</div>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td><strong>{{ product.name }}</strong></td>
+            <td>
+              ₹{{ product.price }}
+              {% if product.discount_price %}
+                <span style="color:var(--success);font-size:11px;margin-left:4px">
+                  ₹{{ product.discount_price }}
+                </span>
+              {% endif %}
+            </td>
+            <td style="color:var(--muted)">{{ product.category.name|default:"—" }}</td>
+            <td>
+              {% if product.stock == 0 %}
+                <span class="badge danger">Out of stock</span>
+              {% elif product.stock <= 5 %}
+                <span class="badge warning">Low: {{ product.stock }}</span>
+              {% else %}
+                {{ product.stock }}
+              {% endif %}
+            </td>
+            <td>
+              {% if product.status == 'available' %}
+                <span class="badge success">● Available</span>
+              {% elif product.status == 'out_of_stock' %}
+                <span class="badge warning">● Out of stock</span>
+              {% else %}
+                <span class="badge danger">● Discontinued</span>
+              {% endif %}
+            </td>
+            <td>
+              <!-- ✅ Edit → real URL with product id -->
+              <a href="{% url 'edit_product' product.id %}" class="btn-sm">✏ Edit</a>
+              <!-- ✅ Delete → triggers confirm modal -->
+              <button
+                class="btn-sm danger"
+                style="margin-left:4px"
+                onclick="confirmDelete({{ product.id }}, '{{ product.name|escapejs }}')"
+              >🗑</button>
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5" style="text-align:center;color:var(--muted);padding:30px">
-              No products yet. <a href="#" style="color:var(--accent)">Add your first product</a>
+            <td colspan="7" style="text-align:center;color:var(--muted);padding:30px">
+              No products yet.
+              <a href="{% url 'add_product' %}" style="color:var(--accent)">Add your first product</a>
             </td>
           </tr>
           {% endfor %}
@@ -455,16 +329,55 @@
       </table>
     </div>
 
-  </div><!-- /content -->
-</div><!-- /main -->
+  </div>
+</div>
+
+<!-- ── Delete confirm modal ── -->
+<div class="overlay" id="deleteOverlay">
+  <div class="modal">
+    <h3>Delete Product</h3>
+    <p id="deleteMsg">Are you sure you want to delete this product? This will also delete all its images permanently.</p>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeModal()">Cancel</button>
+      <!-- ✅ Posts to delete URL with CSRF -->
+      <form id="deleteForm" method="POST" style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary" style="background:var(--danger);border:none">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
 <script>
+  // Clock
   function tick() {
-    const now = new Date();
     document.getElementById('clock').textContent =
-      now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
   }
   tick(); setInterval(tick, 1000);
+
+  // Delete modal
+  function confirmDelete(id, name) {
+    document.getElementById('deleteMsg').textContent =
+      `Are you sure you want to delete "${name}"? This will also delete all its images permanently.`;
+    document.getElementById('deleteForm').action = `/admin-panel/products/${id}/delete/`;
+    document.getElementById('deleteOverlay').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('deleteOverlay').classList.remove('open');
+  }
+
+  // Toast (called after redirect with ?msg= param)
+  const params = new URLSearchParams(location.search);
+  if (params.get('msg')) {
+    const t = document.getElementById('toast');
+    t.textContent = decodeURIComponent(params.get('msg'));
+    t.className = 'toast show ' + (params.get('type') || 'success');
+    setTimeout(() => t.className = 'toast', 3000);
+  }
 </script>
 </body>
 </html>

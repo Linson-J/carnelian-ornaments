@@ -121,7 +121,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.JSONParser',
+    ],
+}
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
