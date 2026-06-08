@@ -1,0 +1,102 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Edit Product — Admin{% endblock %}
+
+{% block topbar %}
+<div class="topbar-left">
+  <a href="{% url 'admin_products' %}" class="back-btn">← Back</a>
+  <div>
+    <h1>Edit product</h1>
+    <div class="breadcrumb">
+      <a href="{% url 'admin_dashboard' %}">Dashboard</a> /
+      <a href="{% url 'admin_products' %}">Products</a> /
+      <span style="color:var(--text)">Edit</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-hd"><h3>Edit product</h3></div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="field">
+        <label>Product name</label>
+        <input type="text" name="name" value="{{ product.name }}" maxlength="255" />
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea name="description" maxlength="2000">{{ product.description }}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Price</label>
+          <input type="number" name="price" step="0.01" value="{{ product.price }}" />
+        </div>
+        <div class="field">
+          <label>Discount price</label>
+          <input type="number" name="discount_price" step="0.01" value="{{ product.discount_price }}" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select name="category">
+          <option value="">-- Select --</option>
+          {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if product.category and product.category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Stock</label>
+          <input type="number" name="stock" min="0" step="1" value="{{ product.stock }}" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select name="status">
+            <option value="available" {% if product.status == 'available' %}selected{% endif %}>Available</option>
+            <option value="out_of_stock" {% if product.status == 'out_of_stock' %}selected{% endif %}>Out of stock</option>
+            <option value="discontinued" {% if product.status == 'discontinued' %}selected{% endif %}>Discontinued</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Offer</label>
+        <input type="text" name="offer" value="{{ product.offer }}" />
+      </div>
+      <div class="field">
+        <label>Colors (comma separated)</label>
+        <input type="text" name="colors" value="{{ colors_str }}" />
+      </div>
+
+      <div class="field">
+        <label>Existing images</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          {% for img in product.images.all %}
+            <div style="text-align:center">
+              <img src="{{ img.image.url }}" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:6px;display:block;margin-bottom:6px" />
+              <label style="display:block;font-size:13px"><input type="checkbox" name="delete_images" value="{{ img.id }}"> Delete</label>
+              <label style="display:block;font-size:13px"><input type="radio" name="primary_image" value="{{ img.id }}" {% if img.is_primary %}checked{% endif %}> Primary</label>
+            </div>
+          {% empty %}
+            <div style="color:var(--muted)">No images</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Upload new images (optional)</label>
+        <input type="file" name="images" accept="image/*" multiple />
+      </div>
+
+      <div style="margin-top:18px">
+        <button type="submit" class="btn-primary">Save changes</button>
+        <a href="{% url 'admin_products' %}" class="btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

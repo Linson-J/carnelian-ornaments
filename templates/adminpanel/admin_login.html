@@ -1,4 +1,3 @@
-{# adminpanel/templates/adminpanel/login.html #}
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -6,186 +5,16 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Login</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:       #080c18;
-      --card:     #0f1623;
-      --border:   #1a2438;
-      --accent:   #4f8ef7;
-      --accent2:  #7c5cfc;
-      --text:     #e8edf5;
-      --muted:    #4a5568;
-      --muted2:   #8896a8;
-      --inp:      #080c18;
-      --err:      #f87171;
-      --ok:       #34d399;
-    }
-    body {
-      background: var(--bg);
-      min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Inter', system-ui, sans-serif;
-      color: var(--text);
-    }
-    /* Dot-grid background */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image: radial-gradient(circle, #1e2d45 1px, transparent 1px);
-      background-size: 28px 28px;
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    /* Ambient glow */
-    .glow {
-      position: fixed;
-      top: -120px; left: 50%; transform: translateX(-50%);
-      width: 700px; height: 400px;
-      background: radial-gradient(ellipse, rgba(124,92,252,0.1) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    /* ── Card ── */
-    .card {
-      position: relative; z-index: 1;
-      width: 400px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 36px 36px 30px;
-      box-shadow: 0 0 0 1px rgba(124,92,252,0.08), 0 40px 80px rgba(0,0,0,0.6);
-      animation: rise .4s cubic-bezier(.16,1,.3,1);
-    }
-    @keyframes rise {
-      from { opacity:0; transform: translateY(24px) scale(.98); }
-      to   { opacity:1; transform: translateY(0)    scale(1);   }
-    }
-    /* Top glow line */
-    .card::after {
-      content: '';
-      position: absolute;
-      top: -1px; left: 15%; right: 15%; height: 1.5px;
-      background: linear-gradient(90deg, transparent, var(--accent2) 40%, var(--accent) 60%, transparent);
-      border-radius: 0 0 4px 4px;
-    }
-
-    /* ── Brand ── */
-    .brand { display: flex; align-items: center; gap: 13px; margin-bottom: 28px; }
-    .logo {
-      width: 46px; height: 46px; border-radius: 12px;
-      background: linear-gradient(140deg, var(--accent2), var(--accent));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-    }
-    .brand h1 { font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.2; }
-    .brand p  { font-size: 12px; color: var(--muted2); margin-top: 3px; }
-
-    /* ── Status pill ── */
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: rgba(52,211,153,0.08);
-      border: 1px solid rgba(52,211,153,0.2);
-      color: var(--ok); font-size: 11.5px; font-weight: 500;
-      padding: 5px 12px; border-radius: 30px;
-      margin-bottom: 22px;
-    }
-    .pulse {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--ok);
-      animation: p 2s ease-in-out infinite;
-    }
-    @keyframes p { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
-
-    h2 { font-size: 23px; font-weight: 700; letter-spacing: -.4px; margin-bottom: 5px; }
-    .sub { font-size: 13px; color: var(--muted2); margin-bottom: 26px; line-height: 1.5; }
-
-    /* ── Alerts ── */
-    .alert {
-      display: flex; align-items: flex-start; gap: 9px;
-      padding: 11px 14px; border-radius: 10px;
-      font-size: 13px; margin-bottom: 18px; line-height: 1.45;
-    }
-    .alert.err  { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); color: #fca5a5; }
-    .alert.warn { background: rgba(251,191, 36,.08); border: 1px solid rgba(251,191, 36,.2); color: #fde68a; }
-    .alert-icon { flex-shrink: 0; margin-top: 1px; }
-
-    /* ── Fields ── */
-    .field { margin-bottom: 16px; }
-    label {
-      display: block; font-size: 11.5px; font-weight: 500;
-      color: var(--muted2); text-transform: uppercase;
-      letter-spacing: .6px; margin-bottom: 7px;
-    }
-    .inp-wrap { position: relative; }
-    .inp-icon {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      color: var(--muted); font-size: 15px; pointer-events: none;
-    }
-    input[type=text], input[type=password] {
-      width: 100%;
-      background: var(--inp);
-      border: 1px solid var(--border);
-      color: var(--text); font-size: 14px;
-      padding: 11px 12px 11px 38px;
-      border-radius: 9px; outline: none;
-      transition: border-color .18s, box-shadow .18s;
-      font-family: inherit;
-    }
-    input:focus {
-      border-color: var(--accent2);
-      box-shadow: 0 0 0 3px rgba(124,92,252,.18);
-    }
-    input::placeholder { color: #2a3850; }
-
-    .eye-btn {
-      position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      color: var(--muted); font-size: 15px; padding: 2px 4px;
-      transition: color .15s;
-    }
-    .eye-btn:hover { color: var(--muted2); }
-
-    /* ── Submit ── */
-    .btn-submit {
-      width: 100%; padding: 13px;
-      background: linear-gradient(135deg, var(--accent2), var(--accent));
-      border: none; border-radius: 10px;
-      color: #fff; font-size: 15px; font-weight: 600;
-      cursor: pointer; letter-spacing: .1px;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      margin-top: 6px;
-      transition: opacity .15s, transform .1s;
-      font-family: inherit;
-    }
-    .btn-submit:hover  { opacity: .88; }
-    .btn-submit:active { transform: scale(.985); }
-
-    /* ── Divider ── */
-    .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0 16px; }
-
-    /* ── Footer ── */
-    .foot { text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
-    .foot strong { color: #3b5270; font-weight: 500; }
-
-    /* ── Shield badge (bottom-right of card) ── */
-    .shield-badge {
-      position: absolute; bottom: -14px; right: 20px;
-      display: flex; align-items: center; gap: 6px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 4px 12px 4px 8px;
-      font-size: 11px; color: var(--muted2);
-    }
-    .shield-badge span { font-size: 14px; }
-  </style>
+  <link rel="stylesheet" href="{% static 'adminpanel/css/theme.css' %}"/>
+  <link rel="stylesheet" href="{% static 'adminpanel/css/auth.css' %}"/>
 </head>
-<body>
-<div class="glow"></div>
+<body class="auth-page">
 
-<div class="card">
+<div class="auth-glow"></div>
 
-  <div class="brand">
-    <div class="logo">🛡️</div>
+<div class="auth-card">
+  <div class="auth-brand">
+    <div class="auth-logo">🛡️</div>
     <div>
       <h1>Admin Control Panel</h1>
       <p>Restricted — Authorised Personnel Only</p>
@@ -198,7 +27,7 @@
   </div>
 
   <h2>Sign in</h2>
-  <p class="sub">Your session is protected by server-side<br>HTTP header token verification.</p>
+  <p class="auth-sub">Your session is protected by server-side<br>HTTP header token verification.</p>
 
   {% if messages %}
     {% for msg in messages %}
@@ -218,48 +47,34 @@
 
   <form method="POST" action="{% url 'admin_login' %}" autocomplete="off" novalidate>
     {% csrf_token %}
-
     <div class="field">
       <label for="id_username">Username</label>
       <div class="inp-wrap">
         <span class="inp-icon">👤</span>
-        <input
-          type="text" id="id_username" name="username"
-          placeholder="Enter your username"
-          required autofocus autocomplete="off"
-        />
+        <input type="text" id="id_username" name="username" placeholder="Enter your username" required autofocus autocomplete="off"/>
       </div>
     </div>
-
     <div class="field">
       <label for="id_password">Password</label>
       <div class="inp-wrap">
         <span class="inp-icon">🔑</span>
-        <input
-          type="password" id="id_password" name="password"
-          placeholder="Enter your password"
-          required autocomplete="current-password"
-        />
+        <input type="password" id="id_password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
         <button type="button" class="eye-btn" id="eye" aria-label="Toggle password visibility">👁</button>
       </div>
     </div>
-
-    <button type="submit" class="btn-submit">
+    <button type="submit" class="btn-auth">
       <span>🚀</span> Sign in to Panel
     </button>
   </form>
 
-  <hr class="divider"/>
-
-  <p class="foot">
+  <hr class="auth-divider"/>
+  <p class="auth-foot">
     No account? <strong>Contact your system administrator.</strong><br>
     Self-registration is permanently disabled.
   </p>
-
   <div class="shield-badge">
     <span>🔐</span> Verified via HTTP Header
   </div>
-
 </div>
 
 <script>

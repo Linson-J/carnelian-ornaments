@@ -1,13 +1,47 @@
-<div class="sidebar">
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">🛡️</div>
+    <div>
+      <div class="brand-name">AdminPanel</div>
+      <div class="brand-sub">ecommerce</div>
+    </div>
+  </div>
 
-    <h2>Carmelian</h2>
+  <div class="nav-section">
+    <div class="nav-label">Main</div>
+    <a href="{% url 'admin_dashboard' %}" class="nav-item{% if active_nav == 'dashboard' %} active{% endif %}">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="{% url 'admin_products' %}" class="nav-item{% if active_nav == 'products' %} active{% endif %}">
+      <span class="nav-icon">📦</span> Products
+      {% if product_count %}<span class="nav-badge">{{ product_count }}</span>{% endif %}
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🛒</span> Orders
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">👥</span> Customers
+    </a>
+  </div>
 
-    <a href="/admin-panel/">Dashboard</a>
+  <div class="nav-section">
+    <div class="nav-label">Security</div>
+    <a href="{% url 'admin_login_logs' %}" class="nav-item{% if active_nav == 'login_logs' %} active{% endif %}">
+      <span class="nav-icon">🔐</span> Login Logs
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">⚙️</span> Settings
+    </a>
+  </div>
 
-    <a href="/admin-panel/products/">Products</a>
-
-    <a href="/admin-panel/add-product/">Add Product</a>
-
-    <a href="/admin-panel/orders/">Orders</a>
-
-</div>
+  <div class="sidebar-footer">
+    <div class="admin-pill">
+      <div class="admin-avatar">{{ admin_name|slice:":1"|upper }}</div>
+      <div class="admin-info">
+        <div class="admin-name-t">{{ admin_name }}</div>
+        <div class="admin-role">Superadmin</div>
+      </div>
+      <a href="{% url 'admin_logout' %}" class="logout-btn" title="Logout">⏏</a>
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Admin{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'adminpanel/css/theme.css' %}"/>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% include 'adminpanel/includes/sidebar.html' %}
+
+<div class="main">
+  <div class="topbar">
+    {% block topbar %}
+    <div class="topbar-left">
+      <h1>{% block page_title %}Admin{% endblock %}</h1>
+    </div>
+    <div class="topbar-right">
+      {% block topbar_right %}{% endblock %}
+    </div>
+    {% endblock %}
+  </div>
+
+  <div class="content">
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert {% if 'error' in msg.tags %}err{% else %}succ{% endif %}">
+          {% if 'error' in msg.tags %}⛔{% else %}✅{% endif %} {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+
+  {% block footer_bar %}{% endblock %}
+</div>
+
+{% block modals %}{% endblock %}
+
+<div class="toast" id="toast"></div>
+
+<script src="{% static 'adminpanel/js/theme.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
