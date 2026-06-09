@@ -15,6 +15,12 @@ urlpatterns = [
     path('products/<int:pk>/edit/',    admin_views.edit_product,    name='edit_product'),
     path('products/<int:pk>/delete/',  admin_views.delete_product,  name='delete_product'),
 
+    # Carousel
+    path('carousel/', admin_views.admin_carousel, name='admin_carousel'),
+    path('carousel/add/', admin_views.add_carousel_item, name='add_carousel_item'),
+    path('carousel/<int:pk>/edit/', admin_views.edit_carousel_item, name='edit_carousel_item'),
+    path('carousel/<int:pk>/delete/', admin_views.delete_carousel_item, name='delete_carousel_item'),
+
     # Security
     path('login-logs/',  admin_views.admin_login_logs, name='admin_login_logs'),
 ]

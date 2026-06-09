@@ -108,11 +108,43 @@
     <p id="deleteMsg">Are you sure you want to delete this product?</p>
     <div class="modal-btns">
       <button class="btn-sm" onclick="closeModal()">Cancel</button>
-      <form id="deleteForm" method="POST" style="display:inline">
+      <form id="deleteForm" method="POST" style="display:inline" onsubmit="deleteProduct(event)">
         {% csrf_token %}
-        <button type="submit" class="btn-primary" style="background:var(--danger);border:none">Delete</button>
+        <button type="submit" id="deleteBtn" class="btn-primary" style="background:var(--danger);border:none">Delete</button>
       </form>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function deleteProduct(event) {
+    event.preventDefault();
+    const form = document.getElementById('deleteForm');
+    const button = document.getElementById('deleteBtn');
+    const match = form.action.match(/products\/(\d+)\/delete\/?$/);
+    if (!match) return;
+
+    button.disabled = true;
+    button.textContent = 'Deleting...';
+    try {
+      const response = await fetch(`/api/products/${match[1]}/`, {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        window.location.href = "{% url 'admin_products' %}?msg=Product+deleted&type=success";
+        return;
+      }
+      showToast(data.message || 'Could not delete product.');
+    } catch (error) {
+      showToast('Network error. Please try again.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Delete';
+    }
+  }
+</script>
 {% endblock %}

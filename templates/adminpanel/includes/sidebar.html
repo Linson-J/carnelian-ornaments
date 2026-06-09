@@ -25,6 +25,14 @@
   </div>
 
   <div class="nav-section">
+    <div class="nav-label">Content</div>
+    <a href="{% url 'admin_carousel' %}" class="nav-item{% if active_nav == 'carousel' %} active{% endif %}">
+      <span class="nav-icon">▣</span> Carousel
+      {% if carousel_count %}<span class="nav-badge">{{ carousel_count }}</span>{% endif %}
+    </a>
+  </div>
+
+  <div class="nav-section">
     <div class="nav-label">Security</div>
     <a href="{% url 'admin_login_logs' %}" class="nav-item{% if active_nav == 'login_logs' %} active{% endif %}">
       <span class="nav-icon">🔐</span> Login Logs

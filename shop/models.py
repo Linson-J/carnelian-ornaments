@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -88,6 +89,85 @@ class ProductImage(models.Model):
         super().save(*args, **kwargs)
 
 # ─── Admin auth models ────────────────────────────────────────
+class CarouselItem(models.Model):
+    class RedirectType(models.TextChoices):
+        PAGE = 'page', 'Page'
+        PRODUCT = 'product', 'Product'
+
+    class CustomerPage(models.TextChoices):
+        HOME = '/', 'Home'
+        SHOP = '/#collection', 'Shop'
+        NEW_ARRIVALS = '/#new-arrivals', 'New Arrivals'
+        COLLECTIONS = '/#collections', 'Collections'
+        WISHLIST = '/#wishlist', 'Wishlist'
+        CART = '/#cart', 'Cart'
+        PROFILE = '/#profile', 'Profile'
+
+    image = models.ImageField(upload_to='carousel/%Y/%m/', help_text='Desktop / PC carousel image.')
+    mobile_image = models.ImageField(
+        upload_to='carousel/%Y/%m/', blank=True, null=True,
+        help_text='Optional mobile carousel image. Falls back to desktop image when empty.',
+    )
+    title = models.CharField(max_length=150, blank=True, default='')
+    description = models.TextField(max_length=500, blank=True, default='')
+    button_text = models.CharField(max_length=50, blank=True, default='')
+    redirect_type = models.CharField(
+        max_length=10, choices=RedirectType.choices, blank=True, default=''
+    )
+    customer_page = models.CharField(
+        max_length=50, choices=CustomerPage.choices, blank=True
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='carousel_items',
+    )
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_carousel_items'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.title or f'Carousel item {self.pk or ""}'.strip()
+
+    @property
+    def has_overlay_content(self):
+        return bool(self.title or self.description or self.button_text)
+
+    @property
+    def mobile_display_image(self):
+        return self.mobile_image or self.image
+
+    def clean(self):
+        if not self.redirect_type:
+            self.customer_page = ''
+            self.product = None
+            return
+
+        errors = {}
+        if self.redirect_type == self.RedirectType.PAGE:
+            if not self.customer_page:
+                errors['customer_page'] = 'Select a customer page.'
+            self.product = None
+        elif self.redirect_type == self.RedirectType.PRODUCT:
+            if not self.product_id:
+                errors['product'] = 'Select a product.'
+            self.customer_page = ''
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def redirect_url(self):
+        if not self.redirect_type:
+            return ''
+        if self.redirect_type == self.RedirectType.PRODUCT and self.product:
+            return f'/products/{self.product.slug}/'
+        return self.customer_page or '/'
+
+
 class AdminUser(models.Model):
     username   = models.CharField(max_length=50, unique=True)
     email      = models.EmailField(unique=True)

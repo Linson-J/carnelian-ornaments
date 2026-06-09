@@ -1,0 +1,80 @@
+{% extends 'adminpanel/base.html' %}
+{% block title %}{{ form_title }} - Admin{% endblock %}
+{% block topbar %}
+<div class="topbar-left">
+  <a href="{% url 'admin_carousel' %}" class="back-btn">Back</a>
+  <div><h1>{{ form_title }}</h1><div class="breadcrumb"><a href="{% url 'admin_dashboard' %}">Dashboard</a> / <a href="{% url 'admin_carousel' %}">Carousel</a></div></div>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="carousel-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert err">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-grid">
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3>Carousel content</h3></div>
+        <div class="card-body">
+          <div class="field"><label for="{{ form.title.id_for_label }}">Title</label>{{ form.title }}<div class="field-err">{{ form.title.errors|striptags }}</div></div>
+          <div class="field"><label for="{{ form.description.id_for_label }}">Description</label>{{ form.description }}<div class="field-err">{{ form.description.errors|striptags }}</div></div>
+          <div class="field"><label for="{{ form.button_text.id_for_label }}">Button text</label>{{ form.button_text }}<div class="field-err">{{ form.button_text.errors|striptags }}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>Button redirection</h3></div>
+        <div class="card-body">
+          <div class="field"><label for="{{ form.redirect_type.id_for_label }}">Redirect type</label>{{ form.redirect_type }}<div class="field-err">{{ form.redirect_type.errors|striptags }}</div></div>
+          <div class="field" id="page-field"><label for="{{ form.customer_page.id_for_label }}">Customer page</label>{{ form.customer_page }}<div class="field-err">{{ form.customer_page.errors|striptags }}</div></div>
+          <div class="field" id="product-field"><label for="{{ form.product.id_for_label }}">Product</label>{{ form.product }}<div class="field-err">{{ form.product.errors|striptags }}</div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hd"><h3>Carousel images</h3></div>
+        <div class="card-body">
+          {% if item and item.image %}<img src="{{ item.image.url }}" class="carousel-form-preview" id="image-preview" alt="{{ item.title|default:'Desktop preview' }}">{% else %}<img class="carousel-form-preview" id="image-preview" alt="" style="display:none">{% endif %}
+          <div class="field"><label for="{{ form.image.id_for_label }}">Desktop image (PC view) {% if not item %}<span class="req">*</span>{% endif %}</label>{{ form.image }}<div style="font-size:11px;color:var(--muted);margin-top:7px">Landscape image recommended for desktop. Maximum 8MB.</div><div class="field-err">{{ form.image.errors|striptags }}</div></div>
+          {% if item and item.mobile_image %}<img src="{{ item.mobile_image.url }}" class="carousel-form-preview" id="mobile-image-preview" alt="{{ item.title|default:'Mobile preview' }}">{% else %}<img class="carousel-form-preview" id="mobile-image-preview" alt="" style="display:none">{% endif %}
+          <div class="field"><label for="{{ form.mobile_image.id_for_label }}">Mobile image</label>{{ form.mobile_image }}<div style="font-size:11px;color:var(--muted);margin-top:7px">Optional. Portrait image recommended for phones. If empty, the desktop image is used on mobile.</div><div class="field-err">{{ form.mobile_image.errors|striptags }}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><h3>Display settings</h3></div>
+        <div class="card-body">
+          <div class="field"><label for="{{ form.order.id_for_label }}">Display order</label>{{ form.order }}<div class="field-err">{{ form.order.errors|striptags }}</div></div>
+          <label class="check-label">{{ form.is_active }} Show this item on the home page</label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="submit-bar"><a href="{% url 'admin_carousel' %}" class="btn-cancel">Cancel</a><button type="submit" class="btn-submit">{{ submit_text }}</button></div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+  const redirectType = document.getElementById('{{ form.redirect_type.id_for_label }}');
+  const pageField = document.getElementById('page-field');
+  const productField = document.getElementById('product-field');
+  const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+  const mobileImageInput = document.getElementById('{{ form.mobile_image.id_for_label }}');
+  const preview = document.getElementById('image-preview');
+  const mobilePreview = document.getElementById('mobile-image-preview');
+  function updateRedirectFields() {
+    pageField.style.display = redirectType.value === 'page' ? 'block' : 'none';
+    productField.style.display = redirectType.value === 'product' ? 'block' : 'none';
+  }
+  function bindImagePreview(input, previewEl) {
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) return;
+      previewEl.src = URL.createObjectURL(file);
+      previewEl.style.display = 'block';
+    });
+  }
+  redirectType.addEventListener('change', updateRedirectFields);
+  bindImagePreview(imageInput, preview);
+  bindImagePreview(mobileImageInput, mobilePreview);
+  updateRedirectFields();
+</script>
+{% endblock %}

@@ -6,7 +6,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 from datetime import timedelta
 import bcrypt
 
-from .models import AdminUser, LoginAttempt, Product, ProductImage, Category
+from .forms import CarouselItemForm
+from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CarouselItem
 from .decorators import admin_login_required
 
 
@@ -243,6 +244,72 @@ def delete_product(request, pk):
 
 
 # ─── Login Logs ───────────────────────────────────────────────
+@admin_login_required
+def admin_carousel(request):
+    items = CarouselItem.objects.select_related('product')
+    return render(request, 'adminpanel/carousel_items.html', {
+        'items': items,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'carousel',
+        'carousel_count': items.count(),
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def add_carousel_item(request):
+    form = CarouselItemForm(request.POST or None, request.FILES or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Carousel item created.')
+        return redirect('admin_carousel')
+    return render(request, 'adminpanel/carousel_form.html', {
+        'form': form,
+        'form_title': 'Add carousel item',
+        'submit_text': 'Add item',
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'carousel',
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def edit_carousel_item(request, pk):
+    item = get_object_or_404(CarouselItem, pk=pk)
+    old_image = item.image
+    old_mobile_image = item.mobile_image
+    form = CarouselItemForm(request.POST or None, request.FILES or None, instance=item)
+    if request.method == 'POST' and form.is_valid():
+        updated = form.save()
+        if request.FILES.get('image') and old_image and old_image.name != updated.image.name:
+            old_image.delete(save=False)
+        if request.FILES.get('mobile_image') and old_mobile_image and old_mobile_image.name != getattr(updated.mobile_image, 'name', None):
+            old_mobile_image.delete(save=False)
+        messages.success(request, 'Carousel item updated.')
+        return redirect('admin_carousel')
+    return render(request, 'adminpanel/carousel_form.html', {
+        'form': form,
+        'item': item,
+        'form_title': 'Edit carousel item',
+        'submit_text': 'Save changes',
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'carousel',
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_carousel_item(request, pk):
+    item = get_object_or_404(CarouselItem, pk=pk)
+    if item.image:
+        item.image.delete(save=False)
+    if item.mobile_image:
+        item.mobile_image.delete(save=False)
+    item.delete()
+    messages.success(request, 'Carousel item deleted.')
+    return redirect('admin_carousel')
+
+
 @admin_login_required
 def admin_login_logs(request):
     logs = LoginAttempt.objects.order_by('-attempted_at')[:100]

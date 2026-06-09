@@ -26,12 +26,81 @@
     <!-- Navbar -->
     {% include 'shop/includes/navbar.html' %}
 
-    <!-- Hero -->
-    <section class="hero">
+    <main class="hero-carousel" aria-label="Featured collections">
+        <div class="hero-track">
+            {% for item in carousel_items %}
+            <article class="hero-slide{% if forloop.first %} active{% endif %}{% if not item.has_overlay_content %} hero-slide--image-only{% endif %}" style="--hero-image:url('{{ item.image.url }}');--hero-image-mobile:url('{{ item.mobile_display_image.url }}')">
+                <div class="hero-shade"></div>
+                {% if item.has_overlay_content %}
+                <div class="hero-content">
+                    {% if item.title %}<h1>{{ item.title }}</h1>{% endif %}
+                    {% if item.description %}<p class="hero-copy">{{ item.description }}</p>{% endif %}
+                    {% if item.button_text and item.redirect_url %}
+                    <div class="hero-actions">
+                        <a href="{{ item.redirect_url }}" class="hero-btn primary">{{ item.button_text }}</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </article>
+            {% empty %}
+            <div class="carousel-empty">
+                <h1>Our collection is coming soon.</h1>
+            </div>
+            {% endfor %}
+        </div>
 
-        <h1>Luxury crafted for modern living.</h1>
+        <button class="carousel-arrow prev" type="button" aria-label="Previous slide"><i class="ri-arrow-left-s-line"></i></button>
+        <button class="carousel-arrow next" type="button" aria-label="Next slide"><i class="ri-arrow-right-s-line"></i></button>
+        <div class="carousel-dots" aria-label="Select slide"></div>
+    </main>
 
-    </section>
+    <script>
+        const carousel = document.querySelector('.hero-carousel');
+        const slides = [...document.querySelectorAll('.hero-slide')];
+        const dotsWrap = document.querySelector('.carousel-dots');
+        let activeSlide = 0;
+        let timer;
+        let touchStart = 0;
+
+        slides.forEach((slide, index) => {
+            const dot = document.createElement('button');
+            dot.type = 'button';
+            dot.setAttribute('aria-label', `Show slide ${index + 1}`);
+            dot.addEventListener('click', () => showSlide(index));
+            dotsWrap.appendChild(dot);
+        });
+
+        const dots = [...dotsWrap.children];
+
+        function showSlide(index) {
+            activeSlide = (index + slides.length) % slides.length;
+            slides.forEach((slide, i) => slide.classList.toggle('active', i === activeSlide));
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === activeSlide));
+            restartTimer();
+        }
+
+        function restartTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => showSlide(activeSlide + 1), 6000);
+        }
+
+        if (slides.length) {
+            document.querySelector('.carousel-arrow.prev').addEventListener('click', () => showSlide(activeSlide - 1));
+            document.querySelector('.carousel-arrow.next').addEventListener('click', () => showSlide(activeSlide + 1));
+            carousel.addEventListener('mouseenter', () => clearInterval(timer));
+            carousel.addEventListener('mouseleave', restartTimer);
+            carousel.addEventListener('touchstart', event => touchStart = event.changedTouches[0].clientX, {passive:true});
+            carousel.addEventListener('touchend', event => {
+                const distance = event.changedTouches[0].clientX - touchStart;
+                if (Math.abs(distance) > 50) showSlide(activeSlide + (distance < 0 ? 1 : -1));
+            }, {passive:true});
+            showSlide(0);
+        } else {
+            document.querySelector('.carousel-arrow.prev').hidden = true;
+            document.querySelector('.carousel-arrow.next').hidden = true;
+        }
+    </script>
 
 </body>
 

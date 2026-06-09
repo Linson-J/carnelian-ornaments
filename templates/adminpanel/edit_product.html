@@ -17,42 +17,49 @@
 {% endblock %}
 
 {% block content %}
+<div id="api-error" class="alert err" style="display:none"></div>
 <div class="card">
   <div class="card-hd"><h3>Edit product</h3></div>
   <div class="card-body">
-    <form method="post" enctype="multipart/form-data">
+    <form id="edit-product-form" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="field">
         <label>Product name</label>
-        <input type="text" name="name" value="{{ product.name }}" maxlength="255" />
+        <input type="text" name="name" value="{{ product.name }}" maxlength="255" required />
+        <div class="field-err" id="err-name"></div>
       </div>
       <div class="field">
         <label>Description</label>
-        <textarea name="description" maxlength="2000">{{ product.description }}</textarea>
+        <textarea name="description" maxlength="2000" required>{{ product.description }}</textarea>
+        <div class="field-err" id="err-description"></div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Price</label>
-          <input type="number" name="price" step="0.01" value="{{ product.price }}" />
+          <input type="number" name="price" min="0.01" step="0.01" value="{{ product.price }}" required />
+          <div class="field-err" id="err-price"></div>
         </div>
         <div class="field">
           <label>Discount price</label>
-          <input type="number" name="discount_price" step="0.01" value="{{ product.discount_price }}" />
+          <input type="number" name="discount_price" min="0.01" step="0.01" value="{{ product.discount_price|default_if_none:'' }}" />
+          <div class="field-err" id="err-discount_price"></div>
         </div>
       </div>
       <div class="field">
         <label>Category</label>
-        <select name="category">
+        <select name="category" required>
           <option value="">-- Select --</option>
           {% for cat in categories %}
             <option value="{{ cat.id }}" {% if product.category and product.category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
           {% endfor %}
         </select>
+        <div class="field-err" id="err-category"></div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>Stock</label>
-          <input type="number" name="stock" min="0" step="1" value="{{ product.stock }}" />
+          <input type="number" name="stock" min="0" step="1" value="{{ product.stock }}" required />
+          <div class="field-err" id="err-stock"></div>
         </div>
         <div class="field">
           <label>Status</label>
@@ -85,18 +92,101 @@
             <div style="color:var(--muted)">No images</div>
           {% endfor %}
         </div>
+        <div class="field-err" id="err-removed_image_ids"></div>
       </div>
 
       <div class="field">
         <label>Upload new images (optional)</label>
         <input type="file" name="images" accept="image/*" multiple />
+        <div class="field-err" id="err-uploaded_images"></div>
       </div>
 
       <div style="margin-top:18px">
-        <button type="submit" class="btn-primary">Save changes</button>
+        <button type="submit" class="btn-primary" id="save-btn">Save changes</button>
         <a href="{% url 'admin_products' %}" class="btn-cancel">Cancel</a>
       </div>
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const form = document.getElementById('edit-product-form');
+  const errorBanner = document.getElementById('api-error');
+
+  function clearErrors() {
+    document.querySelectorAll('.field-err').forEach(el => el.textContent = '');
+    errorBanner.style.display = 'none';
+  }
+
+  function firstError(value) {
+    if (Array.isArray(value)) return firstError(value[0]);
+    if (value && typeof value === 'object') return firstError(Object.values(value)[0]);
+    return value || 'Invalid value';
+  }
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    clearErrors();
+    if (!form.reportValidity()) return;
+
+    const price = Number(form.elements.price.value);
+    const discount = form.elements.discount_price.value;
+    if (discount && Number(discount) >= price) {
+      document.getElementById('err-discount_price').textContent = 'Discount price must be less than the original price.';
+      return;
+    }
+
+    const files = Array.from(form.elements.images.files);
+    const invalidFile = files.find(file => !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024);
+    if (invalidFile) {
+      document.getElementById('err-uploaded_images').textContent =
+        `${invalidFile.name} must be an image no larger than 5MB.`;
+      return;
+    }
+
+    const fd = new FormData(form);
+    fd.delete('csrfmiddlewaretoken');
+    fd.delete('images');
+    fd.delete('delete_images');
+    fd.delete('primary_image');
+    fd.set('colors', JSON.stringify(
+      form.elements.colors.value.split(',').map(color => color.trim()).filter(Boolean)
+    ));
+    files.forEach(file => fd.append('uploaded_images', file));
+    form.querySelectorAll('[name="delete_images"]:checked').forEach(input => {
+      fd.append('removed_image_ids', input.value);
+    });
+    const primary = form.querySelector('[name="primary_image"]:checked');
+    if (primary) fd.append('primary_image_id', primary.value);
+    const button = document.getElementById('save-btn');
+    button.disabled = true;
+    button.textContent = 'Saving...';
+    try {
+      const response = await fetch('/api/products/{{ product.id }}/', {
+        method: 'PATCH',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        body: fd,
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        window.location.href = "{% url 'admin_products' %}?msg=Product+updated&type=success";
+        return;
+      }
+      Object.entries(data.errors || {}).forEach(([field, value]) => {
+        const target = document.getElementById(`err-${field}`);
+        if (target) target.textContent = firstError(value);
+      });
+      errorBanner.textContent = data.message || 'Failed to update product.';
+      errorBanner.style.display = 'block';
+    } catch (error) {
+      errorBanner.textContent = 'Network error. Please try again.';
+      errorBanner.style.display = 'block';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Save changes';
+    }
+  });
+</script>
 {% endblock %}

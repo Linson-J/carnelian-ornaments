@@ -6,6 +6,8 @@ from .api_views import (
     ProductListCreateView,
     ProductDetailView,
     ProductImageView,
+    CarouselListCreateView,
+    CarouselDetailView,
 )
 
 urlpatterns = [
@@ -20,4 +22,8 @@ urlpatterns = [
     # Product image gallery
     path('products/<int:pk>/images/',                  ProductImageView.as_view()),
     path('products/<int:pk>/images/<int:image_id>/',   ProductImageView.as_view()),
+
+    # Carousel
+    path('carousel/',            CarouselListCreateView.as_view()),
+    path('carousel/<int:pk>/',   CarouselDetailView.as_view()),
 ]

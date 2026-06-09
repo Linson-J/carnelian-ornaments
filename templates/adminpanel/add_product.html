@@ -224,7 +224,13 @@
 
   function handleImages(files) {
     Array.from(files).forEach(f => {
-      if (!selectedFiles.find(x => x.name === f.name)) selectedFiles.push(f);
+      if (!f.type.startsWith('image/')) {
+        document.getElementById('err-images').textContent = `${f.name} is not an image`;
+      } else if (f.size > 5 * 1024 * 1024) {
+        document.getElementById('err-images').textContent = `${f.name} is larger than 5MB`;
+      } else if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) {
+        selectedFiles.push(f);
+      }
     });
     renderPreviews();
     updateSummary();
@@ -377,12 +383,14 @@
     clearErrors();
     let ok = true;
     const name  = document.getElementById('f-name').value.trim();
+    const desc  = document.getElementById('f-desc').value.trim();
     const price = document.getElementById('f-price').value;
     const disc  = document.getElementById('f-discount').value;
     const catId = document.getElementById('f-category').value;
     const stock = document.getElementById('f-stock').value;
     if (!name)  { showErr('f-name',  'err-name',  'Product name is required'); ok = false; }
-    if (!price) { showErr('f-price', 'err-price', 'Price is required'); ok = false; }
+    if (!desc)  { showErr('f-desc',  'err-desc',  'Description is required'); ok = false; }
+    if (!price || Number(price) <= 0) { showErr('f-price', 'err-price', 'Price must be greater than zero'); ok = false; }
     if (disc && parseFloat(disc) >= parseFloat(price)) {
       showErr('f-discount', 'err-discount', 'Discount must be less than original price'); ok = false;
     }
@@ -434,6 +442,7 @@
       } else {
         const errs = data.errors || {};
         if (errs.name)            showErr('f-name',           'err-name',     errs.name[0]);
+        if (errs.description)     showErr('f-desc',           'err-desc',     errs.description[0]);
         if (errs.price)           showErr('f-price',          'err-price',    errs.price[0]);
         if (errs.discount_price)  showErr('f-discount',       'err-discount', errs.discount_price[0]);
         if (errs.category)        showErr('f-category-input', 'err-category', errs.category[0]);

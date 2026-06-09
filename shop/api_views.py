@@ -2,14 +2,17 @@ from rest_framework.views      import APIView
 from rest_framework.response   import Response
 from rest_framework            import status
 from rest_framework.parsers    import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.shortcuts          import get_object_or_404
 
-from .models       import Category, Product, ProductImage
+from .models       import Category, Product, ProductImage, CarouselItem
 from .serializers  import (
     CategorySerializer,
     ProductReadSerializer,
     ProductWriteSerializer,
     ProductImageSerializer,
+    ProductUploadImageField,
+    CarouselItemSerializer,
 )
 
 
@@ -20,11 +23,22 @@ def error(msg='Error', errors=None, code=400):
     return Response({'success': False, 'message': msg, 'errors': errors}, status=code)
 
 
+class AdminWritePermission(BasePermission):
+    message = 'Admin login is required for this operation.'
+
+    def has_permission(self, request, view):
+        return (
+            request.method in SAFE_METHODS
+            or request.session.get('admin_authenticated') is True
+        )
+
+
 # ══════════════════════════════════════════════════════════════
 # CATEGORY  —  /api/categories/
 # ══════════════════════════════════════════════════════════════
 
 class CategoryListCreateView(APIView):
+    permission_classes = [AdminWritePermission]
     """
     GET  /api/categories/       → list all categories
     POST /api/categories/       → create category
@@ -42,6 +56,7 @@ class CategoryListCreateView(APIView):
 
 
 class CategoryDetailView(APIView):
+    permission_classes = [AdminWritePermission]
     """
     GET    /api/categories/<id>/  → single category
     PUT    /api/categories/<id>/  → update
@@ -71,6 +86,7 @@ class CategoryDetailView(APIView):
 
 class ProductListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
 
     """
     GET  /api/products/          → list all products (with filters)
@@ -117,6 +133,7 @@ class ProductListCreateView(APIView):
 
 class ProductDetailView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
 
     """
     GET    /api/products/<id>/   → single product (full nested)
@@ -131,6 +148,12 @@ class ProductDetailView(APIView):
         return success(ProductReadSerializer(product, context={'request': request}).data)
 
     def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         s = ProductWriteSerializer(
             product, data=request.data,
@@ -158,6 +181,7 @@ class ProductDetailView(APIView):
 
 class ProductImageView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [AdminWritePermission]
 
     """
     POST   /api/products/<id>/images/           → add more images to existing product
@@ -169,10 +193,18 @@ class ProductImageView(APIView):
         files   = request.FILES.getlist('images')
         if not files:
             return error('No images provided')
+        image_field = ProductUploadImageField()
+        validated_files = []
+        for file in files:
+            try:
+                validated_files.append(image_field.run_validation(file))
+            except Exception as exc:
+                detail = getattr(exc, 'detail', str(exc))
+                return error('Validation failed', {'images': detail})
 
         existing = product.images.count()
         created  = []
-        for i, f in enumerate(files):
+        for i, f in enumerate(validated_files):
             img = ProductImage.objects.create(
                 product=product,
                 image=f,
@@ -185,6 +217,11 @@ class ProductImageView(APIView):
     def delete(self, request, pk, image_id):
         product = get_object_or_404(Product, pk=pk)
         img     = get_object_or_404(ProductImage, pk=image_id, product=product)
+        if product.images.count() == 1:
+            return error(
+                'Validation failed',
+                {'image': 'A product must keep at least one image.'}
+            )
 
         was_primary = img.is_primary
         if img.image:
@@ -209,3 +246,82 @@ class ProductImageView(APIView):
             ProductImageSerializer(img, context={'request': request}).data,
             'Primary image updated'
         )
+
+
+# ══════════════════════════════════════════════════════════════
+# CAROUSEL  —  /api/carousel/
+# ══════════════════════════════════════════════════════════════
+
+class CarouselListCreateView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
+
+    """
+    GET  /api/carousel/       → active carousel items for home page
+    POST /api/carousel/       → create carousel item (image required)
+    """
+    def get(self, request):
+        qs = CarouselItem.objects.select_related('product').order_by('order', 'id')
+        if request.query_params.get('all') == 'true':
+            if request.session.get('admin_authenticated') is not True:
+                return error('Admin login is required for this operation.', code=403)
+        else:
+            qs = qs.filter(is_active=True)
+
+        serializer = CarouselItemSerializer(qs, many=True, context={'request': request})
+        return success({
+            'count': qs.count(),
+            'items': serializer.data,
+        })
+
+    def post(self, request):
+        s = CarouselItemSerializer(data=request.data, context={'request': request})
+        if s.is_valid():
+            item = s.save()
+            read = CarouselItemSerializer(item, context={'request': request})
+            return success(read.data, 'Carousel item created', 201)
+        return error('Validation failed', s.errors)
+
+
+class CarouselDetailView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
+
+    """
+    GET    /api/carousel/<id>/  → single carousel item
+    PUT    /api/carousel/<id>/  → update carousel item
+    PATCH  /api/carousel/<id>/  → partial update
+    DELETE /api/carousel/<id>/  → delete carousel item
+    """
+    def get(self, request, pk):
+        item = get_object_or_404(
+            CarouselItem.objects.select_related('product'),
+            pk=pk,
+        )
+        return success(CarouselItemSerializer(item, context={'request': request}).data)
+
+    def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
+        item = get_object_or_404(CarouselItem, pk=pk)
+        s = CarouselItemSerializer(
+            item, data=request.data, partial=True, context={'request': request},
+        )
+        if s.is_valid():
+            updated = s.save()
+            read = CarouselItemSerializer(updated, context={'request': request})
+            return success(read.data, 'Carousel item updated')
+        return error('Validation failed', s.errors)
+
+    def delete(self, request, pk):
+        item = get_object_or_404(CarouselItem, pk=pk)
+        if item.image:
+            item.image.delete(save=False)
+        if item.mobile_image:
+            item.mobile_image.delete(save=False)
+        item.delete()
+        return success(msg='Carousel item deleted')

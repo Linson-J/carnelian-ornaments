@@ -1,5 +1,19 @@
+from decimal import Decimal
+
+from django.db import transaction
 from rest_framework import serializers
-from .models import Category, Product, ProductImage
+from .models import Category, Product, ProductImage, CarouselItem
+
+
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+
+class ProductUploadImageField(serializers.ImageField):
+    def to_internal_value(self, data):
+        image = super().to_internal_value(data)
+        if image.size > MAX_IMAGE_SIZE:
+            raise serializers.ValidationError('Each image must be 5MB or smaller.')
+        return image
 
 
 # ─── Category ─────────────────────────────────────────────────
@@ -59,10 +73,13 @@ class ProductReadSerializer(serializers.ModelSerializer):
 class ProductWriteSerializer(serializers.ModelSerializer):
     # Accept multiple uploaded images at once
     uploaded_images = serializers.ListField(
-        child=serializers.ImageField(), write_only=True, required=False
+        child=ProductUploadImageField(), write_only=True, required=False
     )
     # Which image id should be primary (optional)
     primary_image_id = serializers.IntegerField(write_only=True, required=False)
+    removed_image_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
 
     class Meta:
         model  = Product
@@ -71,31 +88,89 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'price', 'discount_price',
             'category', 'stock', 'status',
             'colors', 'offer',
-            'uploaded_images', 'primary_image_id',
+            'uploaded_images', 'primary_image_id', 'removed_image_ids',
         ]
-
-    def validate_discount_price(self, value):
-        price = self.initial_data.get('price') or (
-            self.instance.price if self.instance else None
-        )
-        if value and price and float(value) >= float(price):
-            raise serializers.ValidationError(
-                'Discount price must be less than the original price.'
-            )
-        return value
+        extra_kwargs = {
+            'name': {'allow_blank': False},
+            'description': {'allow_blank': False},
+            'price': {'min_value': Decimal('0.01')},
+            'discount_price': {'min_value': Decimal('0.01')},
+            'category': {'required': True, 'allow_null': False},
+            'stock': {'min_value': 0},
+        }
 
     def validate(self, data):
-        # On create, at least one image is required
-        if not self.instance:
-            if not data.get('uploaded_images'):
-                raise serializers.ValidationError(
-                    {'uploaded_images': 'At least one product image is required.'}
-                )
+        price = data.get('price', getattr(self.instance, 'price', None))
+        discount_price = data.get(
+            'discount_price', getattr(self.instance, 'discount_price', None)
+        )
+        if discount_price is not None and price is not None and discount_price >= price:
+            raise serializers.ValidationError({
+                'discount_price': 'Discount price must be less than the original price.'
+            })
+
+        if not self.instance and not data.get('uploaded_images'):
+            raise serializers.ValidationError({
+                'uploaded_images': 'At least one product image is required.'
+            })
+
+        colors = data.get('colors')
+        if colors is not None:
+            if not isinstance(colors, list):
+                raise serializers.ValidationError({'colors': 'Colors must be a list.'})
+            cleaned_colors = []
+            for color in colors:
+                if not isinstance(color, str) or not color.strip():
+                    raise serializers.ValidationError({
+                        'colors': 'Every color must be a non-empty string.'
+                    })
+                cleaned = color.strip()
+                if len(cleaned) > 50:
+                    raise serializers.ValidationError({
+                        'colors': 'Each color must be 50 characters or fewer.'
+                    })
+                if cleaned not in cleaned_colors:
+                    cleaned_colors.append(cleaned)
+            if len(cleaned_colors) > 20:
+                raise serializers.ValidationError({
+                    'colors': 'A product can have at most 20 colors.'
+                })
+            data['colors'] = cleaned_colors
+
+        primary_image_id = data.get('primary_image_id')
+        if primary_image_id and self.instance and not self.instance.images.filter(
+            pk=primary_image_id
+        ).exists():
+            raise serializers.ValidationError({
+                'primary_image_id': 'The selected image does not belong to this product.'
+            })
+
+        removed_image_ids = data.get('removed_image_ids', [])
+        if removed_image_ids and self.instance:
+            valid_ids = set(self.instance.images.filter(
+                pk__in=removed_image_ids
+            ).values_list('pk', flat=True))
+            if valid_ids != set(removed_image_ids):
+                raise serializers.ValidationError({
+                    'removed_image_ids': 'One or more selected images do not belong to this product.'
+                })
+            remaining = self.instance.images.exclude(pk__in=removed_image_ids).count()
+            remaining += len(data.get('uploaded_images', []))
+            if remaining == 0:
+                raise serializers.ValidationError({
+                    'removed_image_ids': 'A product must keep at least one image.'
+                })
+            if primary_image_id in removed_image_ids:
+                raise serializers.ValidationError({
+                    'primary_image_id': 'The primary image cannot also be removed.'
+                })
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
         images_data      = validated_data.pop('uploaded_images', [])
-        primary_image_id = validated_data.pop('primary_image_id', None)
+        validated_data.pop('primary_image_id', None)
+        validated_data.pop('removed_image_ids', None)
         product = Product.objects.create(**validated_data)
         for i, img in enumerate(images_data):
             ProductImage.objects.create(
@@ -106,9 +181,11 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             )
         return product
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         images_data      = validated_data.pop('uploaded_images', [])
         primary_image_id = validated_data.pop('primary_image_id', None)
+        removed_image_ids = validated_data.pop('removed_image_ids', [])
 
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
@@ -124,13 +201,119 @@ class ProductWriteSerializer(serializers.ModelSerializer):
                 order=existing_count + i,
             )
 
+        removed_primary = False
+        for image in instance.images.filter(pk__in=removed_image_ids):
+            removed_primary = removed_primary or image.is_primary
+            if image.image:
+                image.image.delete(save=False)
+            image.delete()
+
         # Change primary image if requested
         if primary_image_id:
-            try:
-                pi = ProductImage.objects.get(pk=primary_image_id, product=instance)
-                pi.is_primary = True
-                pi.save()
-            except ProductImage.DoesNotExist:
-                pass
+            pi = ProductImage.objects.get(pk=primary_image_id, product=instance)
+            pi.is_primary = True
+            pi.save()
+        elif removed_primary:
+            next_image = instance.images.first()
+            if next_image:
+                next_image.is_primary = True
+                next_image.save()
 
         return instance
+
+
+# ─── Carousel ─────────────────────────────────────────────────
+MAX_CAROUSEL_IMAGE_SIZE = 8 * 1024 * 1024
+
+
+class CarouselItemSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField(read_only=True)
+    mobile_image_url = serializers.SerializerMethodField(read_only=True)
+    mobile_display_image_url = serializers.SerializerMethodField(read_only=True)
+    redirect_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = CarouselItem
+        fields = [
+            'id', 'image', 'image_url', 'mobile_image', 'mobile_image_url',
+            'mobile_display_image_url', 'title', 'description', 'button_text',
+            'redirect_type', 'customer_page', 'product', 'redirect_url',
+            'order', 'is_active', 'created_at', 'updated_at',
+        ]
+        extra_kwargs = {
+            'image': {'required': False},
+            'mobile_image': {'required': False, 'allow_null': True},
+            'title': {'required': False, 'allow_blank': True},
+            'description': {'required': False, 'allow_blank': True},
+            'button_text': {'required': False, 'allow_blank': True},
+            'redirect_type': {'required': False, 'allow_blank': True},
+            'customer_page': {'required': False, 'allow_blank': True},
+            'product': {'required': False, 'allow_null': True},
+        }
+
+    def _build_image_url(self, image_field):
+        if not image_field:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(image_field.url)
+        return image_field.url
+
+    def get_image_url(self, obj):
+        return self._build_image_url(obj.image)
+
+    def get_mobile_image_url(self, obj):
+        return self._build_image_url(obj.mobile_image)
+
+    def get_mobile_display_image_url(self, obj):
+        return self._build_image_url(obj.mobile_display_image)
+
+    def validate(self, data):
+        redirect_type = data.get(
+            'redirect_type',
+            getattr(self.instance, 'redirect_type', '') if self.instance else '',
+        )
+        customer_page = data.get(
+            'customer_page',
+            getattr(self.instance, 'customer_page', '') if self.instance else '',
+        )
+        product = data.get(
+            'product',
+            getattr(self.instance, 'product', None) if self.instance else None,
+        )
+
+        if not self.instance and not data.get('image'):
+            raise serializers.ValidationError({
+                'image': 'Desktop carousel image is required.',
+            })
+
+        if not redirect_type:
+            data['customer_page'] = ''
+            data['product'] = None
+            return data
+
+        if redirect_type == CarouselItem.RedirectType.PAGE and not customer_page:
+            raise serializers.ValidationError({
+                'customer_page': 'Select a customer page.',
+            })
+        if redirect_type == CarouselItem.RedirectType.PRODUCT and not product:
+            raise serializers.ValidationError({
+                'product': 'Select a product.',
+            })
+        if redirect_type == CarouselItem.RedirectType.PAGE:
+            data['product'] = None
+        elif redirect_type == CarouselItem.RedirectType.PRODUCT:
+            data['customer_page'] = ''
+
+        return data
+
+    def validate_image(self, image):
+        return self._validate_carousel_image(image)
+
+    def validate_mobile_image(self, image):
+        return self._validate_carousel_image(image)
+
+    def _validate_carousel_image(self, image):
+        if image and image.size > MAX_CAROUSEL_IMAGE_SIZE:
+            raise serializers.ValidationError('Image must be 8MB or smaller.')
+        return image
