@@ -7,6 +7,7 @@
 </div>
 {% endblock %}
 {% block content %}
+<div id="api-error" class="alert err" style="display:none"></div>
 <form method="post" enctype="multipart/form-data" id="carousel-form">
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="alert err">{{ form.non_field_errors }}</div>{% endif %}
@@ -60,6 +61,10 @@
   const mobileImageInput = document.getElementById('{{ form.mobile_image.id_for_label }}');
   const preview = document.getElementById('image-preview');
   const mobilePreview = document.getElementById('mobile-image-preview');
+  const form = document.getElementById('carousel-form');
+  const errorBanner = document.getElementById('api-error');
+  const itemId = {% if item %}{{ item.id }}{% else %}null{% endif %};
+
   function updateRedirectFields() {
     pageField.style.display = redirectType.value === 'page' ? 'block' : 'none';
     productField.style.display = redirectType.value === 'product' ? 'block' : 'none';
@@ -76,5 +81,81 @@
   bindImagePreview(imageInput, preview);
   bindImagePreview(mobileImageInput, mobilePreview);
   updateRedirectFields();
+
+  function clearApiErrors() {
+    errorBanner.style.display = 'none';
+    errorBanner.textContent = '';
+    form.querySelectorAll('.field-err').forEach(el => el.textContent = '');
+  }
+
+  function firstError(value) {
+    if (Array.isArray(value)) return firstError(value[0]);
+    if (value && typeof value === 'object') return firstError(Object.values(value)[0]);
+    return value || 'Invalid value';
+  }
+
+  function showFieldError(fieldName, message) {
+    const input = form.querySelector(`[name="${fieldName}"]`);
+    const target = input && input.closest('.field')?.querySelector('.field-err');
+    if (target) target.textContent = message;
+  }
+
+  function validateCarouselForm() {
+    const desktop = imageInput.files[0];
+    const mobile = mobileImageInput.files[0];
+    if (!itemId && !desktop) {
+      showFieldError('image', 'Desktop carousel image is required.');
+      return false;
+    }
+    for (const file of [desktop, mobile].filter(Boolean)) {
+      if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
+        showFieldError(file === desktop ? 'image' : 'mobile_image', `${file.name} must be an image no larger than 8MB.`);
+        return false;
+      }
+    }
+    if (redirectType.value === 'page' && !form.elements.customer_page.value) {
+      showFieldError('customer_page', 'Select a customer page.');
+      return false;
+    }
+    if (redirectType.value === 'product' && !form.elements.product.value) {
+      showFieldError('product', 'Select a product.');
+      return false;
+    }
+    return true;
+  }
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    clearApiErrors();
+    if (!validateCarouselForm()) return;
+
+    const submit = form.querySelector('[type="submit"]');
+    const originalText = submit.textContent;
+    const fd = new FormData(form);
+    fd.delete('csrfmiddlewaretoken');
+    if (!imageInput.files.length) fd.delete('image');
+    if (!mobileImageInput.files.length) fd.delete('mobile_image');
+    fd.set('is_active', form.elements.is_active.checked ? 'true' : 'false');
+
+    submit.disabled = true;
+    submit.textContent = itemId ? 'Saving...' : 'Adding...';
+    try {
+      if (itemId) {
+        await AdminApi.patch(`/api/carousel/${itemId}/`, fd);
+        window.location.href = "{% url 'admin_carousel' %}?msg=Carousel+item+updated&type=success";
+      } else {
+        await AdminApi.post('/api/carousel/', fd);
+        window.location.href = "{% url 'admin_carousel' %}?msg=Carousel+item+created&type=success";
+      }
+    } catch (error) {
+      Object.entries(error.errors || {}).forEach(([field, value]) => {
+        showFieldError(field, firstError(value));
+      });
+      errorBanner.textContent = error.message || 'Unable to save carousel item.';
+      errorBanner.style.display = 'block';
+      submit.disabled = false;
+      submit.textContent = originalText;
+    }
+  });
 </script>
 {% endblock %}

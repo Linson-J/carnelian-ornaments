@@ -82,15 +82,12 @@
         <div class="field-row">
           <div class="field" style="margin:0;position:relative">
             <label for="f-category">Category <span class="req">*</span></label>
-            <input type="text" id="f-category-input" placeholder="Search or type new category..." autocomplete="off"
+            <input type="text" id="f-category-input" placeholder="Search category..." autocomplete="off"
               oninput="categorySearch(this.value)" onfocus="categorySearch(this.value)" onblur="setTimeout(hideCatDrop, 180)"/>
             <input type="hidden" id="f-category"/>
             <div id="cat-drop" class="cat-drop">
               <div id="cat-list"></div>
-              <div id="cat-create" class="cat-create" onmousedown="createCategory()">
-                <span style="font-size:16px">+</span>
-                <span id="cat-create-label">Create category</span>
-              </div>
+              <div id="cat-create" class="cat-create" style="display:none"></div>
             </div>
             <div class="field-err" id="err-category"></div>
           </div>
@@ -305,7 +302,6 @@
     const drop = document.getElementById('cat-drop');
     const list = document.getElementById('cat-list');
     const createRow = document.getElementById('cat-create');
-    const createLabel = document.getElementById('cat-create-label');
     const filtered = catQuery
       ? ALL_CATEGORIES.filter(c => c.name.toLowerCase().includes(catQuery.toLowerCase()))
       : ALL_CATEGORIES;
@@ -317,13 +313,7 @@
           </div>`
         ).join('')
       : `<div style="padding:10px 14px;font-size:13px;color:var(--muted)">No match found</div>`;
-    const exactMatch = ALL_CATEGORIES.some(c => c.name.toLowerCase() === catQuery.toLowerCase());
-    if (catQuery && !exactMatch) {
-      createLabel.textContent = `Create "${catQuery}"`;
-      createRow.style.display = 'flex';
-    } else {
-      createRow.style.display = 'none';
-    }
+    createRow.style.display = 'none';
     drop.style.display = 'block';
     document.getElementById('f-category').value = '';
     document.getElementById('err-category').textContent = '';
@@ -351,23 +341,15 @@
     createRow.style.display = 'none';
     const slug = catQuery.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
     try {
-      const res = await fetch('/api/categories/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({ name: catQuery, slug }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const newCat = data.data;
-        ALL_CATEGORIES.push({ id: newCat.id, name: newCat.name, slug: newCat.slug });
-        selectCategory(newCat.id, newCat.name);
-        hideCatDrop();
-      } else {
-        const msg = data.errors?.name?.[0] || data.errors?.slug?.[0] || 'Could not create category.';
-        list.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--danger)">${msg}</div>`;
-      }
+      const result = await AdminApi.post('/api/categories/', { name: catQuery, slug });
+      const newCat = result.data;
+      ALL_CATEGORIES.push({ id: newCat.id, name: newCat.name, slug: newCat.slug });
+      selectCategory(newCat.id, newCat.name);
+      hideCatDrop();
     } catch (e) {
-      list.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--danger)">Network error. Try again.</div>`;
+      const errors = e.errors || {};
+      const msg = errors.name?.[0] || errors.slug?.[0] || e.message || 'Could not create category.';
+      list.innerHTML = `<div style="padding:10px 14px;font-size:13px;color:var(--danger)">${msg}</div>`;
     }
   }
 
@@ -428,34 +410,21 @@
     selectedFiles.forEach(f => fd.append('uploaded_images', f));
 
     try {
-      const res = await fetch('/api/products/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-        body: fd,
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showToast('✅ Product added successfully!');
-        setTimeout(() => {
-          window.location.href = "{% url 'admin_products' %}?msg=Product+added+successfully&type=success";
-        }, 1500);
-      } else {
-        const errs = data.errors || {};
-        if (errs.name)            showErr('f-name',           'err-name',     errs.name[0]);
-        if (errs.description)     showErr('f-desc',           'err-desc',     errs.description[0]);
-        if (errs.price)           showErr('f-price',          'err-price',    errs.price[0]);
-        if (errs.discount_price)  showErr('f-discount',       'err-discount', errs.discount_price[0]);
-        if (errs.category)        showErr('f-category-input', 'err-category', errs.category[0]);
-        if (errs.stock)           showErr('f-stock',          'err-stock',    errs.stock[0]);
-        if (errs.uploaded_images) document.getElementById('err-images').textContent = errs.uploaded_images[0];
-        errBanner.textContent = '⛔ ' + (data.message || 'Failed to save product.');
-        errBanner.style.display = 'block';
-        btn.disabled = false;
-        document.getElementById('submit-icon').outerHTML = '<span id="submit-icon">🚀</span>';
-        txt.textContent = 'Add product';
-      }
+      await AdminApi.post('/api/products/', fd);
+      showToast('✅ Product added successfully!');
+      setTimeout(() => {
+        window.location.href = "{% url 'admin_products' %}?msg=Product+added+successfully&type=success";
+      }, 1500);
     } catch (e) {
-      errBanner.textContent = '⛔ Network error. Please check your connection and try again.';
+      const errs = e.errors || {};
+      if (errs.name)            showErr('f-name',           'err-name',     errs.name[0]);
+      if (errs.description)     showErr('f-desc',           'err-desc',     errs.description[0]);
+      if (errs.price)           showErr('f-price',          'err-price',    errs.price[0]);
+      if (errs.discount_price)  showErr('f-discount',       'err-discount', errs.discount_price[0]);
+      if (errs.category)        showErr('f-category-input', 'err-category', errs.category[0]);
+      if (errs.stock)           showErr('f-stock',          'err-stock',    errs.stock[0]);
+      if (errs.uploaded_images) document.getElementById('err-images').textContent = errs.uploaded_images[0];
+      errBanner.textContent = '⛔ ' + (e.message || 'Network error. Please check your connection and try again.');
       errBanner.style.display = 'block';
       btn.disabled = false;
       document.getElementById('submit-icon').outerHTML = '<span id="submit-icon">🚀</span>';

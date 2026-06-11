@@ -9,9 +9,18 @@ from django.utils import timezone
 
 # ─── Category ─────────────────────────────────────────────────
 class Category(models.Model):
-    name       = models.CharField(max_length=100, unique=True)
-    slug       = models.SlugField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+
+    name        = models.CharField(max_length=100, unique=True)
+    slug        = models.SlugField(max_length=100, unique=True, blank=True)
+    image       = models.ImageField(upload_to='categories/%Y/%m/', blank=True, null=True)
+    description = models.TextField(blank=True)
+    status      = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    is_popular  = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table  = 'shop_categories'
@@ -20,6 +29,18 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            base = slugify(self.name)
+            slug = base
+            n = 1
+            while Category.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
 
 # ─── Product ──────────────────────────────────────────────────
@@ -191,6 +212,30 @@ class LoginAttempt(models.Model):
 
     class Meta:
         db_table = 'shop_login_attempts'
+
+
+class HomeTheme(models.Model):
+    primary_color = models.CharField(max_length=7, default='#7c5357')
+    background_color = models.CharField(max_length=7, default='#fffdfa')
+    dark_background_color = models.CharField(max_length=7, default='#030303')
+    sale_background_color = models.CharField(max_length=7, default='#e8b2bb')
+    text_color = models.CharField(max_length=7, default='#1a1c1a')
+    muted_text_color = models.CharField(max_length=7, default='#504444')
+    surface_color = models.CharField(max_length=7, default='#ffffff')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_home_theme'
+        verbose_name = 'home theme'
+        verbose_name_plural = 'home theme'
+
+    def __str__(self):
+        return 'Home theme'
+
+    @classmethod
+    def current(cls):
+        theme, _ = cls.objects.get_or_create(pk=1)
+        return theme
 
 
 # ─── After saving, run these two commands ────────────────────

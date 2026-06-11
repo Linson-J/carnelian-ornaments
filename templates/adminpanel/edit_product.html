@@ -164,24 +164,15 @@
     button.disabled = true;
     button.textContent = 'Saving...';
     try {
-      const response = await fetch('/api/products/{{ product.id }}/', {
-        method: 'PATCH',
-        headers: {'X-CSRFToken': '{{ csrf_token }}'},
-        body: fd,
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        window.location.href = "{% url 'admin_products' %}?msg=Product+updated&type=success";
-        return;
-      }
-      Object.entries(data.errors || {}).forEach(([field, value]) => {
+      await AdminApi.patch('/api/products/{{ product.id }}/', fd);
+      window.location.href = "{% url 'admin_products' %}?msg=Product+updated&type=success";
+      return;
+    } catch (error) {
+      Object.entries(error.errors || {}).forEach(([field, value]) => {
         const target = document.getElementById(`err-${field}`);
         if (target) target.textContent = firstError(value);
       });
-      errorBanner.textContent = data.message || 'Failed to update product.';
-      errorBanner.style.display = 'block';
-    } catch (error) {
-      errorBanner.textContent = 'Network error. Please try again.';
+      errorBanner.textContent = error.message || 'Network error. Please try again.';
       errorBanner.style.display = 'block';
     } finally {
       button.disabled = false;

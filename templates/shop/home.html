@@ -4,104 +4,326 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Carmelian</title>
 
-    <!-- Theme CSS -->
     <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Remix Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-
 </head>
 
-<body>
-
-    <!-- Navbar -->
+<body class="home-page">
     {% include 'shop/includes/navbar.html' %}
 
-    <main class="hero-carousel" aria-label="Featured collections">
-        <div class="hero-track">
-            {% for item in carousel_items %}
-            <article class="hero-slide{% if forloop.first %} active{% endif %}{% if not item.has_overlay_content %} hero-slide--image-only{% endif %}" style="--hero-image:url('{{ item.image.url }}');--hero-image-mobile:url('{{ item.mobile_display_image.url }}')">
-                <div class="hero-shade"></div>
-                {% if item.has_overlay_content %}
-                <div class="hero-content">
-                    {% if item.title %}<h1>{{ item.title }}</h1>{% endif %}
-                    {% if item.description %}<p class="hero-copy">{{ item.description }}</p>{% endif %}
-                    {% if item.button_text and item.redirect_url %}
-                    <div class="hero-actions">
-                        <a href="{{ item.redirect_url }}" class="hero-btn primary">{{ item.button_text }}</a>
-                    </div>
-                    {% endif %}
+    <main>
+        <section class="hero-carousel" aria-label="Featured collections">
+            <div class="hero-track" data-carousel-track>
+                <div class="carousel-empty">
+                    <h1>Loading collections...</h1>
                 </div>
-                {% endif %}
-            </article>
-            {% empty %}
-            <div class="carousel-empty">
-                <h1>Our collection is coming soon.</h1>
             </div>
-            {% endfor %}
-        </div>
+            <button class="carousel-arrow prev" type="button" aria-label="Previous slide" data-carousel-prev><i class="ri-arrow-left-s-line"></i></button>
+            <button class="carousel-arrow next" type="button" aria-label="Next slide" data-carousel-next><i class="ri-arrow-right-s-line"></i></button>
+            <div class="carousel-dots" aria-label="Select slide" data-carousel-dots></div>
+        </section>
 
-        <button class="carousel-arrow prev" type="button" aria-label="Previous slide"><i class="ri-arrow-left-s-line"></i></button>
-        <button class="carousel-arrow next" type="button" aria-label="Next slide"><i class="ri-arrow-right-s-line"></i></button>
-        <div class="carousel-dots" aria-label="Select slide"></div>
+        <section class="home-section category-section" id="collections" aria-labelledby="category-title">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">The Edit</p>
+                    <h2 id="category-title">Curated Essentials</h2>
+                </div>
+                <a href="/#collections">View All Categories</a>
+            </div>
+            <div class="category-mosaic" data-category-grid></div>
+        </section>
+
+        <section class="flash-sale" id="new-arrivals" aria-labelledby="sale-title">
+            <div class="sale-inner">
+                <div class="sale-copy">
+                    <p class="section-kicker">Limited Time Only</p>
+                    <h2 id="sale-title">Midnight Flash Sale</h2>
+                    <p>Exclusive designs at rare prices. These curated pieces are available for a short window.</p>
+                    <div class="sale-timer" aria-label="Sale countdown">
+                        <span><strong data-hours>08</strong><small>Hours</small></span>
+                        <span><strong data-minutes>42</strong><small>Mins</small></span>
+                        <span><strong data-seconds>15</strong><small>Secs</small></span>
+                    </div>
+                    <a class="home-pill-btn" href="/#new-arrivals">Shop The Sale</a>
+                </div>
+                <a class="sale-product" href="/#new-arrivals" data-sale-card aria-label="Featured sale product"></a>
+            </div>
+        </section>
+
+        <section class="home-section products-section" aria-labelledby="products-title">
+            <div class="section-heading section-heading-centered">
+                <div>
+                    <p class="section-kicker">Popular Now</p>
+                    <h2 id="products-title">Trending Selection</h2>
+                </div>
+            </div>
+            <div class="product-row" data-product-row></div>
+        </section>
+
+        <section class="story-section" aria-labelledby="story-title">
+            <h2 id="story-title">Client Stories</h2>
+            <article class="story-card">
+                <div class="story-stars" aria-label="5 star rating">*****</div>
+                <blockquote>"Carmelian is my go-to for pieces that feel both timeless and incredibly modern. The quality is unmatched."</blockquote>
+                <div class="story-author">
+                    <img src="https://i.pravatar.cc/80?img=47" alt="">
+                    <span><strong>Elena R.</strong><small>Interior Designer</small></span>
+                </div>
+            </article>
+        </section>
+
+        <section class="journal-section" aria-labelledby="journal-title">
+            <div class="journal-card">
+                <p class="section-kicker">The Journal</p>
+                <h2 id="journal-title">Stay Inspired</h2>
+                <p>Join our journal for early access to collections and curated style notes.</p>
+                <form class="subscribe-form" action="#" method="post">
+                    <input type="email" name="email" placeholder="Your email address" aria-label="Email address">
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </section>
     </main>
 
+    <footer class="site-footer">
+        <h2>Carmelian</h2>
+        <p>&copy; 2024 Carmelian. All rights reserved.</p>
+        <nav aria-label="Footer navigation">
+            <a href="/#collections">Collection</a>
+            <a href="/#sustainability">Sustainability</a>
+            <a href="/#journal">Journal</a>
+            <a href="/#concierge">Concierge</a>
+        </nav>
+        <div class="footer-icons" aria-label="Social links">
+            <a href="#" aria-label="Share"><i class="ri-share-line"></i></a>
+            <a href="#" aria-label="Website"><i class="ri-global-line"></i></a>
+            <a href="#" aria-label="Email"><i class="ri-mail-line"></i></a>
+        </div>
+    </footer>
+
     <script>
-        const carousel = document.querySelector('.hero-carousel');
-        const slides = [...document.querySelectorAll('.hero-slide')];
-        const dotsWrap = document.querySelector('.carousel-dots');
-        let activeSlide = 0;
-        let timer;
-        let touchStart = 0;
+        const money = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
+        const api = {
+            carousel: '/api/carousel/',
+            categories: '/api/categories/?status=active&popular=true',
+            products: '/api/products/?status=available',
+            theme: '/api/theme/'
+        };
 
-        slides.forEach((slide, index) => {
-            const dot = document.createElement('button');
-            dot.type = 'button';
-            dot.setAttribute('aria-label', `Show slide ${index + 1}`);
-            dot.addEventListener('click', () => showSlide(index));
-            dotsWrap.appendChild(dot);
-        });
+        const state = {
+            activeSlide: 0,
+            timer: null,
+            touchStart: 0,
+            slides: [],
+            dots: []
+        };
 
-        const dots = [...dotsWrap.children];
+        const track = document.querySelector('[data-carousel-track]');
+        const dotsWrap = document.querySelector('[data-carousel-dots]');
+        const categoryGrid = document.querySelector('[data-category-grid]');
+        const categorySection = document.querySelector('[data-popular-categories]');
+        const productRow = document.querySelector('[data-product-row]');
+        const saleCard = document.querySelector('[data-sale-card]');
+
+        function imageOfProduct(product) {
+            return product.primary_image?.image_url || product.images?.[0]?.image_url || '';
+        }
+
+        function formatPrice(product) {
+            const value = Number(product.discount_price || product.price || 0);
+            return money.format(value);
+        }
+
+        async function getJson(url) {
+            const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error(`Request failed: ${url}`);
+            return response.json();
+        }
+
+        function applyTheme(theme) {
+            if (!theme) return;
+            const root = document.documentElement;
+            const values = {
+                '--primary': theme.primary_color,
+                '--background': theme.background_color,
+                '--surface': theme.surface_color,
+                '--text-dark': theme.text_color,
+                '--text-light': theme.muted_text_color,
+                '--home-dark-bg': theme.dark_background_color,
+                '--home-sale-bg': theme.sale_background_color,
+                '--glass-bg': `${theme.surface_color}e6`
+            };
+            Object.entries(values).forEach(([name, value]) => {
+                if (value) root.style.setProperty(name, value);
+            });
+        }
+
+        function renderCarousel(items) {
+            track.innerHTML = '';
+            dotsWrap.innerHTML = '';
+
+            if (!items.length) {
+                track.innerHTML = '<div class="carousel-empty"><h1>Our collection is coming soon.</h1></div>';
+                document.querySelector('[data-carousel-prev]').hidden = true;
+                document.querySelector('[data-carousel-next]').hidden = true;
+                return;
+            }
+
+            items.forEach((item, index) => {
+                const hasCopy = item.title || item.description || item.button_text;
+                const slide = document.createElement('article');
+                slide.className = `hero-slide${index === 0 ? ' active' : ''}${hasCopy ? '' : ' hero-slide--image-only'}`;
+                slide.style.setProperty('--hero-image', `url('${item.image_url}')`);
+                slide.style.setProperty('--hero-image-mobile', `url('${item.mobile_display_image_url || item.image_url}')`);
+                slide.innerHTML = `
+                    <div class="hero-shade"></div>
+                    ${hasCopy ? `
+                        <div class="hero-content">
+                            ${item.title ? `<h1>${item.title}</h1>` : ''}
+                            ${item.description ? `<p class="hero-copy">${item.description}</p>` : ''}
+                            ${item.button_text ? `<div class="hero-actions"><a href="${item.redirect_url || '#collections'}" class="hero-btn primary">${item.button_text}</a></div>` : ''}
+                        </div>
+                    ` : ''}
+                `;
+                track.appendChild(slide);
+
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.setAttribute('aria-label', `Show slide ${index + 1}`);
+                dot.addEventListener('click', () => showSlide(index));
+                dotsWrap.appendChild(dot);
+            });
+
+            state.slides = [...document.querySelectorAll('.hero-slide')];
+            state.dots = [...dotsWrap.children];
+            showSlide(0);
+        }
 
         function showSlide(index) {
-            activeSlide = (index + slides.length) % slides.length;
-            slides.forEach((slide, i) => slide.classList.toggle('active', i === activeSlide));
-            dots.forEach((dot, i) => dot.classList.toggle('active', i === activeSlide));
+            if (!state.slides.length) return;
+            state.activeSlide = (index + state.slides.length) % state.slides.length;
+            state.slides.forEach((slide, i) => slide.classList.toggle('active', i === state.activeSlide));
+            state.dots.forEach((dot, i) => dot.classList.toggle('active', i === state.activeSlide));
             restartTimer();
         }
 
         function restartTimer() {
-            clearInterval(timer);
-            timer = setInterval(() => showSlide(activeSlide + 1), 6000);
+            clearInterval(state.timer);
+            state.timer = setInterval(() => showSlide(state.activeSlide + 1), 6000);
         }
 
-        if (slides.length) {
-            document.querySelector('.carousel-arrow.prev').addEventListener('click', () => showSlide(activeSlide - 1));
-            document.querySelector('.carousel-arrow.next').addEventListener('click', () => showSlide(activeSlide + 1));
-            carousel.addEventListener('mouseenter', () => clearInterval(timer));
-            carousel.addEventListener('mouseleave', restartTimer);
-            carousel.addEventListener('touchstart', event => touchStart = event.changedTouches[0].clientX, {passive:true});
-            carousel.addEventListener('touchend', event => {
-                const distance = event.changedTouches[0].clientX - touchStart;
-                if (Math.abs(distance) > 50) showSlide(activeSlide + (distance < 0 ? 1 : -1));
-            }, {passive:true});
-            showSlide(0);
-        } else {
-            document.querySelector('.carousel-arrow.prev').hidden = true;
-            document.querySelector('.carousel-arrow.next').hidden = true;
+        function renderCategories(categories) {
+            const cards = categories.filter(item => item.is_popular && item.image_url).slice(0, 4);
+
+            if (!cards.length) {
+                categorySection.hidden = true;
+                return;
+            }
+            categorySection.hidden = false;
+
+            categoryGrid.innerHTML = cards.map((category, index) => `
+                <a class="category-card category-card-${index + 1}" href="/#collections" style="--card-image:url('${category.image_url}')">
+                    <span>${category.name}</span>
+                    <small>${category.description || 'Explore'}</small>
+                </a>
+            `).join('');
         }
+
+        function renderSaleProduct(products) {
+            const saleProduct = products.find(product => product.offer || product.discount_price) || products[0];
+            if (!saleProduct) {
+                saleCard.innerHTML = '<span class="sale-placeholder">Sale product coming soon</span>';
+                return;
+            }
+
+            const image = imageOfProduct(saleProduct);
+            saleCard.href = `/products/${saleProduct.slug}/`;
+            saleCard.innerHTML = image
+                ? `<img src="${image}" alt="${saleProduct.name}"><span>${saleProduct.offer || 'Limited Drop'}</span>`
+                : `<span class="sale-placeholder">${saleProduct.name}</span>`;
+        }
+
+        function renderProducts(products) {
+            if (!products.length) {
+                productRow.innerHTML = '<p class="home-empty">Products will appear here after they are added from the admin panel.</p>';
+                return;
+            }
+
+            productRow.innerHTML = products.slice(0, 6).map((product, index) => {
+                const image = imageOfProduct(product);
+                const category = product.category?.name || 'Collection';
+                return `
+                    <a class="product-card" href="/products/${product.slug}/">
+                        <span class="product-badge">${index === 0 ? 'New' : index === 1 ? 'Trending' : category}</span>
+                        <span class="product-image">${image ? `<img src="${image}" alt="${product.name}">` : ''}</span>
+                        <span class="product-meta">
+                            <small>${category}</small>
+                            <strong>${product.name}</strong>
+                            <em>${formatPrice(product)}</em>
+                        </span>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        function startCountdown() {
+            let remaining = (8 * 60 * 60) + (42 * 60) + 15;
+            setInterval(() => {
+                remaining = remaining > 0 ? remaining - 1 : (9 * 60 * 60);
+                const hours = Math.floor(remaining / 3600);
+                const minutes = Math.floor((remaining % 3600) / 60);
+                const seconds = remaining % 60;
+                document.querySelector('[data-hours]').textContent = String(hours).padStart(2, '0');
+                document.querySelector('[data-minutes]').textContent = String(minutes).padStart(2, '0');
+                document.querySelector('[data-seconds]').textContent = String(seconds).padStart(2, '0');
+            }, 1000);
+        }
+
+        async function bootHome() {
+            try {
+                const [theme, carousel, categories, products] = await Promise.all([
+                    getJson(api.theme),
+                    getJson(api.carousel),
+                    getJson(api.categories),
+                    getJson(api.products)
+                ]);
+                applyTheme(theme.data);
+                const carouselItems = carousel.data?.items || [];
+                const categoryItems = categories.data || [];
+                const productItems = products.data?.products || [];
+
+                renderCarousel(carouselItems);
+                renderCategories(categoryItems);
+                renderSaleProduct(productItems);
+                renderProducts(productItems);
+            } catch (error) {
+                track.innerHTML = '<div class="carousel-empty"><h1>Unable to load the home page API.</h1></div>';
+                categoryGrid.innerHTML = '<p class="home-empty">Unable to load categories.</p>';
+                productRow.innerHTML = '<p class="home-empty">Unable to load products.</p>';
+            }
+        }
+
+        document.querySelector('[data-carousel-prev]').addEventListener('click', () => showSlide(state.activeSlide - 1));
+        document.querySelector('[data-carousel-next]').addEventListener('click', () => showSlide(state.activeSlide + 1));
+        document.querySelector('.hero-carousel').addEventListener('mouseenter', () => clearInterval(state.timer));
+        document.querySelector('.hero-carousel').addEventListener('mouseleave', restartTimer);
+        document.querySelector('.hero-carousel').addEventListener('touchstart', event => state.touchStart = event.changedTouches[0].clientX, {passive:true});
+        document.querySelector('.hero-carousel').addEventListener('touchend', event => {
+            const distance = event.changedTouches[0].clientX - state.touchStart;
+            if (Math.abs(distance) > 50) showSlide(state.activeSlide + (distance < 0 ? 1 : -1));
+        }, {passive:true});
+
+        document.querySelector('.subscribe-form').addEventListener('submit', event => event.preventDefault());
+
+        startCountdown();
+        bootHome();
     </script>
-
 </body>
 
 </html>

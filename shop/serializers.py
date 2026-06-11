@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from rest_framework import serializers
-from .models import Category, Product, ProductImage, CarouselItem
+from .models import Category, Product, ProductImage, CarouselItem, HomeTheme
 
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -19,13 +19,37 @@ class ProductUploadImageField(serializers.ImageField):
 # ─── Category ─────────────────────────────────────────────────
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model  = Category
-        fields = ['id', 'name', 'slug', 'product_count']
+        fields = [
+            'id', 'name', 'slug', 'image', 'image_url', 'description',
+            'status', 'is_popular', 'product_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['slug', 'product_count', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+            'description': {'required': False, 'allow_blank': True},
+            'status': {'required': False},
+            'is_popular': {'required': False},
+        }
 
     def get_product_count(self, obj):
         return obj.products.count()
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.image.url)
+        return obj.image.url
+
+    def validate_image(self, image):
+        if image and image.size > MAX_IMAGE_SIZE:
+            raise serializers.ValidationError('Image must be 5MB or smaller.')
+        return image
 
 
 # ─── Product Image ────────────────────────────────────────────
@@ -317,3 +341,26 @@ class CarouselItemSerializer(serializers.ModelSerializer):
         if image and image.size > MAX_CAROUSEL_IMAGE_SIZE:
             raise serializers.ValidationError('Image must be 8MB or smaller.')
         return image
+
+
+class HomeThemeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HomeTheme
+        fields = [
+            'primary_color', 'background_color', 'dark_background_color',
+            'sale_background_color', 'text_color', 'muted_text_color',
+            'surface_color', 'updated_at',
+        ]
+        read_only_fields = ['updated_at']
+
+    def validate(self, data):
+        for field, value in data.items():
+            if field == 'updated_at':
+                continue
+            if not isinstance(value, str) or not value.startswith('#') or len(value) != 7:
+                raise serializers.ValidationError({field: 'Use a hex color like #7c5357.'})
+            try:
+                int(value[1:], 16)
+            except ValueError:
+                raise serializers.ValidationError({field: 'Use a valid hex color.'})
+        return data

@@ -15,6 +15,9 @@ urlpatterns = [
     path('products/<int:pk>/edit/',    admin_views.edit_product,    name='edit_product'),
     path('products/<int:pk>/delete/',  admin_views.delete_product,  name='delete_product'),
 
+    # Categories
+    path('categories/', admin_views.admin_categories, name='admin_categories'),
+
     # Carousel
     path('carousel/', admin_views.admin_carousel, name='admin_carousel'),
     path('carousel/add/', admin_views.add_carousel_item, name='add_carousel_item'),
@@ -23,6 +26,7 @@ urlpatterns = [
 
     # Security
     path('login-logs/',  admin_views.admin_login_logs, name='admin_login_logs'),
+    path('settings/',    admin_views.admin_settings,   name='admin_settings'),
 ]
 
 # ─── Full URL map ─────────────────────────────────────────────

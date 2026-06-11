@@ -8,6 +8,7 @@ from .api_views import (
     ProductImageView,
     CarouselListCreateView,
     CarouselDetailView,
+    HomeThemeView,
 )
 
 urlpatterns = [
@@ -26,4 +27,7 @@ urlpatterns = [
     # Carousel
     path('carousel/',            CarouselListCreateView.as_view()),
     path('carousel/<int:pk>/',   CarouselDetailView.as_view()),
+
+    # Home theme settings
+    path('theme/',               HomeThemeView.as_view()),
 ]

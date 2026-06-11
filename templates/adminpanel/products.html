@@ -129,18 +129,11 @@
     button.disabled = true;
     button.textContent = 'Deleting...';
     try {
-      const response = await fetch(`/api/products/${match[1]}/`, {
-        method: 'DELETE',
-        headers: {'X-CSRFToken': '{{ csrf_token }}'},
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        window.location.href = "{% url 'admin_products' %}?msg=Product+deleted&type=success";
-        return;
-      }
-      showToast(data.message || 'Could not delete product.');
+      await AdminApi.delete(`/api/products/${match[1]}/`);
+      window.location.href = "{% url 'admin_products' %}?msg=Product+deleted&type=success";
+      return;
     } catch (error) {
-      showToast('Network error. Please try again.');
+      showToast(error.message || 'Network error. Please try again.', 'error');
     } finally {
       button.disabled = false;
       button.textContent = 'Delete';

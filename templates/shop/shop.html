@@ -1,0 +1,347 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - Carmelian</title>
+
+    <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+
+<body class="shop-page">
+    {% include 'shop/includes/navbar.html' %}
+
+    <main class="catalog-shell">
+        <section class="catalog-hero" aria-labelledby="catalog-title">
+            <h1 id="catalog-title">The Summer Curated Shop</h1>
+            <p>A collection of ethically sourced, timeless pieces designed for the modern woman. Discover our latest arrivals crafted with intention.</p>
+        </section>
+
+        <section class="mobile-catalog-controls" aria-label="Shop filters">
+            <h1>Shop All</h1>
+            <div class="mobile-filter-row">
+                <button type="button" data-mobile-filter><i class="ri-equalizer-2-line"></i> Filter</button>
+                <button type="button" data-sort-button="newest">New Arrivals</button>
+                <button type="button" data-sort-button="price-asc">Price: Low to High</button>
+            </div>
+        </section>
+
+        <section class="catalog-layout" aria-label="Product catalog">
+            <aside class="catalog-sidebar" data-sidebar>
+                <div class="filter-block">
+                    <h2>Categories</h2>
+                    <div class="category-filter-list" data-category-filters></div>
+                </div>
+                <div class="filter-block">
+                    <h2>Price Range</h2>
+                    <input type="range" min="0" max="500" value="500" data-price-range>
+                    <div class="price-range-labels">
+                        <span>$0</span>
+                        <span data-price-label>$500+</span>
+                    </div>
+                </div>
+                <div class="filter-block">
+                    <h2>Color Palette</h2>
+                    <div class="color-filter-list" data-color-filters></div>
+                </div>
+                <div class="filter-block">
+                    <h2>Rating</h2>
+                    <label class="rating-filter">
+                        <input type="checkbox" data-rating-filter>
+                        <span>*****</span>
+                        <small>& up</small>
+                    </label>
+                </div>
+            </aside>
+
+            <div class="catalog-main">
+                <div class="catalog-toolbar">
+                    <p data-result-count>Showing 0 results</p>
+                    <div class="catalog-search">
+                        <i class="ri-search-line"></i>
+                        <input type="search" placeholder="Search collection..." data-search>
+                    </div>
+                    <select data-sort>
+                        <option value="featured">Featured</option>
+                        <option value="newest">New Arrivals</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                    </select>
+                </div>
+
+                <div class="catalog-grid" data-catalog-grid></div>
+
+                <div class="catalog-pagination">
+                    <button type="button" data-load-more>Load More Pieces</button>
+                    <p data-mobile-count>Showing 0 products</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer catalog-footer">
+        <div class="catalog-footer-grid">
+            <div>
+                <h2>Carmelian</h2>
+                <p>Elevating the everyday with thoughtfully designed essentials and artisanal finds.</p>
+                <div class="footer-icons">
+                    <a href="#" aria-label="Website"><i class="ri-global-line"></i></a>
+                    <a href="#" aria-label="Share"><i class="ri-share-line"></i></a>
+                </div>
+            </div>
+            <nav aria-label="Shop footer">
+                <strong>Shop</strong>
+                <a href="/shop/">Collection</a>
+                <a href="/shop/">New Arrivals</a>
+                <a href="/shop/">Best Sellers</a>
+                <a href="/shop/">Gift Cards</a>
+            </nav>
+            <nav aria-label="Company footer">
+                <strong>Company</strong>
+                <a href="#">Sustainability</a>
+                <a href="#">Journal</a>
+                <a href="#">Concierge</a>
+                <a href="#">Privacy</a>
+            </nav>
+            <form class="catalog-footer-form" action="#" method="post">
+                <strong>Newsletter</strong>
+                <p>Join our community for early access and editorial stories.</p>
+                <input type="email" placeholder="Email Address" aria-label="Email address">
+                <button type="submit">Subscribe</button>
+            </form>
+        </div>
+    </footer>
+
+    <script>
+        const money = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
+        const api = {
+            theme: '/api/theme/',
+            categories: '/api/categories/?status=active',
+            products: '/api/products/?status=available'
+        };
+        const state = {
+            products: [],
+            categories: [],
+            category: '',
+            color: '',
+            maxPrice: 500,
+            sort: 'featured',
+            search: '',
+            visible: 16
+        };
+
+        const grid = document.querySelector('[data-catalog-grid]');
+        const categoryFilters = document.querySelector('[data-category-filters]');
+        const colorFilters = document.querySelector('[data-color-filters]');
+        const resultCount = document.querySelector('[data-result-count]');
+        const mobileCount = document.querySelector('[data-mobile-count]');
+        const priceRange = document.querySelector('[data-price-range]');
+        const priceLabel = document.querySelector('[data-price-label]');
+        const sortSelect = document.querySelector('[data-sort]');
+        const searchInput = document.querySelector('[data-search]');
+        const loadMore = document.querySelector('[data-load-more]');
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
+        }
+
+        async function getJson(url) {
+            const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error(`Request failed: ${url}`);
+            return response.json();
+        }
+
+        function applyTheme(theme) {
+            if (!theme) return;
+            const root = document.documentElement;
+            Object.entries({
+                '--primary': theme.primary_color,
+                '--background': theme.background_color,
+                '--surface': theme.surface_color,
+                '--text-dark': theme.text_color,
+                '--text-light': theme.muted_text_color,
+                '--home-dark-bg': theme.dark_background_color,
+                '--home-sale-bg': theme.sale_background_color,
+                '--glass-bg': `${theme.surface_color}e6`
+            }).forEach(([key, value]) => value && root.style.setProperty(key, value));
+        }
+
+        function imageOf(product) {
+            return product.primary_image?.image_url || product.images?.[0]?.image_url || '';
+        }
+
+        function priceOf(product) {
+            return Number(product.discount_price || product.price || 0);
+        }
+
+        function currentVisibleStart() {
+            return window.matchMedia('(max-width: 768px)').matches ? 6 : 16;
+        }
+
+        function buildFilters() {
+            const counts = state.products.reduce((acc, product) => {
+                const slug = product.category?.slug || '';
+                if (slug) acc[slug] = (acc[slug] || 0) + 1;
+                return acc;
+            }, {});
+            categoryFilters.innerHTML = state.categories.map(category => `
+                <button type="button" data-category="${escapeHtml(category.slug)}">
+                    <span>${escapeHtml(category.name)}</span>
+                    <small>${counts[category.slug] || 0}</small>
+                </button>
+            `).join('');
+
+            const colors = [...new Set(state.products.flatMap(product => product.colors || []))].slice(0, 8);
+            const fallback = ['#e8b2bb', '#d8d2ea', '#6d6675', '#d9d8d3', '#181b19'];
+            colorFilters.innerHTML = (colors.length ? colors : fallback).map(color => `
+                <button type="button" data-color="${escapeHtml(color)}" style="--swatch:${escapeHtml(color)}" aria-label="${escapeHtml(color)}"></button>
+            `).join('');
+        }
+
+        function filteredProducts() {
+            let items = [...state.products];
+            if (state.category) items = items.filter(product => product.category?.slug === state.category);
+            if (state.color) items = items.filter(product => (product.colors || []).includes(state.color));
+            if (state.search) {
+                const term = state.search.toLowerCase();
+                items = items.filter(product =>
+                    product.name.toLowerCase().includes(term) ||
+                    (product.category?.name || '').toLowerCase().includes(term)
+                );
+            }
+            items = items.filter(product => priceOf(product) <= state.maxPrice);
+            if (state.sort === 'newest') items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (state.sort === 'price-asc') items.sort((a, b) => priceOf(a) - priceOf(b));
+            if (state.sort === 'price-desc') items.sort((a, b) => priceOf(b) - priceOf(a));
+            return items;
+        }
+
+        function renderProducts() {
+            const products = filteredProducts();
+            const visibleProducts = products.slice(0, state.visible);
+            resultCount.textContent = products.length
+                ? `Showing 1-${Math.min(state.visible, products.length)} of ${products.length} results`
+                : 'Showing 0 results';
+            mobileCount.textContent = `Showing ${visibleProducts.length} of ${products.length} products`;
+            loadMore.hidden = visibleProducts.length >= products.length;
+
+            if (!visibleProducts.length) {
+                grid.innerHTML = '<p class="catalog-empty">No products match these filters.</p>';
+                return;
+            }
+
+            grid.innerHTML = visibleProducts.map(product => {
+                const image = imageOf(product);
+                return `
+                    <a class="catalog-product" href="/products/${escapeHtml(product.slug)}/">
+                        <span class="catalog-product-image">
+                            ${image ? `<img src="${image}" alt="${escapeHtml(product.name)}">` : ''}
+                            <span class="catalog-wishlist"><i class="ri-heart-line"></i></span>
+                        </span>
+                        <span class="catalog-product-name">${escapeHtml(product.name)}</span>
+                        <span class="catalog-product-price">${money.format(priceOf(product))}</span>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        function setActiveButtons() {
+            document.querySelectorAll('[data-category]').forEach(button => {
+                button.classList.toggle('active', button.dataset.category === state.category);
+            });
+            document.querySelectorAll('[data-color]').forEach(button => {
+                button.classList.toggle('active', button.dataset.color === state.color);
+            });
+        }
+
+        function refresh() {
+            state.visible = Math.max(state.visible, currentVisibleStart());
+            setActiveButtons();
+            renderProducts();
+        }
+
+        async function boot() {
+            try {
+                const [theme, categories, products] = await Promise.all([
+                    getJson(api.theme),
+                    getJson(api.categories),
+                    getJson(api.products)
+                ]);
+                applyTheme(theme.data);
+                state.categories = categories.data || [];
+                state.products = products.data?.products || [];
+                const highestPrice = Math.max(500, ...state.products.map(priceOf));
+                state.maxPrice = highestPrice;
+                priceRange.max = String(highestPrice);
+                priceRange.value = String(highestPrice);
+                priceLabel.textContent = `${money.format(highestPrice)}+`;
+                state.visible = currentVisibleStart();
+                buildFilters();
+                renderProducts();
+            } catch (error) {
+                grid.innerHTML = '<p class="catalog-empty">Unable to load products from the API.</p>';
+            }
+        }
+
+        categoryFilters.addEventListener('click', event => {
+            const button = event.target.closest('[data-category]');
+            if (!button) return;
+            state.category = state.category === button.dataset.category ? '' : button.dataset.category;
+            state.visible = currentVisibleStart();
+            refresh();
+        });
+
+        colorFilters.addEventListener('click', event => {
+            const button = event.target.closest('[data-color]');
+            if (!button) return;
+            state.color = state.color === button.dataset.color ? '' : button.dataset.color;
+            state.visible = currentVisibleStart();
+            refresh();
+        });
+
+        priceRange.addEventListener('input', () => {
+            state.maxPrice = Number(priceRange.value);
+            priceLabel.textContent = state.maxPrice >= 500 ? '$500+' : money.format(state.maxPrice);
+            state.visible = currentVisibleStart();
+            renderProducts();
+        });
+
+        sortSelect.addEventListener('change', () => {
+            state.sort = sortSelect.value;
+            state.visible = currentVisibleStart();
+            renderProducts();
+        });
+
+        searchInput.addEventListener('input', () => {
+            state.search = searchInput.value.trim();
+            state.visible = currentVisibleStart();
+            renderProducts();
+        });
+
+        document.querySelectorAll('[data-sort-button]').forEach(button => {
+            button.addEventListener('click', () => {
+                state.sort = button.dataset.sortButton;
+                sortSelect.value = state.sort;
+                state.visible = currentVisibleStart();
+                renderProducts();
+            });
+        });
+
+        loadMore.addEventListener('click', () => {
+            state.visible += currentVisibleStart();
+            renderProducts();
+        });
+
+        document.querySelector('.catalog-footer-form').addEventListener('submit', event => event.preventDefault());
+        boot();
+    </script>
+</body>
+
+</html>

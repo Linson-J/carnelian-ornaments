@@ -7,7 +7,7 @@ from datetime import timedelta
 import bcrypt
 
 from .forms import CarouselItemForm
-from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CarouselItem
+from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CarouselItem, HomeTheme
 from .decorators import admin_login_required
 
 
@@ -164,7 +164,7 @@ def admin_products(request):
 # ─── Add Product ─────────────────────────────────────────────
 @admin_login_required
 def add_product(request):
-    categories = Category.objects.all()
+    categories = Category.objects.filter(status=Category.Status.ACTIVE)
     return render(request, 'adminpanel/add_product.html', {
         'categories': categories,
         'admin_name': request.session.get('admin_name'),
@@ -177,7 +177,9 @@ def add_product(request):
 @admin_login_required
 def edit_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    categories = Category.objects.all()
+    categories = Category.objects.filter(status=Category.Status.ACTIVE)
+    if product.category_id and product.category.status != Category.Status.ACTIVE:
+        categories = Category.objects.filter(pk=product.category_id) | categories
 
     if request.method == 'POST':
         product.name = request.POST.get('name', product.name).strip()
@@ -233,6 +235,28 @@ def edit_product(request, pk):
 
 
 # ─── Delete Product ───────────────────────────────────────────
+@admin_login_required
+def admin_categories(request):
+    categories = Category.objects.prefetch_related('products')
+    status = request.GET.get('status')
+    search = request.GET.get('search')
+    if status:
+        categories = categories.filter(status=status)
+    if search:
+        categories = categories.filter(name__icontains=search)
+
+    return render(request, 'adminpanel/categories.html', {
+        'categories': categories,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'categories',
+        'category_count': Category.objects.count(),
+        'product_count': Product.objects.count(),
+        'filter_status': status or '',
+        'filter_search': search or '',
+    })
+
+
+# Delete Product
 @admin_login_required
 @require_POST
 def delete_product(request, pk):
@@ -317,4 +341,13 @@ def admin_login_logs(request):
         'logs': logs,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'login_logs',
+    })
+
+
+@admin_login_required
+def admin_settings(request):
+    return render(request, 'adminpanel/settings.html', {
+        'theme': HomeTheme.current(),
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'settings',
     })

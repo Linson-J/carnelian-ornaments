@@ -7,6 +7,10 @@ def home(request):
     return render(request, 'shop/home.html', {'carousel_items': carousel_items})
 
 
+def shop_all(request):
+    return render(request, 'shop/shop.html')
+
+
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.select_related('category').prefetch_related('images'),

@@ -73,8 +73,9 @@ function initProductLiveSearch() {
   const updateResults = debounce(async function() {
     const params = new URLSearchParams(new FormData(form));
     try {
-      const res = await fetch(location.pathname + '?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      const text = await res.text();
+      const text = await AdminApi.getText(location.pathname + '?' + params.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
       const parser = new DOMParser();
       const doc = parser.parseFromString(text, 'text/html');
       const newTbody = doc.querySelector('table tbody');

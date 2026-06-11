@@ -5,7 +5,7 @@ from rest_framework.parsers    import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.shortcuts          import get_object_or_404
 
-from .models       import Category, Product, ProductImage, CarouselItem
+from .models       import Category, Product, ProductImage, CarouselItem, HomeTheme
 from .serializers  import (
     CategorySerializer,
     ProductReadSerializer,
@@ -13,6 +13,7 @@ from .serializers  import (
     ProductImageSerializer,
     ProductUploadImageField,
     CarouselItemSerializer,
+    HomeThemeSerializer,
 )
 
 
@@ -38,6 +39,7 @@ class AdminWritePermission(BasePermission):
 # ══════════════════════════════════════════════════════════════
 
 class CategoryListCreateView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [AdminWritePermission]
     """
     GET  /api/categories/       → list all categories
@@ -45,10 +47,18 @@ class CategoryListCreateView(APIView):
     """
     def get(self, request):
         cats = Category.objects.all()
-        return success(CategorySerializer(cats, many=True).data)
+        status_f = request.query_params.get('status')
+        if status_f:
+            cats = cats.filter(status=status_f)
+        popular_f = request.query_params.get('popular')
+        if popular_f in ('true', '1', 'yes'):
+            cats = cats.filter(is_popular=True)
+        elif popular_f in ('false', '0', 'no'):
+            cats = cats.filter(is_popular=False)
+        return success(CategorySerializer(cats, many=True, context={'request': request}).data)
 
     def post(self, request):
-        s = CategorySerializer(data=request.data)
+        s = CategorySerializer(data=request.data, context={'request': request})
         if s.is_valid():
             s.save()
             return success(s.data, 'Category created', 201)
@@ -56,6 +66,7 @@ class CategoryListCreateView(APIView):
 
 
 class CategoryDetailView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [AdminWritePermission]
     """
     GET    /api/categories/<id>/  → single category
@@ -64,18 +75,29 @@ class CategoryDetailView(APIView):
     """
     def get(self, request, pk):
         cat = get_object_or_404(Category, pk=pk)
-        return success(CategorySerializer(cat).data)
+        return success(CategorySerializer(cat, context={'request': request}).data)
 
     def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
         cat = get_object_or_404(Category, pk=pk)
-        s   = CategorySerializer(cat, data=request.data, partial=True)
+        old_image = cat.image
+        s = CategorySerializer(cat, data=request.data, partial=True, context={'request': request})
         if s.is_valid():
-            s.save()
+            updated = s.save()
+            if request.FILES.get('image') and old_image and old_image.name != getattr(updated.image, 'name', None):
+                old_image.delete(save=False)
             return success(s.data, 'Category updated')
         return error('Validation failed', s.errors)
 
     def delete(self, request, pk):
         cat = get_object_or_404(Category, pk=pk)
+        if cat.image:
+            cat.image.delete(save=False)
         cat.delete()
         return success(msg='Category deleted')
 
@@ -308,11 +330,21 @@ class CarouselDetailView(APIView):
 
     def _update(self, request, pk):
         item = get_object_or_404(CarouselItem, pk=pk)
+        old_image = item.image
+        old_mobile_image = item.mobile_image
         s = CarouselItemSerializer(
             item, data=request.data, partial=True, context={'request': request},
         )
         if s.is_valid():
             updated = s.save()
+            if request.FILES.get('image') and old_image and old_image.name != updated.image.name:
+                old_image.delete(save=False)
+            if (
+                request.FILES.get('mobile_image')
+                and old_mobile_image
+                and old_mobile_image.name != getattr(updated.mobile_image, 'name', None)
+            ):
+                old_mobile_image.delete(save=False)
             read = CarouselItemSerializer(updated, context={'request': request})
             return success(read.data, 'Carousel item updated')
         return error('Validation failed', s.errors)
@@ -325,3 +357,27 @@ class CarouselDetailView(APIView):
             item.mobile_image.delete(save=False)
         item.delete()
         return success(msg='Carousel item deleted')
+
+
+class HomeThemeView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        theme = HomeTheme.current()
+        return success(HomeThemeSerializer(theme).data)
+
+    def patch(self, request):
+        theme = HomeTheme.current()
+        serializer = HomeThemeSerializer(theme, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return success(serializer.data, 'Theme updated')
+        return error('Validation failed', serializer.errors)
+
+    def put(self, request):
+        theme = HomeTheme.current()
+        serializer = HomeThemeSerializer(theme, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return success(serializer.data, 'Theme updated')
+        return error('Validation failed', serializer.errors)

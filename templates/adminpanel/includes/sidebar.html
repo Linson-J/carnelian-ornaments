@@ -16,6 +16,10 @@
       <span class="nav-icon">📦</span> Products
       {% if product_count %}<span class="nav-badge">{{ product_count }}</span>{% endif %}
     </a>
+    <a href="{% url 'admin_categories' %}" class="nav-item{% if active_nav == 'categories' %} active{% endif %}">
+      <span class="nav-icon">#</span> Categories
+      {% if category_count %}<span class="nav-badge">{{ category_count }}</span>{% endif %}
+    </a>
     <a href="#" class="nav-item">
       <span class="nav-icon">🛒</span> Orders
     </a>
@@ -37,7 +41,7 @@
     <a href="{% url 'admin_login_logs' %}" class="nav-item{% if active_nav == 'login_logs' %} active{% endif %}">
       <span class="nav-icon">🔐</span> Login Logs
     </a>
-    <a href="#" class="nav-item">
+    <a href="{% url 'admin_settings' %}" class="nav-item{% if active_nav == 'settings' %} active{% endif %}">
       <span class="nav-icon">⚙️</span> Settings
     </a>
   </div>
