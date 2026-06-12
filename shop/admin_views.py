@@ -7,7 +7,7 @@ from datetime import timedelta
 import bcrypt
 
 from .forms import CarouselItemForm
-from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CarouselItem, HomeTheme
+from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CategoryTag, CarouselItem, HomeTheme, HomeSection
 from .decorators import admin_login_required
 
 
@@ -237,7 +237,9 @@ def edit_product(request, pk):
 # ─── Delete Product ───────────────────────────────────────────
 @admin_login_required
 def admin_categories(request):
-    categories = Category.objects.prefetch_related('products')
+    CategoryTag.ensure_defaults()
+    categories = Category.objects.prefetch_related('products', 'tags')
+    tags = CategoryTag.objects.prefetch_related('categories')
     status = request.GET.get('status')
     search = request.GET.get('search')
     if status:
@@ -247,6 +249,7 @@ def admin_categories(request):
 
     return render(request, 'adminpanel/categories.html', {
         'categories': categories,
+        'category_tags': tags,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'categories',
         'category_count': Category.objects.count(),
@@ -350,4 +353,14 @@ def admin_settings(request):
         'theme': HomeTheme.current(),
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'settings',
+    })
+
+
+@admin_login_required
+def admin_home_sections(request):
+    HomeSection.ensure_defaults()
+    return render(request, 'adminpanel/home_sections.html', {
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'home_sections',
+        'section_count': HomeSection.objects.count(),
     })

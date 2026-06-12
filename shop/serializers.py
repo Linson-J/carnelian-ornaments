@@ -2,7 +2,10 @@ from decimal import Decimal
 
 from django.db import transaction
 from rest_framework import serializers
-from .models import Category, Product, ProductImage, CarouselItem, HomeTheme
+from .models import (
+    Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme,
+    HomeSection, HomeSectionCategory, HomeSectionProduct,
+)
 
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -17,15 +20,43 @@ class ProductUploadImageField(serializers.ImageField):
 
 
 # ─── Category ─────────────────────────────────────────────────
+class CategoryTagSerializer(serializers.ModelSerializer):
+    category_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CategoryTag
+        fields = [
+            'id', 'name', 'slug', 'is_system', 'is_active',
+            'category_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['slug', 'is_system', 'category_count', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'name': {'allow_blank': False},
+            'is_active': {'required': False},
+        }
+
+    def get_category_count(self, obj):
+        return obj.categories.count()
+
+
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField(read_only=True)
+    tags = CategoryTagSerializer(many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        queryset=CategoryTag.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source='tags',
+    )
 
     class Meta:
         model  = Category
         fields = [
             'id', 'name', 'slug', 'image', 'image_url', 'description',
-            'status', 'is_popular', 'product_count', 'created_at', 'updated_at',
+            'status', 'is_popular', 'tags', 'tag_ids',
+            'product_count', 'created_at', 'updated_at',
         ]
         read_only_fields = ['slug', 'product_count', 'created_at', 'updated_at']
         extra_kwargs = {
@@ -50,6 +81,14 @@ class CategorySerializer(serializers.ModelSerializer):
         if image and image.size > MAX_IMAGE_SIZE:
             raise serializers.ValidationError('Image must be 5MB or smaller.')
         return image
+
+    def validate_tag_ids(self, tags):
+        inactive = [tag.name for tag in tags if not tag.is_active]
+        if inactive:
+            raise serializers.ValidationError(
+                f"Inactive tags cannot be assigned: {', '.join(inactive)}."
+            )
+        return tags
 
 
 # ─── Product Image ────────────────────────────────────────────
@@ -364,3 +403,149 @@ class HomeThemeSerializer(serializers.ModelSerializer):
             except ValueError:
                 raise serializers.ValidationError({field: 'Use a valid hex color.'})
         return data
+
+
+class HomeSectionCategoryItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='category.id', read_only=True)
+    name = serializers.CharField(source='category.name', read_only=True)
+    slug = serializers.CharField(source='category.slug', read_only=True)
+    image_url = serializers.SerializerMethodField()
+    description = serializers.CharField(source='category.description', read_only=True)
+    item_order = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = HomeSectionCategory
+        fields = ['id', 'name', 'slug', 'image_url', 'description', 'item_order']
+
+    def get_image_url(self, obj):
+        if not obj.category.image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.category.image.url)
+        return obj.category.image.url
+
+
+class HomeSectionProductItemSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='product.id', read_only=True)
+    name = serializers.CharField(source='product.name', read_only=True)
+    slug = serializers.CharField(source='product.slug', read_only=True)
+    price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2, read_only=True)
+    discount_price = serializers.DecimalField(source='product.discount_price', max_digits=10, decimal_places=2, read_only=True)
+    discount_percent = serializers.IntegerField(source='product.discount_percent', read_only=True)
+    status = serializers.CharField(source='product.status', read_only=True)
+    offer = serializers.CharField(source='product.offer', read_only=True)
+    category = CategorySerializer(source='product.category', read_only=True)
+    primary_image = serializers.SerializerMethodField()
+    images = ProductImageSerializer(source='product.images', many=True, read_only=True)
+    item_order = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = HomeSectionProduct
+        fields = [
+            'id', 'name', 'slug', 'price', 'discount_price', 'discount_percent',
+            'status', 'offer', 'category', 'primary_image', 'images', 'item_order',
+        ]
+
+    def get_primary_image(self, obj):
+        image = obj.product.images.filter(is_primary=True).first() or obj.product.images.first()
+        if image:
+            return ProductImageSerializer(image, context=self.context).data
+        return None
+
+
+class HomeSectionSerializer(serializers.ModelSerializer):
+    category_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
+    product_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
+    items = serializers.SerializerMethodField()
+    selected_ids = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HomeSection
+        fields = [
+            'id', 'title', 'section_type', 'display_order', 'is_visible',
+            'category_ids', 'product_ids', 'selected_ids', 'items',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def validate(self, data):
+        section_type = data.get(
+            'section_type',
+            getattr(self.instance, 'section_type', None) if self.instance else None,
+        )
+        if section_type == HomeSection.SectionType.CATEGORIES and 'product_ids' in self.initial_data:
+            raise serializers.ValidationError({'product_ids': 'Use category_ids for category sections.'})
+        if section_type == HomeSection.SectionType.PRODUCTS and 'category_ids' in self.initial_data:
+            raise serializers.ValidationError({'category_ids': 'Use product_ids for product sections.'})
+        category_ids = data.get('category_ids')
+        if category_ids is not None:
+            unique_ids = list(dict.fromkeys(category_ids))
+            found = Category.objects.filter(pk__in=unique_ids).count()
+            if found != len(unique_ids):
+                raise serializers.ValidationError({'category_ids': 'One or more categories do not exist.'})
+            data['category_ids'] = unique_ids
+        product_ids = data.get('product_ids')
+        if product_ids is not None:
+            unique_ids = list(dict.fromkeys(product_ids))
+            found = Product.objects.filter(pk__in=unique_ids).count()
+            if found != len(unique_ids):
+                raise serializers.ValidationError({'product_ids': 'One or more products do not exist.'})
+            data['product_ids'] = unique_ids
+        return data
+
+    def get_items(self, obj):
+        if obj.section_type == HomeSection.SectionType.CATEGORIES:
+            links = obj.category_links.select_related('category').filter(
+                category__status=Category.Status.ACTIVE,
+            )
+            return HomeSectionCategoryItemSerializer(links, many=True, context=self.context).data
+        links = obj.product_links.select_related('product', 'product__category').prefetch_related(
+            'product__images',
+        ).filter(product__status=Product.Status.AVAILABLE)
+        return HomeSectionProductItemSerializer(links, many=True, context=self.context).data
+
+    def get_selected_ids(self, obj):
+        if obj.section_type == HomeSection.SectionType.CATEGORIES:
+            return list(obj.category_links.order_by('item_order', 'id').values_list('category_id', flat=True))
+        return list(obj.product_links.order_by('item_order', 'id').values_list('product_id', flat=True))
+
+    def _sync_items(self, section, category_ids=None, product_ids=None):
+        if category_ids is not None:
+            section.category_links.all().delete()
+            HomeSectionCategory.objects.bulk_create([
+                HomeSectionCategory(section=section, category_id=pk, item_order=index)
+                for index, pk in enumerate(category_ids)
+            ])
+        if product_ids is not None:
+            section.product_links.all().delete()
+            HomeSectionProduct.objects.bulk_create([
+                HomeSectionProduct(section=section, product_id=pk, item_order=index)
+                for index, pk in enumerate(product_ids)
+            ])
+
+    @transaction.atomic
+    def create(self, validated_data):
+        category_ids = validated_data.pop('category_ids', None)
+        product_ids = validated_data.pop('product_ids', None)
+        section = HomeSection.objects.create(**validated_data)
+        self._sync_items(section, category_ids=category_ids, product_ids=product_ids)
+        return section
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        category_ids = validated_data.pop('category_ids', None)
+        product_ids = validated_data.pop('product_ids', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        self._sync_items(instance, category_ids=category_ids, product_ids=product_ids)
+        return instance

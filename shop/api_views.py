@@ -5,15 +5,17 @@ from rest_framework.parsers    import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.shortcuts          import get_object_or_404
 
-from .models       import Category, Product, ProductImage, CarouselItem, HomeTheme
+from .models       import Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme, HomeSection
 from .serializers  import (
     CategorySerializer,
+    CategoryTagSerializer,
     ProductReadSerializer,
     ProductWriteSerializer,
     ProductImageSerializer,
     ProductUploadImageField,
     CarouselItemSerializer,
     HomeThemeSerializer,
+    HomeSectionSerializer,
 )
 
 
@@ -38,6 +40,78 @@ class AdminWritePermission(BasePermission):
 # CATEGORY  —  /api/categories/
 # ══════════════════════════════════════════════════════════════
 
+def _sync_popular_flag(category):
+    has_popular_tag = category.tags.filter(
+        slug=CategoryTag.POPULAR_SLUG,
+        is_active=True,
+    ).exists()
+    if category.is_popular != has_popular_tag:
+        category.is_popular = has_popular_tag
+        category.save(update_fields=['is_popular', 'updated_at'])
+
+
+def _sync_legacy_popular_tag(category):
+    popular = CategoryTag.objects.filter(slug=CategoryTag.POPULAR_SLUG).first()
+    if not popular:
+        return
+    if category.is_popular and popular.is_active:
+        category.tags.add(popular)
+    else:
+        category.tags.remove(popular)
+
+
+class CategoryTagListCreateView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        CategoryTag.ensure_defaults()
+        qs = CategoryTag.objects.prefetch_related('categories')
+        active = request.query_params.get('active')
+        if active in ('true', '1', 'yes'):
+            qs = qs.filter(is_active=True)
+        elif active in ('false', '0', 'no'):
+            qs = qs.filter(is_active=False)
+        return success(CategoryTagSerializer(qs, many=True).data)
+
+    def post(self, request):
+        s = CategoryTagSerializer(data=request.data)
+        if s.is_valid():
+            tag = s.save()
+            return success(CategoryTagSerializer(tag).data, 'Category tag created', 201)
+        return error('Validation failed', s.errors)
+
+
+class CategoryTagDetailView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request, pk):
+        tag = get_object_or_404(CategoryTag, pk=pk)
+        return success(CategoryTagSerializer(tag).data)
+
+    def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
+        tag = get_object_or_404(CategoryTag, pk=pk)
+        s = CategoryTagSerializer(tag, data=request.data, partial=True)
+        if s.is_valid():
+            updated = s.save()
+            if not updated.is_active:
+                Category.objects.filter(tags=updated).update(is_popular=False)
+            return success(CategoryTagSerializer(updated).data, 'Category tag updated')
+        return error('Validation failed', s.errors)
+
+    def delete(self, request, pk):
+        tag = get_object_or_404(CategoryTag, pk=pk)
+        if tag.is_system:
+            return error('System tags cannot be deleted.', code=400)
+        tag.delete()
+        return success(msg='Category tag deleted')
+
+
 class CategoryListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [AdminWritePermission]
@@ -46,21 +120,31 @@ class CategoryListCreateView(APIView):
     POST /api/categories/       → create category
     """
     def get(self, request):
-        cats = Category.objects.all()
+        CategoryTag.ensure_defaults()
+        cats = Category.objects.prefetch_related('tags')
         status_f = request.query_params.get('status')
         if status_f:
             cats = cats.filter(status=status_f)
+        tag_slug = request.query_params.get('tag') or request.query_params.get('tag_slug')
+        if tag_slug:
+            cats = cats.filter(tags__slug=tag_slug, tags__is_active=True)
         popular_f = request.query_params.get('popular')
         if popular_f in ('true', '1', 'yes'):
-            cats = cats.filter(is_popular=True)
+            cats = cats.filter(tags__slug=CategoryTag.POPULAR_SLUG, tags__is_active=True)
         elif popular_f in ('false', '0', 'no'):
-            cats = cats.filter(is_popular=False)
+            cats = cats.exclude(tags__slug=CategoryTag.POPULAR_SLUG, tags__is_active=True)
+        cats = cats.distinct()
         return success(CategorySerializer(cats, many=True, context={'request': request}).data)
 
     def post(self, request):
+        CategoryTag.ensure_defaults()
         s = CategorySerializer(data=request.data, context={'request': request})
         if s.is_valid():
-            s.save()
+            category = s.save()
+            if 'is_popular' in request.data and 'tag_ids' not in request.data:
+                _sync_legacy_popular_tag(category)
+            _sync_popular_flag(category)
+            s = CategorySerializer(category, context={'request': request})
             return success(s.data, 'Category created', 201)
         return error('Validation failed', s.errors)
 
@@ -74,7 +158,8 @@ class CategoryDetailView(APIView):
     DELETE /api/categories/<id>/  → delete
     """
     def get(self, request, pk):
-        cat = get_object_or_404(Category, pk=pk)
+        CategoryTag.ensure_defaults()
+        cat = get_object_or_404(Category.objects.prefetch_related('tags'), pk=pk)
         return success(CategorySerializer(cat, context={'request': request}).data)
 
     def put(self, request, pk):
@@ -84,14 +169,19 @@ class CategoryDetailView(APIView):
         return self._update(request, pk)
 
     def _update(self, request, pk):
+        CategoryTag.ensure_defaults()
         cat = get_object_or_404(Category, pk=pk)
         old_image = cat.image
         s = CategorySerializer(cat, data=request.data, partial=True, context={'request': request})
         if s.is_valid():
             updated = s.save()
+            if 'is_popular' in request.data and 'tag_ids' not in request.data:
+                _sync_legacy_popular_tag(updated)
+            _sync_popular_flag(updated)
             if request.FILES.get('image') and old_image and old_image.name != getattr(updated.image, 'name', None):
                 old_image.delete(save=False)
-            return success(s.data, 'Category updated')
+            read = CategorySerializer(updated, context={'request': request})
+            return success(read.data, 'Category updated')
         return error('Validation failed', s.errors)
 
     def delete(self, request, pk):
@@ -381,3 +471,68 @@ class HomeThemeView(APIView):
             serializer.save()
             return success(serializer.data, 'Theme updated')
         return error('Validation failed', serializer.errors)
+
+
+class HomeSectionListCreateView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        HomeSection.ensure_defaults()
+        qs = HomeSection.objects.prefetch_related(
+            'category_links__category',
+            'product_links__product__category',
+            'product_links__product__images',
+        ).order_by('display_order', 'id')
+        if request.query_params.get('all') == 'true':
+            if request.session.get('admin_authenticated') is not True:
+                return error('Admin login is required for this operation.', code=403)
+        else:
+            qs = qs.filter(is_visible=True)
+        serializer = HomeSectionSerializer(qs, many=True, context={'request': request})
+        return success({'count': qs.count(), 'sections': serializer.data})
+
+    def post(self, request):
+        serializer = HomeSectionSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            section = serializer.save()
+            return success(
+                HomeSectionSerializer(section, context={'request': request}).data,
+                'Home section created',
+                201,
+            )
+        return error('Validation failed', serializer.errors)
+
+
+class HomeSectionDetailView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request, pk):
+        section = get_object_or_404(HomeSection, pk=pk)
+        return success(HomeSectionSerializer(section, context={'request': request}).data)
+
+    def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
+        section = get_object_or_404(HomeSection, pk=pk)
+        serializer = HomeSectionSerializer(
+            section,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            updated = serializer.save()
+            return success(
+                HomeSectionSerializer(updated, context={'request': request}).data,
+                'Home section updated',
+            )
+        return error('Validation failed', serializer.errors)
+
+    def delete(self, request, pk):
+        section = get_object_or_404(HomeSection, pk=pk)
+        section.delete()
+        return success(msg='Home section deleted')

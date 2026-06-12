@@ -23,6 +23,7 @@ urlpatterns = [
     path('carousel/add/', admin_views.add_carousel_item, name='add_carousel_item'),
     path('carousel/<int:pk>/edit/', admin_views.edit_carousel_item, name='edit_carousel_item'),
     path('carousel/<int:pk>/delete/', admin_views.delete_carousel_item, name='delete_carousel_item'),
+    path('home-sections/', admin_views.admin_home_sections, name='admin_home_sections'),
 
     # Security
     path('login-logs/',  admin_views.admin_login_logs, name='admin_login_logs'),

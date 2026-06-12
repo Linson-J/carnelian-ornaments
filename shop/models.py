@@ -19,6 +19,12 @@ class Category(models.Model):
     description = models.TextField(blank=True)
     status      = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
     is_popular  = models.BooleanField(default=False)
+    tags        = models.ManyToManyField(
+        'CategoryTag',
+        blank=True,
+        related_name='categories',
+        db_table='shop_category_tag_assignments',
+    )
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
@@ -44,6 +50,52 @@ class Category(models.Model):
 
 
 # ─── Product ──────────────────────────────────────────────────
+class CategoryTag(models.Model):
+    POPULAR_SLUG = 'popular-category'
+    TRENDING_SLUG = 'trending-category'
+    SYSTEM_SLUGS = (POPULAR_SLUG, TRENDING_SLUG)
+
+    name       = models.CharField(max_length=100, unique=True)
+    slug       = models.SlugField(max_length=100, unique=True, blank=True)
+    is_system  = models.BooleanField(default=False)
+    is_active  = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_category_tags'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            base = slugify(self.name)
+            slug = base
+            n = 1
+            while CategoryTag.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f'{base}-{n}'
+                n += 1
+            self.slug = slug
+        if self.slug in self.SYSTEM_SLUGS:
+            self.is_system = True
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def ensure_defaults(cls):
+        defaults = [
+            ('Popular Category', cls.POPULAR_SLUG),
+            ('Trending Category', cls.TRENDING_SLUG),
+        ]
+        for name, slug in defaults:
+            cls.objects.update_or_create(
+                slug=slug,
+                defaults={'name': name, 'is_system': True, 'is_active': True},
+            )
+
+
 class Product(models.Model):
 
     class Status(models.TextChoices):
@@ -236,6 +288,80 @@ class HomeTheme(models.Model):
     def current(cls):
         theme, _ = cls.objects.get_or_create(pk=1)
         return theme
+
+
+class HomeSection(models.Model):
+    class SectionType(models.TextChoices):
+        CATEGORIES = 'categories', 'Categories'
+        PRODUCTS = 'products', 'Products'
+
+    DEFAULT_SECTIONS = (
+        ('Popular Categories', SectionType.CATEGORIES, 10),
+        ('Trending Categories', SectionType.CATEGORIES, 20),
+        ('New Arrivals', SectionType.PRODUCTS, 30),
+        ('Featured Products', SectionType.PRODUCTS, 40),
+        ('Best Sellers', SectionType.PRODUCTS, 50),
+    )
+
+    title = models.CharField(max_length=120)
+    section_type = models.CharField(max_length=20, choices=SectionType.choices)
+    display_order = models.PositiveIntegerField(default=0)
+    is_visible = models.BooleanField(default=True)
+    categories = models.ManyToManyField(
+        Category,
+        through='HomeSectionCategory',
+        blank=True,
+        related_name='home_sections',
+    )
+    products = models.ManyToManyField(
+        Product,
+        through='HomeSectionProduct',
+        blank=True,
+        related_name='home_sections',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_home_sections'
+        ordering = ['display_order', 'id']
+
+    def __str__(self):
+        return self.title
+
+    @classmethod
+    def ensure_defaults(cls):
+        for title, section_type, display_order in cls.DEFAULT_SECTIONS:
+            cls.objects.get_or_create(
+                title=title,
+                defaults={
+                    'section_type': section_type,
+                    'display_order': display_order,
+                    'is_visible': True,
+                },
+            )
+
+
+class HomeSectionCategory(models.Model):
+    section = models.ForeignKey(HomeSection, on_delete=models.CASCADE, related_name='category_links')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    item_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'shop_home_section_categories'
+        ordering = ['item_order', 'id']
+        unique_together = ('section', 'category')
+
+
+class HomeSectionProduct(models.Model):
+    section = models.ForeignKey(HomeSection, on_delete=models.CASCADE, related_name='product_links')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    item_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'shop_home_section_products'
+        ordering = ['item_order', 'id']
+        unique_together = ('section', 'product')
 
 
 # ─── After saving, run these two commands ────────────────────

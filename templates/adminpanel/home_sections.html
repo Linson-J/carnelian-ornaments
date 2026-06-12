@@ -1,0 +1,234 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Home Sections{% endblock %}
+{% block page_title %}Home Sections{% endblock %}
+
+{% block topbar_right %}
+<button class="btn-primary" type="button" id="newSectionBtn">New section</button>
+{% endblock %}
+
+{% block content %}
+<div class="home-section-admin">
+  {% csrf_token %}
+  <div class="card section-list-card">
+    <div class="card-hd">
+      <h3>Homepage section order</h3>
+      <button class="btn-sm" type="button" id="reloadBtn">Reload</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Section</th>
+            <th>Type</th>
+            <th>Items</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sectionRows">
+          <tr><td colspan="6">Loading sections...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <form class="card section-editor-card" id="sectionForm">
+    <div class="card-hd">
+      <h3 id="formTitle">Create section</h3>
+      <button class="btn-sm" type="button" id="clearBtn">Clear</button>
+    </div>
+    <div class="card-body">
+      <input type="hidden" name="id">
+      <div class="field">
+        <label>Section title <span class="req">*</span></label>
+        <input type="text" name="title" placeholder="Popular Categories" required>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Content type</label>
+          <select name="section_type">
+            <option value="categories">Categories</option>
+            <option value="products">Products</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Display order</label>
+          <input type="number" name="display_order" min="0" step="1" value="0">
+        </div>
+      </div>
+      <label class="check-label section-visible">
+        <input type="checkbox" name="is_visible" checked>
+        Show this section on the home page
+      </label>
+
+      <div class="section-item-tools">
+        <label>Assigned items</label>
+        <input type="text" id="itemSearch" placeholder="Search available items">
+      </div>
+      <div class="section-item-picker" id="itemPicker"></div>
+      <p class="settings-help">Checked item order follows the order shown here. Use display order to sort sections on the home page.</p>
+    </div>
+    <div class="submit-bar">
+      <button class="btn-cancel" type="button" id="deleteBtn" hidden>Delete</button>
+      <button class="btn-submit" type="submit">Save section</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const rows = document.getElementById('sectionRows');
+  const form = document.getElementById('sectionForm');
+  const picker = document.getElementById('itemPicker');
+  const search = document.getElementById('itemSearch');
+  const formTitle = document.getElementById('formTitle');
+  const deleteBtn = document.getElementById('deleteBtn');
+  let sections = [];
+  let categories = [];
+  let products = [];
+
+  function selectedIds() {
+    return [...picker.querySelectorAll('input:checked')].map(input => Number(input.value));
+  }
+
+  function currentItems() {
+    return form.elements.section_type.value === 'categories' ? categories : products;
+  }
+
+  function renderRows() {
+    if (!sections.length) {
+      rows.innerHTML = '<tr><td colspan="6">No homepage sections configured.</td></tr>';
+      return;
+    }
+    rows.innerHTML = sections.map(section => `
+      <tr>
+        <td><input class="section-order-input" type="number" min="0" value="${section.display_order}" data-order-id="${section.id}"></td>
+        <td><strong>${section.title}</strong><div class="muted-small">Updated ${new Date(section.updated_at).toLocaleString()}</div></td>
+        <td>${section.section_type}</td>
+        <td>${section.selected_ids.length}</td>
+        <td><button class="badge ${section.is_visible ? 'success' : 'muted'}" type="button" data-toggle-id="${section.id}">${section.is_visible ? 'Visible' : 'Hidden'}</button></td>
+        <td>
+          <button class="btn-sm" type="button" data-edit-id="${section.id}">Edit</button>
+          <button class="btn-sm danger" type="button" data-remove-id="${section.id}">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderPicker(selected = []) {
+    const term = search.value.trim().toLowerCase();
+    const choices = currentItems().filter(item => !term || item.name.toLowerCase().includes(term));
+    if (!choices.length) {
+      picker.innerHTML = '<p class="home-section-empty">No matching items.</p>';
+      return;
+    }
+    picker.innerHTML = choices.map(item => `
+      <label class="section-choice">
+        <input type="checkbox" value="${item.id}" ${selected.includes(item.id) ? 'checked' : ''}>
+        <span>${item.name}</span>
+        <small>${item.category?.name || item.status || item.slug}</small>
+      </label>
+    `).join('');
+  }
+
+  function resetForm() {
+    form.reset();
+    form.elements.id.value = '';
+    form.elements.display_order.value = sections.length ? Math.max(...sections.map(section => section.display_order)) + 10 : 10;
+    form.elements.is_visible.checked = true;
+    formTitle.textContent = 'Create section';
+    deleteBtn.hidden = true;
+    search.value = '';
+    renderPicker([]);
+  }
+
+  function editSection(id) {
+    const section = sections.find(item => item.id === id);
+    if (!section) return;
+    form.elements.id.value = section.id;
+    form.elements.title.value = section.title;
+    form.elements.section_type.value = section.section_type;
+    form.elements.display_order.value = section.display_order;
+    form.elements.is_visible.checked = section.is_visible;
+    formTitle.textContent = `Edit ${section.title}`;
+    deleteBtn.hidden = false;
+    search.value = '';
+    renderPicker(section.selected_ids);
+  }
+
+  async function loadData() {
+    const [sectionRes, categoryRes, productRes] = await Promise.all([
+      AdminApi.get('/api/home-sections/?all=true'),
+      AdminApi.get('/api/categories/?status=active'),
+      AdminApi.get('/api/products/?status=available')
+    ]);
+    sections = sectionRes.data.sections || [];
+    categories = categoryRes.data || [];
+    products = productRes.data.products || [];
+    renderRows();
+    resetForm();
+  }
+
+  async function saveSection(event) {
+    event.preventDefault();
+    const type = form.elements.section_type.value;
+    const payload = {
+      title: form.elements.title.value.trim(),
+      section_type: type,
+      display_order: Number(form.elements.display_order.value || 0),
+      is_visible: form.elements.is_visible.checked
+    };
+    payload[type === 'categories' ? 'category_ids' : 'product_ids'] = selectedIds();
+    const id = form.elements.id.value;
+    id ? await AdminApi.patch(`/api/home-sections/${id}/`, payload) : await AdminApi.post('/api/home-sections/', payload);
+    showToast('Home section saved', 'success');
+    hideToast();
+    await loadData();
+  }
+
+  async function deleteSection(id) {
+    if (!confirm('Delete this homepage section?')) return;
+    await AdminApi.delete(`/api/home-sections/${id}/`);
+    showToast('Home section deleted', 'success');
+    hideToast();
+    await loadData();
+  }
+
+  rows.addEventListener('click', async event => {
+    const editId = event.target.dataset.editId;
+    const removeId = event.target.dataset.removeId;
+    const toggleId = event.target.dataset.toggleId;
+    if (editId) editSection(Number(editId));
+    if (removeId) await deleteSection(Number(removeId));
+    if (toggleId) {
+      const section = sections.find(item => item.id === Number(toggleId));
+      await AdminApi.patch(`/api/home-sections/${toggleId}/`, {is_visible: !section.is_visible});
+      await loadData();
+    }
+  });
+
+  rows.addEventListener('change', async event => {
+    const id = event.target.dataset.orderId;
+    if (!id) return;
+    await AdminApi.patch(`/api/home-sections/${id}/`, {display_order: Number(event.target.value || 0)});
+    await loadData();
+  });
+
+  form.addEventListener('submit', saveSection);
+  form.elements.section_type.addEventListener('change', () => renderPicker([]));
+  search.addEventListener('input', () => renderPicker(selectedIds()));
+  document.getElementById('newSectionBtn').addEventListener('click', resetForm);
+  document.getElementById('clearBtn').addEventListener('click', resetForm);
+  document.getElementById('reloadBtn').addEventListener('click', loadData);
+  deleteBtn.addEventListener('click', () => deleteSection(Number(form.elements.id.value)));
+
+  loadData().catch(error => {
+    rows.innerHTML = '<tr><td colspan="6">Unable to load homepage sections.</td></tr>';
+    showToast(error.message || 'Could not load sections', 'danger');
+    hideToast();
+  });
+</script>
+{% endblock %}

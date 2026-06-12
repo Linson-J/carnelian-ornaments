@@ -286,6 +286,12 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   max-width: 360px;
   line-height: 1.5;
 }
+.tag-list-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 320px;
+}
 
 /* ── Badges & buttons ── */
 .badge {
@@ -492,6 +498,47 @@ select option { background: var(--surface); }
   font-size: 13px; cursor: pointer;
 }
 .check-label input { width: 16px; height: 16px; accent-color: var(--accent2); }
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--inp);
+  min-height: 48px;
+}
+.tag-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.tag-choice input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent2);
+}
+.tag-choice.selected {
+  border-color: rgba(124,92,252,.55);
+  background: rgba(124,92,252,.12);
+  color: var(--text);
+}
+.tag-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
 
 /* ── Alerts & toast ── */
 .alert {
@@ -683,6 +730,75 @@ select option { background: var(--surface); }
   background: color-mix(in srgb, var(--preview-surface) 85%, var(--preview-primary));
 }
 
+/* Homepage section management */
+.home-section-admin {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+  gap: 20px;
+  align-items: start;
+}
+.section-editor-card {
+  position: sticky;
+  top: 78px;
+}
+.section-order-input {
+  width: 82px !important;
+  padding: 7px 9px !important;
+}
+.section-visible {
+  margin: 0 0 18px;
+}
+.section-item-tools {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.section-item-tools label {
+  margin: 0;
+}
+.section-item-picker {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--inp);
+}
+.section-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.section-choice input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent2);
+}
+.section-choice small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.home-section-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px;
+}
+
 /* ── Spinner ── */
 .spinner {
   width: 16px; height: 16px;
@@ -734,11 +850,15 @@ select option { background: var(--surface); }
     align-items: center;
   }
   .content { padding: 16px; }
-  .form-grid, .field-row, .two-col, .stat-grid, .settings-grid, .theme-field-grid {
+  .form-grid, .field-row, .two-col, .stat-grid, .settings-grid, .theme-field-grid, .home-section-admin {
     grid-template-columns: 1fr;
   }
-  .theme-preview-card {
+  .theme-preview-card,
+  .section-editor-card {
     position: static;
+  }
+  .section-item-tools {
+    grid-template-columns: 1fr;
   }
   .status-group { flex-direction: column; }
   .submit-bar {
@@ -759,6 +879,9 @@ select option { background: var(--surface); }
   .modal {
     width: calc(100vw - 28px);
     padding: 20px;
+  }
+  .tag-create-row {
+    grid-template-columns: 1fr;
   }
   table { min-width: 760px; }
 }

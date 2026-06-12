@@ -3,18 +3,24 @@ from django.urls import path
 from .api_views import (
     CategoryListCreateView,
     CategoryDetailView,
+    CategoryTagListCreateView,
+    CategoryTagDetailView,
     ProductListCreateView,
     ProductDetailView,
     ProductImageView,
     CarouselListCreateView,
     CarouselDetailView,
     HomeThemeView,
+    HomeSectionListCreateView,
+    HomeSectionDetailView,
 )
 
 urlpatterns = [
     # Categories
     path('categories/',      CategoryListCreateView.as_view()),
     path('categories/<int:pk>/', CategoryDetailView.as_view()),
+    path('category-tags/',      CategoryTagListCreateView.as_view()),
+    path('category-tags/<int:pk>/', CategoryTagDetailView.as_view()),
 
     # Products
     path('products/',            ProductListCreateView.as_view()),
@@ -30,4 +36,8 @@ urlpatterns = [
 
     # Home theme settings
     path('theme/',               HomeThemeView.as_view()),
+
+    # Homepage sections
+    path('home-sections/',            HomeSectionListCreateView.as_view()),
+    path('home-sections/<int:pk>/',   HomeSectionDetailView.as_view()),
 ]

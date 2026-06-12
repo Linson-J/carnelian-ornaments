@@ -23,21 +23,17 @@
                     <h1>Loading collections...</h1>
                 </div>
             </div>
+            <div hidden data-carousel-fallback>
+                {% for item in carousel_items %}
+                    <a href="{{ item.redirect_url }}">{{ item.title }}</a>
+                {% endfor %}
+            </div>
             <button class="carousel-arrow prev" type="button" aria-label="Previous slide" data-carousel-prev><i class="ri-arrow-left-s-line"></i></button>
             <button class="carousel-arrow next" type="button" aria-label="Next slide" data-carousel-next><i class="ri-arrow-right-s-line"></i></button>
             <div class="carousel-dots" aria-label="Select slide" data-carousel-dots></div>
         </section>
 
-        <section class="home-section category-section" id="collections" aria-labelledby="category-title">
-            <div class="section-heading">
-                <div>
-                    <p class="section-kicker">The Edit</p>
-                    <h2 id="category-title">Curated Essentials</h2>
-                </div>
-                <a href="/#collections">View All Categories</a>
-            </div>
-            <div class="category-mosaic" data-category-grid></div>
-        </section>
+        <div data-home-sections></div>
 
         <section class="flash-sale" id="new-arrivals" aria-labelledby="sale-title">
             <div class="sale-inner">
@@ -54,16 +50,6 @@
                 </div>
                 <a class="sale-product" href="/#new-arrivals" data-sale-card aria-label="Featured sale product"></a>
             </div>
-        </section>
-
-        <section class="home-section products-section" aria-labelledby="products-title">
-            <div class="section-heading section-heading-centered">
-                <div>
-                    <p class="section-kicker">Popular Now</p>
-                    <h2 id="products-title">Trending Selection</h2>
-                </div>
-            </div>
-            <div class="product-row" data-product-row></div>
         </section>
 
         <section class="story-section" aria-labelledby="story-title">
@@ -111,7 +97,7 @@
         const money = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
         const api = {
             carousel: '/api/carousel/',
-            categories: '/api/categories/?status=active&popular=true',
+            homeSections: '/api/home-sections/',
             products: '/api/products/?status=available',
             theme: '/api/theme/'
         };
@@ -126,9 +112,7 @@
 
         const track = document.querySelector('[data-carousel-track]');
         const dotsWrap = document.querySelector('[data-carousel-dots]');
-        const categoryGrid = document.querySelector('[data-category-grid]');
-        const categorySection = document.querySelector('[data-popular-categories]');
-        const productRow = document.querySelector('[data-product-row]');
+        const homeSectionsWrap = document.querySelector('[data-home-sections]');
         const saleCard = document.querySelector('[data-sale-card]');
 
         function imageOfProduct(product) {
@@ -218,16 +202,9 @@
             state.timer = setInterval(() => showSlide(state.activeSlide + 1), 6000);
         }
 
-        function renderCategories(categories) {
-            const cards = categories.filter(item => item.is_popular && item.image_url).slice(0, 4);
-
-            if (!cards.length) {
-                categorySection.hidden = true;
-                return;
-            }
-            categorySection.hidden = false;
-
-            categoryGrid.innerHTML = cards.map((category, index) => `
+        function renderCategoryCards(categories) {
+            const cards = categories.filter(item => item.image_url).slice(0, 4);
+            return cards.map((category, index) => `
                 <a class="category-card category-card-${index + 1}" href="/#collections" style="--card-image:url('${category.image_url}')">
                     <span>${category.name}</span>
                     <small>${category.description || 'Explore'}</small>
@@ -249,13 +226,8 @@
                 : `<span class="sale-placeholder">${saleProduct.name}</span>`;
         }
 
-        function renderProducts(products) {
-            if (!products.length) {
-                productRow.innerHTML = '<p class="home-empty">Products will appear here after they are added from the admin panel.</p>';
-                return;
-            }
-
-            productRow.innerHTML = products.slice(0, 6).map((product, index) => {
+        function renderProductCards(products) {
+            return products.slice(0, 6).map((product, index) => {
                 const image = imageOfProduct(product);
                 const category = product.category?.name || 'Collection';
                 return `
@@ -268,6 +240,43 @@
                             <em>${formatPrice(product)}</em>
                         </span>
                     </a>
+                `;
+            }).join('');
+        }
+
+        function renderHomeSections(sections) {
+            const visibleSections = sections.filter(section => section.items && section.items.length);
+            if (!visibleSections.length) {
+                homeSectionsWrap.innerHTML = '<section class="home-section"><p class="home-empty">Homepage sections will appear after they are configured from the admin panel.</p></section>';
+                return;
+            }
+
+            homeSectionsWrap.innerHTML = visibleSections.map(section => {
+                const slug = section.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                if (section.section_type === 'categories') {
+                    return `
+                        <section class="home-section category-section" id="${slug}">
+                            <div class="section-heading">
+                                <div>
+                                    <p class="section-kicker">Curated</p>
+                                    <h2>${section.title}</h2>
+                                </div>
+                                <a href="/#collections">View All Categories</a>
+                            </div>
+                            <div class="category-mosaic">${renderCategoryCards(section.items)}</div>
+                        </section>
+                    `;
+                }
+                return `
+                    <section class="home-section products-section" id="${slug}">
+                        <div class="section-heading section-heading-centered">
+                            <div>
+                                <p class="section-kicker">Selected</p>
+                                <h2>${section.title}</h2>
+                            </div>
+                        </div>
+                        <div class="product-row">${renderProductCards(section.items)}</div>
+                    </section>
                 `;
             }).join('');
         }
@@ -287,25 +296,26 @@
 
         async function bootHome() {
             try {
-                const [theme, carousel, categories, products] = await Promise.all([
+                const [theme, carousel, homeSections, products] = await Promise.all([
                     getJson(api.theme),
                     getJson(api.carousel),
-                    getJson(api.categories),
+                    getJson(api.homeSections),
                     getJson(api.products)
                 ]);
                 applyTheme(theme.data);
                 const carouselItems = carousel.data?.items || [];
-                const categoryItems = categories.data || [];
                 const productItems = products.data?.products || [];
+                const sections = homeSections.data?.sections || [];
 
                 renderCarousel(carouselItems);
-                renderCategories(categoryItems);
+                renderHomeSections(sections);
                 renderSaleProduct(productItems);
-                renderProducts(productItems);
+                setInterval(() => {
+                    getJson(api.homeSections).then(response => renderHomeSections(response.data?.sections || [])).catch(() => {});
+                }, 5000);
             } catch (error) {
                 track.innerHTML = '<div class="carousel-empty"><h1>Unable to load the home page API.</h1></div>';
-                categoryGrid.innerHTML = '<p class="home-empty">Unable to load categories.</p>';
-                productRow.innerHTML = '<p class="home-empty">Unable to load products.</p>';
+                homeSectionsWrap.innerHTML = '<section class="home-section"><p class="home-empty">Unable to load homepage sections.</p></section>';
             }
         }
 
