@@ -2,6 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from .utils import unique_slug
+
 
 # ─── Existing AdminUser / LoginAttempt stay here ──────────────
 # (keep your AdminUser and LoginAttempt models above this)
@@ -38,14 +40,7 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            from django.utils.text import slugify
-            base = slugify(self.name)
-            slug = base
-            n = 1
-            while Category.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f'{base}-{n}'
-                n += 1
-            self.slug = slug
+            self.slug = unique_slug(self, self.name, Category.objects)
         super().save(*args, **kwargs)
 
 
@@ -71,14 +66,7 @@ class CategoryTag(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            from django.utils.text import slugify
-            base = slugify(self.name)
-            slug = base
-            n = 1
-            while CategoryTag.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f'{base}-{n}'
-                n += 1
-            self.slug = slug
+            self.slug = unique_slug(self, self.name, CategoryTag.objects)
         if self.slug in self.SYSTEM_SLUGS:
             self.is_system = True
         super().save(*args, **kwargs)
@@ -131,14 +119,7 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            from django.utils.text import slugify
-            base = slugify(self.name)
-            slug = base
-            n = 1
-            while Product.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f'{base}-{n}'
-                n += 1
-            self.slug = slug
+            self.slug = unique_slug(self, self.name, Product.objects)
         super().save(*args, **kwargs)
 
 
@@ -241,6 +222,102 @@ class CarouselItem(models.Model):
         return self.customer_page or '/'
 
 
+class Offer(models.Model):
+    class RedirectType(models.TextChoices):
+        CATEGORY = 'category', 'Category'
+        PRODUCT = 'product', 'Product'
+        EXTERNAL_URL = 'external_url', 'External URL'
+        PAGE = 'page', 'Page'
+
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        INACTIVE = 'inactive', 'Inactive'
+
+    class PopupDisplayMode(models.TextChoices):
+        ONCE = 'once', 'Display once per user'
+        EVERY_VISIT = 'every_visit', 'Display every visit'
+
+    class CustomerPage(models.TextChoices):
+        HOME = '/', 'Home'
+        SHOP = '/#collection', 'Shop'
+        NEW_ARRIVALS = '/#new-arrivals', 'New Arrivals'
+        COLLECTIONS = '/#collections', 'Collections'
+        CART = '/#cart', 'Cart'
+
+    title = models.CharField(max_length=160)
+    subtitle = models.CharField(max_length=180, blank=True, default='')
+    description = models.TextField()
+    banner_image = models.ImageField(upload_to='offers/%Y/%m/')
+    button_text = models.CharField(max_length=60, default='Shop Now')
+    redirect_type = models.CharField(max_length=20, choices=RedirectType.choices)
+    category = models.ForeignKey(
+        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='offers',
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='offers',
+    )
+    customer_page = models.CharField(
+        max_length=60, choices=CustomerPage.choices, blank=True, default='',
+    )
+    external_url = models.URLField(blank=True, default='')
+    display_priority_pc = models.PositiveIntegerField(default=10)
+    display_priority_mobile = models.PositiveIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    start_at = models.DateTimeField(null=True, blank=True)
+    end_at = models.DateTimeField(null=True, blank=True)
+    no_expiry = models.BooleanField(default=False)
+    show_as_popup = models.BooleanField(default=False)
+    display_on_home = models.BooleanField(default=True)
+    display_on_offer_page = models.BooleanField(default=True)
+    popup_title = models.CharField(max_length=160, blank=True, default='')
+    popup_description = models.TextField(blank=True, default='')
+    popup_image = models.ImageField(upload_to='offers/popup/%Y/%m/', null=True, blank=True)
+    popup_button_text = models.CharField(max_length=60, blank=True, default='')
+    popup_display_mode = models.CharField(
+        max_length=20, choices=PopupDisplayMode.choices, default=PopupDisplayMode.ONCE,
+    )
+    show_close_button = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_offers'
+        ordering = ['display_priority_pc', 'id']
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if self.show_as_popup:
+            Offer.objects.filter(show_as_popup=True).exclude(pk=self.pk).update(show_as_popup=False)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_currently_active(self):
+        now = timezone.now()
+        if self.status != self.Status.ACTIVE:
+            return False
+        if self.start_at and self.start_at > now:
+            return False
+        if not self.no_expiry and self.end_at and self.end_at < now:
+            return False
+        if not self.no_expiry and not self.end_at:
+            return False
+        return True
+
+    @property
+    def redirect_url(self):
+        if self.redirect_type == self.RedirectType.CATEGORY and self.category:
+            return f'/categories/{self.category.slug}/'
+        if self.redirect_type == self.RedirectType.PRODUCT and self.product:
+            return f'/products/{self.product.slug}/'
+        if self.redirect_type == self.RedirectType.EXTERNAL_URL:
+            return self.external_url
+        if self.redirect_type == self.RedirectType.PAGE:
+            return self.customer_page or '/'
+        return '/'
+
+
 class AdminUser(models.Model):
     username   = models.CharField(max_length=50, unique=True)
     email      = models.EmailField(unique=True)
@@ -264,6 +341,19 @@ class LoginAttempt(models.Model):
 
     class Meta:
         db_table = 'shop_login_attempts'
+
+
+class NewsletterSubscription(models.Model):
+    email = models.EmailField(unique=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'shop_newsletter_subscriptions'
+        ordering = ['-subscribed_at']
+
+    def __str__(self):
+        return self.email
 
 
 class HomeTheme(models.Model):
@@ -299,8 +389,9 @@ class HomeSection(models.Model):
         ('Popular Categories', SectionType.CATEGORIES, 10),
         ('Trending Categories', SectionType.CATEGORIES, 20),
         ('New Arrivals', SectionType.PRODUCTS, 30),
-        ('Featured Products', SectionType.PRODUCTS, 40),
-        ('Best Sellers', SectionType.PRODUCTS, 50),
+        ('Trending Products', SectionType.PRODUCTS, 40),
+        ('Featured Products', SectionType.PRODUCTS, 50),
+        ('Best Sellers', SectionType.PRODUCTS, 60),
     )
 
     title = models.CharField(max_length=120)
@@ -363,7 +454,3 @@ class HomeSectionProduct(models.Model):
         ordering = ['item_order', 'id']
         unique_together = ('section', 'product')
 
-
-# ─── After saving, run these two commands ────────────────────
-# python manage.py makemigrations shop
-# python manage.py migrate

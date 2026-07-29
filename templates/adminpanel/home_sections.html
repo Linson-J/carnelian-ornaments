@@ -1,10 +1,10 @@
 {% extends 'adminpanel/base.html' %}
 
-{% block title %}Home Sections{% endblock %}
-{% block page_title %}Home Sections{% endblock %}
+{% block title %}Product Lists{% endblock %}
+{% block page_title %}Product Lists{% endblock %}
 
 {% block topbar_right %}
-<button class="btn-primary" type="button" id="newSectionBtn">New section</button>
+<button class="btn-primary" type="button" id="newSectionBtn">New list</button>
 {% endblock %}
 
 {% block content %}
@@ -12,7 +12,7 @@
   {% csrf_token %}
   <div class="card section-list-card">
     <div class="card-hd">
-      <h3>Homepage section order</h3>
+      <h3>Homepage product and category lists</h3>
       <button class="btn-sm" type="button" id="reloadBtn">Reload</button>
     </div>
     <div class="table-wrap">
@@ -20,7 +20,7 @@
         <thead>
           <tr>
             <th>Order</th>
-            <th>Section</th>
+            <th>List</th>
             <th>Type</th>
             <th>Items</th>
             <th>Status</th>
@@ -28,7 +28,7 @@
           </tr>
         </thead>
         <tbody id="sectionRows">
-          <tr><td colspan="6">Loading sections...</td></tr>
+          <tr><td colspan="6">Loading lists...</td></tr>
         </tbody>
       </table>
     </div>
@@ -36,14 +36,14 @@
 
   <form class="card section-editor-card" id="sectionForm">
     <div class="card-hd">
-      <h3 id="formTitle">Create section</h3>
+      <h3 id="formTitle">Create list</h3>
       <button class="btn-sm" type="button" id="clearBtn">Clear</button>
     </div>
     <div class="card-body">
       <input type="hidden" name="id">
       <div class="field">
-        <label>Section title <span class="req">*</span></label>
-        <input type="text" name="title" placeholder="Popular Categories" required>
+        <label>List title <span class="req">*</span></label>
+        <input type="text" name="title" placeholder="Trending Products" required>
       </div>
       <div class="field-row">
         <div class="field">
@@ -60,7 +60,7 @@
       </div>
       <label class="check-label section-visible">
         <input type="checkbox" name="is_visible" checked>
-        Show this section on the home page
+        Show this list on the home page
       </label>
 
       <div class="section-item-tools">
@@ -68,11 +68,11 @@
         <input type="text" id="itemSearch" placeholder="Search available items">
       </div>
       <div class="section-item-picker" id="itemPicker"></div>
-      <p class="settings-help">Checked item order follows the order shown here. Use display order to sort sections on the home page.</p>
+      <p class="settings-help">Use product lists for New Arrivals, Trending Products, Featured Products, or Best Sellers. Display order controls where the list appears on the home page.</p>
     </div>
     <div class="submit-bar">
       <button class="btn-cancel" type="button" id="deleteBtn" hidden>Delete</button>
-      <button class="btn-submit" type="submit">Save section</button>
+      <button class="btn-submit" type="submit">Save list</button>
     </div>
   </form>
 </div>
@@ -89,9 +89,10 @@
   let sections = [];
   let categories = [];
   let products = [];
+  let selectedItemIds = new Set();
 
   function selectedIds() {
-    return [...picker.querySelectorAll('input:checked')].map(input => Number(input.value));
+    return [...selectedItemIds];
   }
 
   function currentItems() {
@@ -100,7 +101,7 @@
 
   function renderRows() {
     if (!sections.length) {
-      rows.innerHTML = '<tr><td colspan="6">No homepage sections configured.</td></tr>';
+      rows.innerHTML = '<tr><td colspan="6">No homepage lists configured.</td></tr>';
       return;
     }
     rows.innerHTML = sections.map(section => `
@@ -127,7 +128,7 @@
     }
     picker.innerHTML = choices.map(item => `
       <label class="section-choice">
-        <input type="checkbox" value="${item.id}" ${selected.includes(item.id) ? 'checked' : ''}>
+        <input type="checkbox" value="${item.id}" ${selectedItemIds.has(item.id) ? 'checked' : ''}>
         <span>${item.name}</span>
         <small>${item.category?.name || item.status || item.slug}</small>
       </label>
@@ -139,9 +140,10 @@
     form.elements.id.value = '';
     form.elements.display_order.value = sections.length ? Math.max(...sections.map(section => section.display_order)) + 10 : 10;
     form.elements.is_visible.checked = true;
-    formTitle.textContent = 'Create section';
+    formTitle.textContent = 'Create list';
     deleteBtn.hidden = true;
     search.value = '';
+    selectedItemIds = new Set();
     renderPicker([]);
   }
 
@@ -156,6 +158,7 @@
     formTitle.textContent = `Edit ${section.title}`;
     deleteBtn.hidden = false;
     search.value = '';
+    selectedItemIds = new Set(section.selected_ids);
     renderPicker(section.selected_ids);
   }
 
@@ -184,15 +187,15 @@
     payload[type === 'categories' ? 'category_ids' : 'product_ids'] = selectedIds();
     const id = form.elements.id.value;
     id ? await AdminApi.patch(`/api/home-sections/${id}/`, payload) : await AdminApi.post('/api/home-sections/', payload);
-    showToast('Home section saved', 'success');
+    showToast('List saved', 'success');
     hideToast();
     await loadData();
   }
 
   async function deleteSection(id) {
-    if (!confirm('Delete this homepage section?')) return;
+    if (!confirm('Delete this homepage list?')) return;
     await AdminApi.delete(`/api/home-sections/${id}/`);
-    showToast('Home section deleted', 'success');
+    showToast('List deleted', 'success');
     hideToast();
     await loadData();
   }
@@ -218,7 +221,16 @@
   });
 
   form.addEventListener('submit', saveSection);
-  form.elements.section_type.addEventListener('change', () => renderPicker([]));
+  form.elements.section_type.addEventListener('change', () => {
+    selectedItemIds = new Set();
+    renderPicker([]);
+  });
+  picker.addEventListener('change', event => {
+    if (event.target.type !== 'checkbox') return;
+    const id = Number(event.target.value);
+    if (event.target.checked) selectedItemIds.add(id);
+    else selectedItemIds.delete(id);
+  });
   search.addEventListener('input', () => renderPicker(selectedIds()));
   document.getElementById('newSectionBtn').addEventListener('click', resetForm);
   document.getElementById('clearBtn').addEventListener('click', resetForm);
@@ -226,8 +238,8 @@
   deleteBtn.addEventListener('click', () => deleteSection(Number(form.elements.id.value)));
 
   loadData().catch(error => {
-    rows.innerHTML = '<tr><td colspan="6">Unable to load homepage sections.</td></tr>';
-    showToast(error.message || 'Could not load sections', 'danger');
+    rows.innerHTML = '<tr><td colspan="6">Unable to load homepage lists.</td></tr>';
+    showToast(error.message || 'Could not load lists', 'danger');
     hideToast();
   });
 </script>

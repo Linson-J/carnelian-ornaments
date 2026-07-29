@@ -1,0 +1,60 @@
+<footer class="global-footer" aria-labelledby="global-footer-title">
+    <div class="global-footer__inner">
+        <section class="global-footer__brand">
+            <a href="/" class="global-footer__logo" id="global-footer-title">Carmelian</a>
+            <p>Timeless pieces and curated essentials designed with soft minimalism, craft, and everyday elegance in mind.</p>
+            <div class="global-footer__social" aria-label="Social media links">
+                <a href="#" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
+                <a href="#" aria-label="Facebook"><i class="ri-facebook-circle-line"></i></a>
+                <a href="#" aria-label="Pinterest"><i class="ri-pinterest-line"></i></a>
+                <a href="#" aria-label="Email"><i class="ri-mail-line"></i></a>
+            </div>
+        </section>
+
+        <nav class="global-footer__nav" aria-label="Quick links">
+            <h2>Quick Links</h2>
+            <a href="/">Home</a>
+            <a href="/shop/">Shop</a>
+            <a href="/categories/">Categories</a>
+            <a href="/#concierge">Concierge</a>
+        </nav>
+
+        <nav class="global-footer__nav" aria-label="Footer categories">
+            <h2>Categories</h2>
+            {% for category in footer_categories %}
+                <a href="/shop/?category={{ category.slug }}">{{ category.name }}</a>
+            {% empty %}
+                <span>Categories coming soon</span>
+            {% endfor %}
+        </nav>
+
+        <section class="global-footer__contact">
+            <h2>Contact</h2>
+            <p>support@carmelian.com</p>
+            <p>+1 (555) 014-2840</p>
+            <p>Mon-Fri, 9:00 AM-6:00 PM</p>
+        </section>
+
+        <section class="global-footer__newsletter">
+            <h2>Newsletter</h2>
+            <p>Get collection updates, private offers, and curated style notes.</p>
+            <form class="global-footer__form" method="post" action="{% url 'newsletter_subscribe' %}" data-newsletter-form novalidate>
+                {% csrf_token %}
+                <label class="sr-only" for="footer-newsletter-email">Email address</label>
+                <div class="global-footer__subscribe-row">
+                    <input id="footer-newsletter-email" type="email" name="email" placeholder="Email address" autocomplete="email" required>
+                    <button type="submit" data-newsletter-submit>Subscribe</button>
+                </div>
+                <p class="global-footer__message" data-newsletter-message role="status" aria-live="polite"></p>
+            </form>
+        </section>
+    </div>
+
+    <div class="global-footer__bottom">
+        <p>&copy; 2026 Carmelian. All rights reserved.</p>
+        <nav aria-label="Legal links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms &amp; Conditions</a>
+        </nav>
+    </div>
+</footer>

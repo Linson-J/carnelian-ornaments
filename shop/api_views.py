@@ -1,29 +1,52 @@
-from rest_framework.views      import APIView
-from rest_framework.response   import Response
-from rest_framework            import status
-from rest_framework.parsers    import MultiPartParser, FormParser, JSONParser
-from rest_framework.permissions import BasePermission, SAFE_METHODS
-from django.shortcuts          import get_object_or_404
+from decimal import Decimal, InvalidOperation
 
-from .models       import Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme, HomeSection
-from .serializers  import (
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import (
+    CarouselItem,
+    Category,
+    CategoryTag,
+    HomeSection,
+    HomeTheme,
+    Offer,
+    Product,
+    ProductImage,
+)
+from .serializers import (
+    CarouselItemSerializer,
     CategorySerializer,
     CategoryTagSerializer,
-    ProductReadSerializer,
-    ProductWriteSerializer,
-    ProductImageSerializer,
-    ProductUploadImageField,
-    CarouselItemSerializer,
-    HomeThemeSerializer,
     HomeSectionSerializer,
+    HomeThemeSerializer,
+    OfferSerializer,
+    ProductImageSerializer,
+    ProductReadSerializer,
+    ProductUploadImageField,
+    ProductWriteSerializer,
 )
 
 
 def success(data=None, msg='Success', code=200):
-    return Response({'success': True,  'message': msg,   'data': data},   status=code)
+    return Response({'success': True, 'message': msg, 'data': data}, status=code)
+
 
 def error(msg='Error', errors=None, code=400):
     return Response({'success': False, 'message': msg, 'errors': errors}, status=code)
+
+
+def parse_decimal_filter(value, field_name):
+    if value in (None, ''):
+        return None, None
+    try:
+        return Decimal(value), None
+    except (InvalidOperation, TypeError):
+        return None, {field_name: 'Enter a valid decimal value.'}
 
 
 class AdminWritePermission(BasePermission):
@@ -221,10 +244,14 @@ class ProductListCreateView(APIView):
             qs = qs.filter(status=status_f)
         if search:
             qs = qs.filter(name__icontains=search)
-        if min_price:
-            qs = qs.filter(price__gte=min_price)
-        if max_price:
-            qs = qs.filter(price__lte=max_price)
+        min_price_value, min_price_error = parse_decimal_filter(min_price, 'min_price')
+        max_price_value, max_price_error = parse_decimal_filter(max_price, 'max_price')
+        if min_price_error or max_price_error:
+            return error('Validation failed', {**(min_price_error or {}), **(max_price_error or {})})
+        if min_price_value is not None:
+            qs = qs.filter(price__gte=min_price_value)
+        if max_price_value is not None:
+            qs = qs.filter(price__lte=max_price_value)
         if in_stock == 'true':
             qs = qs.filter(stock__gt=0)
 
@@ -536,3 +563,151 @@ class HomeSectionDetailView(APIView):
         section = get_object_or_404(HomeSection, pk=pk)
         section.delete()
         return success(msg='Home section deleted')
+
+
+def _active_offer_queryset():
+    now = timezone.now()
+    return Offer.objects.select_related('category', 'product').prefetch_related(
+        'product__images',
+    ).filter(
+        status=Offer.Status.ACTIVE,
+    ).filter(
+        Q(start_at__isnull=True) | Q(start_at__lte=now),
+    ).filter(
+        Q(no_expiry=True) | Q(end_at__gte=now),
+    )
+
+
+class OfferListCreateView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        qs = Offer.objects.select_related('category', 'product').prefetch_related(
+            'product__images',
+        ).order_by('display_priority_pc', 'id')
+
+        if request.query_params.get('active') in ('true', '1', 'yes'):
+            qs = _active_offer_queryset()
+        elif request.query_params.get('all') == 'true':
+            if request.session.get('admin_authenticated') is not True:
+                return error('Admin login is required for this operation.', code=403)
+        else:
+            qs = _active_offer_queryset()
+
+        placement = request.query_params.get('placement')
+        if placement == 'home':
+            qs = qs.filter(display_on_home=True, show_as_popup=False)
+        elif placement == 'offer_page':
+            qs = qs.filter(display_on_offer_page=True, show_as_popup=False)
+        elif placement == 'popup':
+            qs = qs.filter(show_as_popup=True)
+
+        serializer = OfferSerializer(qs, many=True, context={'request': request})
+        return success({'count': qs.count(), 'offers': serializer.data})
+
+    def post(self, request):
+        serializer = OfferSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            offer = serializer.save()
+            return success(
+                OfferSerializer(offer, context={'request': request}).data,
+                'Offer created',
+                201,
+            )
+        return error('Validation failed', serializer.errors)
+
+
+class OfferDetailView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request, pk):
+        offer = get_object_or_404(
+            Offer.objects.select_related('category', 'product').prefetch_related('product__images'),
+            pk=pk,
+        )
+        return success(OfferSerializer(offer, context={'request': request}).data)
+
+    def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
+        offer = get_object_or_404(Offer, pk=pk)
+        old_banner_image = offer.banner_image
+        old_popup_image = offer.popup_image
+        serializer = OfferSerializer(
+            offer,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            updated = serializer.save()
+            if request.FILES.get('banner_image') and old_banner_image and old_banner_image.name != updated.banner_image.name:
+                old_banner_image.delete(save=False)
+            if (
+                request.FILES.get('popup_image')
+                and old_popup_image
+                and old_popup_image.name != getattr(updated.popup_image, 'name', None)
+            ):
+                old_popup_image.delete(save=False)
+            return success(
+                OfferSerializer(updated, context={'request': request}).data,
+                'Offer updated',
+            )
+        return error('Validation failed', serializer.errors)
+
+    def delete(self, request, pk):
+        offer = get_object_or_404(Offer, pk=pk)
+        if offer.banner_image:
+            offer.banner_image.delete(save=False)
+        if offer.popup_image:
+            offer.popup_image.delete(save=False)
+        offer.delete()
+        return success(msg='Offer deleted')
+
+
+class ActiveOfferListView(APIView):
+    def get(self, request):
+        qs = _active_offer_queryset().filter(show_as_popup=False).order_by(
+            'display_priority_pc', 'id',
+        )
+        placement = request.query_params.get('placement')
+        if placement == 'home':
+            qs = qs.filter(display_on_home=True)
+        elif placement == 'offer_page':
+            qs = qs.filter(display_on_offer_page=True)
+        serializer = OfferSerializer(qs, many=True, context={'request': request})
+        return success({'count': qs.count(), 'offers': serializer.data})
+
+
+class PopupOfferView(APIView):
+    def get(self, request):
+        offer = _active_offer_queryset().filter(show_as_popup=True).order_by(
+            'display_priority_pc', 'id',
+        ).first()
+        if not offer:
+            return success(None, 'No active popup offer')
+        return success(OfferSerializer(offer, context={'request': request}).data)
+
+
+class OfferToggleStatusView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def patch(self, request, pk):
+        offer = get_object_or_404(Offer, pk=pk)
+        status_value = request.data.get('status')
+        if status_value in (Offer.Status.ACTIVE, Offer.Status.INACTIVE):
+            offer.status = status_value
+        else:
+            offer.status = (
+                Offer.Status.INACTIVE
+                if offer.status == Offer.Status.ACTIVE
+                else Offer.Status.ACTIVE
+            )
+        offer.save(update_fields=['status', 'updated_at'])
+        return success(OfferSerializer(offer, context={'request': request}).data, 'Offer status updated')

@@ -28,7 +28,7 @@
     {% if messages %}
       {% for msg in messages %}
         <div class="alert {% if 'error' in msg.tags %}err{% else %}succ{% endif %}">
-          {% if 'error' in msg.tags %}⛔{% else %}✅{% endif %} {{ msg }}
+          {% if 'error' in msg.tags %}Error:{% else %}Success:{% endif %} {{ msg }}
         </div>
       {% endfor %}
     {% endif %}
