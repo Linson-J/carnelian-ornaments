@@ -18,5 +18,7 @@ urlpatterns = [
     path('home-sections/', admin_views.admin_home_sections, name='admin_home_sections'),
     path('offers/', admin_views.admin_offers, name='admin_offers'),
     path('login-logs/', admin_views.admin_login_logs, name='admin_login_logs'),
+    path('subscriptions/', admin_views.admin_subscriptions, name='admin_subscriptions'),
+    path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
     path('settings/', admin_views.admin_settings, name='admin_settings'),
 ]

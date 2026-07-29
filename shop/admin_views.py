@@ -17,6 +17,7 @@ from .models import (
     HomeSection,
     HomeTheme,
     LoginAttempt,
+    NewsletterSubscription,
     Offer,
     Product,
     ProductImage,
@@ -383,3 +384,28 @@ def admin_offers(request):
         'active_nav': 'offers',
         'offer_count': Offer.objects.count(),
     })
+
+
+@admin_login_required
+def admin_subscriptions(request):
+    search = request.GET.get('search', '').strip()
+    subscriptions = NewsletterSubscription.objects.all()
+    if search:
+        subscriptions = subscriptions.filter(email__icontains=search)
+    return render(request, 'adminpanel/subscriptions.html', {
+        'subscriptions': subscriptions,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'subscriptions',
+        'subscription_count': NewsletterSubscription.objects.count(),
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_subscription(request, pk):
+    subscription = get_object_or_404(NewsletterSubscription, pk=pk)
+    email = subscription.email
+    subscription.delete()
+    messages.success(request, f'Subscription for {email} deleted.')
+    return redirect('admin_subscriptions')

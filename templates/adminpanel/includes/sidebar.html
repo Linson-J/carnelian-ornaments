@@ -42,6 +42,10 @@
       <span class="nav-icon">OF</span> Offers
       {% if offer_count %}<span class="nav-badge">{{ offer_count }}</span>{% endif %}
     </a>
+    <a href="{% url 'admin_subscriptions' %}" class="nav-item{% if active_nav == 'subscriptions' %} active{% endif %}">
+      <span class="nav-icon">SB</span> Subscriptions
+      {% if subscription_count %}<span class="nav-badge">{{ subscription_count }}</span>{% endif %}
+    </a>
   </div>
 
   <div class="nav-section">
