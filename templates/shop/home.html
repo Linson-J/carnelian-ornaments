@@ -1,21 +1,9 @@
-{% load static %}
+{% extends 'shop/base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
+{% block title %}Carmelian{% endblock %}
+{% block body_class %}home-page{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carmelian</title>
-
-    <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-</head>
-
-<body class="home-page">
-    {% include 'shop/includes/navbar.html' %}
-
+{% block content %}
     <main>
         <section class="hero-carousel" aria-label="Featured collections">
             <div class="hero-track" data-carousel-track>
@@ -35,21 +23,15 @@
 
         <div data-home-sections></div>
 
-        <section class="flash-sale" id="new-arrivals" aria-labelledby="sale-title">
-            <div class="sale-inner">
-                <div class="sale-copy">
-                    <p class="section-kicker">Limited Time Only</p>
-                    <h2 id="sale-title">Midnight Flash Sale</h2>
-                    <p>Exclusive designs at rare prices. These curated pieces are available for a short window.</p>
-                    <div class="sale-timer" aria-label="Sale countdown">
-                        <span><strong data-hours>08</strong><small>Hours</small></span>
-                        <span><strong data-minutes>42</strong><small>Mins</small></span>
-                        <span><strong data-seconds>15</strong><small>Secs</small></span>
-                    </div>
-                    <a class="home-pill-btn" href="/#new-arrivals">Shop The Sale</a>
-                </div>
-                <a class="sale-product" href="/#new-arrivals" data-sale-card aria-label="Featured sale product"></a>
-            </div>
+        <section class="flash-sale offer-carousel" id="home-offers" aria-labelledby="sale-title" data-offer-carousel hidden>
+            <div class="offer-carousel-track" data-offer-track></div>
+            <button class="offer-carousel-arrow offer-carousel-prev" type="button" aria-label="Previous offer" title="Previous offer" data-offer-prev>
+                <i class="ri-arrow-left-s-line"></i>
+            </button>
+            <button class="offer-carousel-arrow offer-carousel-next" type="button" aria-label="Next offer" title="Next offer" data-offer-next>
+                <i class="ri-arrow-right-s-line"></i>
+            </button>
+            <div class="offer-carousel-dots" aria-label="Select offer" data-offer-dots></div>
         </section>
 
         <section class="story-section" aria-labelledby="story-title">
@@ -64,42 +46,40 @@
             </article>
         </section>
 
-        <section class="journal-section" aria-labelledby="journal-title">
-            <div class="journal-card">
-                <p class="section-kicker">The Journal</p>
-                <h2 id="journal-title">Stay Inspired</h2>
-                <p>Join our journal for early access to collections and curated style notes.</p>
-                <form class="subscribe-form" action="#" method="post">
-                    <input type="email" name="email" placeholder="Your email address" aria-label="Email address">
-                    <button type="submit">Subscribe</button>
-                </form>
-            </div>
-        </section>
     </main>
 
-    <footer class="site-footer">
-        <h2>Carmelian</h2>
-        <p>&copy; 2024 Carmelian. All rights reserved.</p>
-        <nav aria-label="Footer navigation">
-            <a href="/#collections">Collection</a>
-            <a href="/#sustainability">Sustainability</a>
-            <a href="/#journal">Journal</a>
-            <a href="/#concierge">Concierge</a>
-        </nav>
-        <div class="footer-icons" aria-label="Social links">
-            <a href="#" aria-label="Share"><i class="ri-share-line"></i></a>
-            <a href="#" aria-label="Website"><i class="ri-global-line"></i></a>
-            <a href="#" aria-label="Email"><i class="ri-mail-line"></i></a>
-        </div>
-    </footer>
+    <div class="offer-popup" data-offer-popup hidden>
+        <div class="offer-popup__backdrop" data-offer-popup-close></div>
+        <section class="offer-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="offer-popup-title">
+            <button class="offer-popup__close" type="button" aria-label="Close offer" data-offer-popup-close>
+                <i class="ri-close-line"></i>
+            </button>
+            <img class="offer-popup__image" data-offer-popup-image alt="">
+            <div class="offer-popup__content">
+                <p class="section-kicker">Limited Offer</p>
+                <h2 id="offer-popup-title" data-offer-popup-title></h2>
+                <p data-offer-popup-description></p>
+                <div class="offer-popup__timer" data-offer-popup-timer hidden>
+                    <span><strong data-popup-days>00</strong><small>Days</small></span>
+                    <span><strong data-popup-hours>00</strong><small>Hours</small></span>
+                    <span><strong data-popup-minutes>00</strong><small>Mins</small></span>
+                    <span><strong data-popup-seconds>00</strong><small>Secs</small></span>
+                </div>
+                <a class="home-pill-btn" href="/" data-offer-popup-cta>Shop Now</a>
+            </div>
+        </section>
+    </div>
+{% endblock %}
 
+{% block extra_js %}
     <script>
         const money = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
         const api = {
             carousel: '/api/carousel/',
             homeSections: '/api/home-sections/',
-            products: '/api/products/?status=available',
-            theme: '/api/theme/'
+            theme: '/api/theme/',
+            homeOffers: '/api/offers/active/?placement=home',
+            popupOffer: '/api/offers/popup/'
         };
 
         const state = {
@@ -113,7 +93,20 @@
         const track = document.querySelector('[data-carousel-track]');
         const dotsWrap = document.querySelector('[data-carousel-dots]');
         const homeSectionsWrap = document.querySelector('[data-home-sections]');
-        const saleCard = document.querySelector('[data-sale-card]');
+        const offerCarousel = document.querySelector('[data-offer-carousel]');
+        const offerTrack = document.querySelector('[data-offer-track]');
+        const offerDots = document.querySelector('[data-offer-dots]');
+        const offerPopup = document.querySelector('[data-offer-popup]');
+        let popupCountdownTimer = null;
+        const offerState = {
+            activeSlide: 0,
+            timer: null,
+            countdownTimer: null,
+            touchStart: 0,
+            hasMultipleSlides: false,
+            slides: [],
+            dots: []
+        };
 
         function imageOfProduct(product) {
             return product.primary_image?.image_url || product.images?.[0]?.image_url || '';
@@ -128,6 +121,27 @@
             const response = await fetch(url, {headers: {'Accept': 'application/json'}});
             if (!response.ok) throw new Error(`Request failed: ${url}`);
             return response.json();
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function safeUrl(value, fallback = '/') {
+            if (!value) return fallback;
+            try {
+                const url = new URL(value, location.origin);
+                if (url.protocol === 'http:' || url.protocol === 'https:') {
+                    return value.startsWith('/') ? `${url.pathname}${url.search}${url.hash}` : url.href;
+                }
+            } catch (error) {}
+            return fallback;
         }
 
         function applyTheme(theme) {
@@ -163,15 +177,15 @@
                 const hasCopy = item.title || item.description || item.button_text;
                 const slide = document.createElement('article');
                 slide.className = `hero-slide${index === 0 ? ' active' : ''}${hasCopy ? '' : ' hero-slide--image-only'}`;
-                slide.style.setProperty('--hero-image', `url('${item.image_url}')`);
-                slide.style.setProperty('--hero-image-mobile', `url('${item.mobile_display_image_url || item.image_url}')`);
+                slide.style.setProperty('--hero-image', `url('${safeUrl(item.image_url, '')}')`);
+                slide.style.setProperty('--hero-image-mobile', `url('${safeUrl(item.mobile_display_image_url || item.image_url, '')}')`);
                 slide.innerHTML = `
                     <div class="hero-shade"></div>
                     ${hasCopy ? `
                         <div class="hero-content">
-                            ${item.title ? `<h1>${item.title}</h1>` : ''}
-                            ${item.description ? `<p class="hero-copy">${item.description}</p>` : ''}
-                            ${item.button_text ? `<div class="hero-actions"><a href="${item.redirect_url || '#collections'}" class="hero-btn primary">${item.button_text}</a></div>` : ''}
+                            ${item.title ? `<h1>${escapeHtml(item.title)}</h1>` : ''}
+                            ${item.description ? `<p class="hero-copy">${escapeHtml(item.description)}</p>` : ''}
+                            ${item.button_text ? `<div class="hero-actions"><a href="${safeUrl(item.redirect_url, '#collections')}" class="hero-btn primary">${escapeHtml(item.button_text)}</a></div>` : ''}
                         </div>
                     ` : ''}
                 `;
@@ -205,25 +219,11 @@
         function renderCategoryCards(categories) {
             const cards = categories.filter(item => item.image_url).slice(0, 4);
             return cards.map((category, index) => `
-                <a class="category-card category-card-${index + 1}" href="/#collections" style="--card-image:url('${category.image_url}')">
-                    <span>${category.name}</span>
-                    <small>${category.description || 'Explore'}</small>
+                    <a class="category-card category-card-${index + 1}" href="/shop/?category=${encodeURIComponent(category.slug || '')}" style="--card-image:url('${safeUrl(category.image_url, '')}')">
+                    <span>${escapeHtml(category.name)}</span>
+                    <small>${escapeHtml(category.description || 'Explore')}</small>
                 </a>
             `).join('');
-        }
-
-        function renderSaleProduct(products) {
-            const saleProduct = products.find(product => product.offer || product.discount_price) || products[0];
-            if (!saleProduct) {
-                saleCard.innerHTML = '<span class="sale-placeholder">Sale product coming soon</span>';
-                return;
-            }
-
-            const image = imageOfProduct(saleProduct);
-            saleCard.href = `/products/${saleProduct.slug}/`;
-            saleCard.innerHTML = image
-                ? `<img src="${image}" alt="${saleProduct.name}"><span>${saleProduct.offer || 'Limited Drop'}</span>`
-                : `<span class="sale-placeholder">${saleProduct.name}</span>`;
         }
 
         function renderProductCards(products) {
@@ -231,17 +231,124 @@
                 const image = imageOfProduct(product);
                 const category = product.category?.name || 'Collection';
                 return `
-                    <a class="product-card" href="/products/${product.slug}/">
-                        <span class="product-badge">${index === 0 ? 'New' : index === 1 ? 'Trending' : category}</span>
-                        <span class="product-image">${image ? `<img src="${image}" alt="${product.name}">` : ''}</span>
+                    <a class="product-card" href="/products/${encodeURIComponent(product.slug || '')}/">
+                        <span class="product-badge">${escapeHtml(index === 0 ? 'New' : index === 1 ? 'Trending' : category)}</span>
+                        <span class="product-image">${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}</span>
                         <span class="product-meta">
-                            <small>${category}</small>
-                            <strong>${product.name}</strong>
+                            <small>${escapeHtml(category)}</small>
+                            <strong>${escapeHtml(product.name)}</strong>
                             <em>${formatPrice(product)}</em>
                         </span>
                     </a>
                 `;
             }).join('');
+        }
+
+        function countdownMarkup(countdown) {
+            if (!countdown || countdown.total_seconds <= 0) return '';
+            return `
+                <div class="sale-timer" aria-label="Offer countdown" data-offer-countdown data-remaining="${countdown.total_seconds}">
+                    <span><strong data-offer-days>${String(countdown.days).padStart(2, '0')}</strong><small>Days</small></span>
+                    <span><strong data-offer-hours>${String(countdown.hours).padStart(2, '0')}</strong><small>Hours</small></span>
+                    <span><strong data-offer-minutes>${String(countdown.minutes).padStart(2, '0')}</strong><small>Mins</small></span>
+                    <span><strong data-offer-seconds>${String(countdown.seconds).padStart(2, '0')}</strong><small>Secs</small></span>
+                </div>
+            `;
+        }
+
+        function renderOfferCarousel(offers) {
+            clearInterval(offerState.timer);
+            clearInterval(offerState.countdownTimer);
+            offerState.activeSlide = 0;
+            offerTrack.innerHTML = '';
+            offerDots.innerHTML = '';
+
+            if (!offers.length) {
+                offerCarousel.hidden = true;
+                return;
+            }
+
+            offerCarousel.hidden = false;
+            offers.forEach((offer, index) => {
+                const image = offer.banner_image_url || offer.popup_image_url || '';
+                const slide = document.createElement('article');
+                slide.className = `sale-inner offer-slide${index === 0 ? ' active' : ''}`;
+                slide.innerHTML = `
+                    <div class="sale-copy">
+                        <p class="section-kicker">${escapeHtml(offer.subtitle || 'Limited Time Only')}</p>
+                        <h2${index === 0 ? ' id="sale-title"' : ''}>${escapeHtml(offer.title)}</h2>
+                        <p>${escapeHtml(offer.description || '')}</p>
+                        ${countdownMarkup(offer.countdown)}
+                        <a class="home-pill-btn" href="${safeUrl(offer.redirect_url, '/shop/')}">${escapeHtml(offer.button_text || 'Shop Now')}</a>
+                    </div>
+                    <a class="sale-product" href="${safeUrl(offer.redirect_url, '/shop/')}" aria-label="${escapeHtml(offer.title)}">
+                        ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(offer.title)}">` : '<span>Limited Offer</span>'}
+                    </a>
+                `;
+                offerTrack.appendChild(slide);
+
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.setAttribute('aria-label', `Show offer ${index + 1}`);
+                dot.addEventListener('click', () => showOfferSlide(index));
+                offerDots.appendChild(dot);
+            });
+
+            offerState.slides = [...offerTrack.querySelectorAll('.offer-slide')];
+            offerState.dots = [...offerDots.children];
+            offerState.hasMultipleSlides = offers.length > 1;
+            showOfferSlide(0, false);
+            startOfferCountdowns();
+
+            document.querySelector('[data-offer-prev]').hidden = false;
+            document.querySelector('[data-offer-next]').hidden = false;
+            offerDots.hidden = !offerState.hasMultipleSlides;
+            restartOfferTimer();
+        }
+
+        function showOfferSlide(index, restart = true) {
+            if (!offerState.slides.length) return;
+            offerState.activeSlide = (index + offerState.slides.length) % offerState.slides.length;
+            offerState.slides.forEach((slide, i) => {
+                const isActive = i === offerState.activeSlide;
+                slide.classList.toggle('active', isActive);
+                slide.setAttribute('aria-hidden', String(!isActive));
+                slide.querySelectorAll('a, button').forEach(element => {
+                    if (isActive) {
+                        element.removeAttribute('tabindex');
+                    } else {
+                        element.setAttribute('tabindex', '-1');
+                    }
+                });
+            });
+            offerState.dots.forEach((dot, i) => dot.classList.toggle('active', i === offerState.activeSlide));
+            if (restart) restartOfferTimer();
+        }
+
+        function restartOfferTimer() {
+            clearInterval(offerState.timer);
+            if (offerState.hasMultipleSlides) {
+                offerState.timer = setInterval(() => showOfferSlide(offerState.activeSlide + 1, false), 7000);
+            }
+        }
+
+        function startOfferCountdowns() {
+            const tick = () => {
+                document.querySelectorAll('[data-offer-countdown]').forEach(timer => {
+                    const remaining = Math.max(Number(timer.dataset.remaining || 0), 0);
+                    const days = Math.floor(remaining / 86400);
+                    const hours = Math.floor((remaining % 86400) / 3600);
+                    const minutes = Math.floor((remaining % 3600) / 60);
+                    const seconds = remaining % 60;
+                    timer.querySelector('[data-offer-days]').textContent = String(days).padStart(2, '0');
+                    timer.querySelector('[data-offer-hours]').textContent = String(hours).padStart(2, '0');
+                    timer.querySelector('[data-offer-minutes]').textContent = String(minutes).padStart(2, '0');
+                    timer.querySelector('[data-offer-seconds]').textContent = String(seconds).padStart(2, '0');
+                    timer.dataset.remaining = String(Math.max(remaining - 1, 0));
+                });
+            };
+            tick();
+            offerState.countdownTimer = setInterval(tick, 1000);
         }
 
         function renderHomeSections(sections) {
@@ -251,28 +358,33 @@
                 return;
             }
 
+            let previousSectionType = '';
             homeSectionsWrap.innerHTML = visibleSections.map(section => {
-                const slug = section.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                const slug = String(section.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                 if (section.section_type === 'categories') {
+                    const hasCategoryDivider = previousSectionType === 'categories';
+                    previousSectionType = section.section_type;
                     return `
-                        <section class="home-section category-section" id="${slug}">
+                        <section class="home-section category-section${hasCategoryDivider ? ' category-section--divided' : ''}" id="${slug}">
+                            ${hasCategoryDivider ? '<div class="category-section-divider" aria-hidden="true"><span></span></div>' : ''}
                             <div class="section-heading">
                                 <div>
                                     <p class="section-kicker">Curated</p>
-                                    <h2>${section.title}</h2>
+                                    <h2>${escapeHtml(section.title)}</h2>
                                 </div>
-                                <a href="/#collections">View All Categories</a>
+                                <a href="/categories/">View All Categories</a>
                             </div>
                             <div class="category-mosaic">${renderCategoryCards(section.items)}</div>
                         </section>
                     `;
                 }
+                previousSectionType = section.section_type;
                 return `
                     <section class="home-section products-section" id="${slug}">
                         <div class="section-heading section-heading-centered">
                             <div>
                                 <p class="section-kicker">Selected</p>
-                                <h2>${section.title}</h2>
+                                <h2>${escapeHtml(section.title)}</h2>
                             </div>
                         </div>
                         <div class="product-row">${renderProductCards(section.items)}</div>
@@ -281,35 +393,83 @@
             }).join('');
         }
 
-        function startCountdown() {
-            let remaining = (8 * 60 * 60) + (42 * 60) + 15;
-            setInterval(() => {
-                remaining = remaining > 0 ? remaining - 1 : (9 * 60 * 60);
-                const hours = Math.floor(remaining / 3600);
+        function openOfferPopup(offer) {
+            if (!offer || !offerPopup) return;
+            const title = offer.popup_title || offer.title || 'Special Offer';
+            const description = offer.popup_description || offer.description || '';
+            const buttonText = offer.popup_button_text || offer.button_text || 'Shop Now';
+            const image = offer.popup_image_url || offer.banner_image_url || '';
+            const imageEl = offerPopup.querySelector('[data-offer-popup-image]');
+            const closeBtn = offerPopup.querySelector('.offer-popup__close');
+
+            offerPopup.querySelector('[data-offer-popup-title]').textContent = title;
+            offerPopup.querySelector('[data-offer-popup-description]').textContent = description;
+            offerPopup.querySelector('[data-offer-popup-cta]').textContent = buttonText;
+            offerPopup.querySelector('[data-offer-popup-cta]').href = offer.redirect_url || '/shop/';
+            imageEl.src = image;
+            imageEl.hidden = !image;
+            closeBtn.hidden = offer.show_close_button === false;
+            renderPopupCountdown(offer.countdown);
+
+            offerPopup.hidden = false;
+            document.body.classList.add('offer-popup-open');
+        }
+
+        function closeOfferPopup() {
+            if (!offerPopup) return;
+            offerPopup.hidden = true;
+            document.body.classList.remove('offer-popup-open');
+            clearInterval(popupCountdownTimer);
+        }
+
+        function renderPopupCountdown(countdown) {
+            const timer = offerPopup.querySelector('[data-offer-popup-timer]');
+            clearInterval(popupCountdownTimer);
+            if (!countdown || countdown.total_seconds <= 0) {
+                timer.hidden = true;
+                return;
+            }
+            let remaining = countdown.total_seconds;
+            timer.hidden = false;
+            const tick = () => {
+                const days = Math.floor(remaining / 86400);
+                const hours = Math.floor((remaining % 86400) / 3600);
                 const minutes = Math.floor((remaining % 3600) / 60);
                 const seconds = remaining % 60;
-                document.querySelector('[data-hours]').textContent = String(hours).padStart(2, '0');
-                document.querySelector('[data-minutes]').textContent = String(minutes).padStart(2, '0');
-                document.querySelector('[data-seconds]').textContent = String(seconds).padStart(2, '0');
-            }, 1000);
+                offerPopup.querySelector('[data-popup-days]').textContent = String(days).padStart(2, '0');
+                offerPopup.querySelector('[data-popup-hours]').textContent = String(hours).padStart(2, '0');
+                offerPopup.querySelector('[data-popup-minutes]').textContent = String(minutes).padStart(2, '0');
+                offerPopup.querySelector('[data-popup-seconds]').textContent = String(seconds).padStart(2, '0');
+                remaining = Math.max(remaining - 1, 0);
+            };
+            tick();
+            popupCountdownTimer = setInterval(tick, 1000);
+        }
+
+        async function loadPopupOffer() {
+            try {
+                const response = await getJson(api.popupOffer);
+                if (response.data) openOfferPopup(response.data);
+            } catch (error) {}
         }
 
         async function bootHome() {
             try {
-                const [theme, carousel, homeSections, products] = await Promise.all([
+                const [theme, carousel, homeSections, homeOffers] = await Promise.all([
                     getJson(api.theme),
                     getJson(api.carousel),
                     getJson(api.homeSections),
-                    getJson(api.products)
+                    getJson(api.homeOffers)
                 ]);
                 applyTheme(theme.data);
                 const carouselItems = carousel.data?.items || [];
-                const productItems = products.data?.products || [];
                 const sections = homeSections.data?.sections || [];
+                const offers = homeOffers.data?.offers || [];
 
                 renderCarousel(carouselItems);
                 renderHomeSections(sections);
-                renderSaleProduct(productItems);
+                renderOfferCarousel(offers);
+                loadPopupOffer();
                 setInterval(() => {
                     getJson(api.homeSections).then(response => renderHomeSections(response.data?.sections || [])).catch(() => {});
                 }, 5000);
@@ -321,6 +481,8 @@
 
         document.querySelector('[data-carousel-prev]').addEventListener('click', () => showSlide(state.activeSlide - 1));
         document.querySelector('[data-carousel-next]').addEventListener('click', () => showSlide(state.activeSlide + 1));
+        document.querySelector('[data-offer-prev]').addEventListener('click', () => showOfferSlide(offerState.activeSlide - 1));
+        document.querySelector('[data-offer-next]').addEventListener('click', () => showOfferSlide(offerState.activeSlide + 1));
         document.querySelector('.hero-carousel').addEventListener('mouseenter', () => clearInterval(state.timer));
         document.querySelector('.hero-carousel').addEventListener('mouseleave', restartTimer);
         document.querySelector('.hero-carousel').addEventListener('touchstart', event => state.touchStart = event.changedTouches[0].clientX, {passive:true});
@@ -328,12 +490,31 @@
             const distance = event.changedTouches[0].clientX - state.touchStart;
             if (Math.abs(distance) > 50) showSlide(state.activeSlide + (distance < 0 ? 1 : -1));
         }, {passive:true});
+        offerCarousel.addEventListener('mouseenter', () => clearInterval(offerState.timer));
+        offerCarousel.addEventListener('mouseleave', restartOfferTimer);
+        offerCarousel.addEventListener('touchstart', event => offerState.touchStart = event.changedTouches[0].clientX, {passive:true});
+        offerCarousel.addEventListener('touchend', event => {
+            const distance = event.changedTouches[0].clientX - offerState.touchStart;
+            if (Math.abs(distance) > 50) showOfferSlide(offerState.activeSlide + (distance < 0 ? 1 : -1));
+        }, {passive:true});
 
-        document.querySelector('.subscribe-form').addEventListener('submit', event => event.preventDefault());
+        offerPopup.querySelectorAll('[data-offer-popup-close]').forEach(button => {
+            button.addEventListener('click', closeOfferPopup);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !offerPopup.hidden) closeOfferPopup();
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+            if (offerCarousel.hidden || !offerState.slides.length) return;
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                showOfferSlide(offerState.activeSlide - 1);
+            }
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                showOfferSlide(offerState.activeSlide + 1);
+            }
+        });
 
-        startCountdown();
         bootHome();
     </script>
-</body>
-
-</html>
+{% endblock %}

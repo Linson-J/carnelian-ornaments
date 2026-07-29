@@ -1,0 +1,443 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Offers{% endblock %}
+{% block page_title %}Offer Management{% endblock %}
+
+{% block topbar_right %}
+<button class="btn-primary" type="button" id="newOfferBtn">New offer</button>
+{% endblock %}
+
+{% block content %}
+<div class="offer-admin">
+  {% csrf_token %}
+  <div class="card offer-list-card">
+    <div class="card-hd">
+      <h3>Offer list</h3>
+      <button class="btn-sm" type="button" id="reloadBtn">Reload</button>
+    </div>
+    <div class="filters">
+      <input type="text" id="offerSearch" placeholder="Search offers">
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <select id="placementFilter">
+        <option value="">All placements</option>
+        <option value="popup">Popup</option>
+        <option value="home">Home page</option>
+        <option value="offer_page">Offer page</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Offer</th>
+            <th>Target</th>
+            <th>Priority</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="offerRows">
+          <tr><td colspan="6">Loading offers...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <form class="card offer-editor-card" id="offerForm" enctype="multipart/form-data">
+    <div class="card-hd">
+      <h3 id="formTitle">Create offer</h3>
+      <button class="btn-sm" type="button" id="clearBtn">Clear</button>
+    </div>
+    <div class="card-body">
+      <input type="hidden" name="id">
+      <div class="field">
+        <label>Offer title <span class="req">*</span></label>
+        <input type="text" name="title" required placeholder="Welcome Offer">
+      </div>
+      <div class="field">
+        <label>Subtitle</label>
+        <input type="text" name="subtitle" placeholder="20% off selected earrings">
+      </div>
+      <div class="field">
+        <label>Description <span class="req">*</span></label>
+        <textarea name="description" required placeholder="Short offer description"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Button text</label>
+          <select name="button_text">
+            <option>Shop Now</option>
+            <option>Explore Offer</option>
+            <option>View Products</option>
+            <option>Grab Deal</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select name="status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Offer banner / image <span class="req">*</span></label>
+        <input type="file" name="banner_image" accept="image/*">
+        <img class="offer-form-preview" id="bannerPreview" alt="" hidden>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Redirect type <span class="req">*</span></label>
+          <select name="redirect_type">
+            <option value="category">Category</option>
+            <option value="product">Product</option>
+            <option value="external_url">External URL</option>
+            <option value="page">Page</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Redirect target <span class="req">*</span></label>
+          <input type="text" id="targetSearch" placeholder="Search target">
+          <select name="target_id" id="targetSelect"></select>
+          <input type="url" name="external_url" placeholder="https://example.com" hidden>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>PC display priority <span class="req">*</span></label>
+          <input type="number" name="display_priority_pc" min="0" step="1" value="10" required>
+        </div>
+        <div class="field">
+          <label>Mobile display priority</label>
+          <input type="number" name="display_priority_mobile" min="0" step="1" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Start date & time</label>
+          <input type="datetime-local" name="start_at">
+        </div>
+        <div class="field">
+          <label>End date & time</label>
+          <input type="datetime-local" name="end_at">
+        </div>
+      </div>
+      <label class="check-label offer-check">
+        <input type="checkbox" name="no_expiry">
+        No expiry, show until manually disabled
+      </label>
+
+      <div class="offer-flags">
+        <label class="check-label"><input type="checkbox" name="display_on_home" checked>Home page</label>
+        <label class="check-label"><input type="checkbox" name="display_on_offer_page" checked>Offer page</label>
+        <label class="check-label"><input type="checkbox" name="show_as_popup">Use as first-visit popup</label>
+      </div>
+
+      <div class="offer-popup-settings" id="popupSettings" hidden>
+        <div class="field">
+          <label>Popup title</label>
+          <input type="text" name="popup_title" placeholder="Welcome Offer">
+        </div>
+        <div class="field">
+          <label>Popup description</label>
+          <textarea name="popup_description" placeholder="Optional popup-specific description"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>CTA button</label>
+            <input type="text" name="popup_button_text" placeholder="Falls back to button text">
+          </div>
+          <div class="field">
+            <label>Popup display</label>
+            <select name="popup_display_mode">
+              <option value="once">Display once per user</option>
+              <option value="every_visit">Display every visit</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Popup image</label>
+          <input type="file" name="popup_image" accept="image/*">
+          <img class="offer-form-preview" id="popupPreview" alt="" hidden>
+        </div>
+        <label class="check-label offer-check">
+          <input type="checkbox" name="show_close_button" checked>
+          Show close button
+        </label>
+      </div>
+    </div>
+    <div class="submit-bar">
+      <button class="btn-cancel" type="button" id="deleteBtn" hidden>Delete</button>
+      <button class="btn-submit" type="submit">Save offer</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const rows = document.getElementById('offerRows');
+  const form = document.getElementById('offerForm');
+  const formTitle = document.getElementById('formTitle');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const targetSearch = document.getElementById('targetSearch');
+  const targetSelect = document.getElementById('targetSelect');
+  const externalUrl = form.elements.external_url;
+  const popupSettings = document.getElementById('popupSettings');
+  const pages = [
+    {id: '/', name: 'Home'},
+    {id: '/#collection', name: 'Shop'},
+    {id: '/#new-arrivals', name: 'New Arrivals'},
+    {id: '/#collections', name: 'Collections'},
+    {id: '/#cart', name: 'Cart'}
+  ];
+  let offers = [];
+  let categories = [];
+  let products = [];
+  let selectedTarget = '';
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+  }
+
+  function toLocalInput(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function targetLabel(offer) {
+    if (offer.redirect_type === 'category') return offer.category_detail?.name || 'Category';
+    if (offer.redirect_type === 'product') return offer.product_detail?.name || 'Product';
+    if (offer.redirect_type === 'external_url') return offer.external_url;
+    return pages.find(page => page.id === offer.customer_page)?.name || 'Page';
+  }
+
+  function renderRows() {
+    const term = document.getElementById('offerSearch').value.trim().toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const placement = document.getElementById('placementFilter').value;
+    let visible = offers.filter(offer => {
+      const matchesTerm = !term || `${offer.title} ${offer.subtitle} ${offer.description}`.toLowerCase().includes(term);
+      const matchesStatus = !status || offer.status === status;
+      const matchesPlacement = !placement
+        || (placement === 'popup' && offer.show_as_popup)
+        || (placement === 'home' && offer.display_on_home && !offer.show_as_popup)
+        || (placement === 'offer_page' && offer.display_on_offer_page && !offer.show_as_popup);
+      return matchesTerm && matchesStatus && matchesPlacement;
+    });
+    if (!visible.length) {
+      rows.innerHTML = '<tr><td colspan="6">No offers found.</td></tr>';
+      return;
+    }
+    rows.innerHTML = visible.map(offer => {
+      const countdown = offer.countdown
+        ? `${offer.countdown.days}d ${offer.countdown.hours}h ${offer.countdown.minutes}m ${offer.countdown.seconds}s`
+        : 'No expiry';
+      return `
+        <tr>
+          <td>
+            ${offer.banner_image_url ? `<img class="offer-admin-thumb" src="${offer.banner_image_url}" alt="">` : ''}
+            <strong>${escapeHtml(offer.title)}</strong>
+            <div class="muted-small">${offer.show_as_popup ? 'Popup' : 'Home / offer page'} · ${escapeHtml(offer.subtitle)}</div>
+          </td>
+          <td>${escapeHtml(offer.redirect_type)}<div class="muted-small">${escapeHtml(targetLabel(offer))}</div></td>
+          <td>PC ${offer.display_priority_pc}<div class="muted-small">Mobile ${offer.display_priority_mobile ?? '-'}</div></td>
+          <td>${countdown}<div class="muted-small">${offer.is_currently_active ? 'Currently active' : 'Not currently active'}</div></td>
+          <td><button class="badge ${offer.status === 'active' ? 'success' : 'muted'}" type="button" data-toggle-id="${offer.id}">${offer.status}</button></td>
+          <td>
+            <button class="btn-sm" type="button" data-edit-id="${offer.id}">Edit</button>
+            <button class="btn-sm danger" type="button" data-remove-id="${offer.id}">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function currentTargets() {
+    const type = form.elements.redirect_type.value;
+    if (type === 'category') return categories;
+    if (type === 'product') return products;
+    if (type === 'page') return pages;
+    return [];
+  }
+
+  function renderTargets() {
+    const type = form.elements.redirect_type.value;
+    const isExternal = type === 'external_url';
+    targetSearch.hidden = isExternal;
+    targetSelect.hidden = isExternal;
+    externalUrl.hidden = !isExternal;
+    if (isExternal) return;
+    const term = targetSearch.value.trim().toLowerCase();
+    const targets = currentTargets().filter(item => !term || item.name.toLowerCase().includes(term));
+    targetSelect.innerHTML = targets.map(item => `
+      <option value="${item.id}" ${String(item.id) === String(selectedTarget) ? 'selected' : ''}>${escapeHtml(item.name)}</option>
+    `).join('');
+  }
+
+  function resetForm() {
+    form.reset();
+    form.elements.id.value = '';
+    form.elements.status.value = 'active';
+    form.elements.redirect_type.value = 'category';
+    form.elements.display_priority_pc.value = offers.length ? Math.max(...offers.map(offer => offer.display_priority_pc)) + 10 : 10;
+    form.elements.display_on_home.checked = true;
+    form.elements.display_on_offer_page.checked = true;
+    form.elements.show_close_button.checked = true;
+    form.elements.banner_image.required = true;
+    selectedTarget = categories[0]?.id || '';
+    formTitle.textContent = 'Create offer';
+    deleteBtn.hidden = true;
+    popupSettings.hidden = true;
+    document.getElementById('bannerPreview').hidden = true;
+    document.getElementById('popupPreview').hidden = true;
+    renderTargets();
+  }
+
+  function editOffer(id) {
+    const offer = offers.find(item => item.id === id);
+    if (!offer) return;
+    form.elements.id.value = offer.id;
+    form.elements.title.value = offer.title;
+    form.elements.subtitle.value = offer.subtitle || '';
+    form.elements.description.value = offer.description;
+    form.elements.button_text.value = offer.button_text || 'Shop Now';
+    form.elements.status.value = offer.status;
+    form.elements.redirect_type.value = offer.redirect_type;
+    selectedTarget = offer.category || offer.product || offer.customer_page || '';
+    form.elements.external_url.value = offer.external_url || '';
+    form.elements.display_priority_pc.value = offer.display_priority_pc;
+    form.elements.display_priority_mobile.value = offer.display_priority_mobile ?? '';
+    form.elements.start_at.value = toLocalInput(offer.start_at);
+    form.elements.end_at.value = toLocalInput(offer.end_at);
+    form.elements.no_expiry.checked = offer.no_expiry;
+    form.elements.display_on_home.checked = offer.display_on_home;
+    form.elements.display_on_offer_page.checked = offer.display_on_offer_page;
+    form.elements.show_as_popup.checked = offer.show_as_popup;
+    form.elements.popup_title.value = offer.popup_title || '';
+    form.elements.popup_description.value = offer.popup_description || '';
+    form.elements.popup_button_text.value = offer.popup_button_text || '';
+    form.elements.popup_display_mode.value = offer.popup_display_mode;
+    form.elements.show_close_button.checked = offer.show_close_button;
+    form.elements.banner_image.required = false;
+    formTitle.textContent = `Edit ${offer.title}`;
+    deleteBtn.hidden = false;
+    popupSettings.hidden = !offer.show_as_popup;
+    const bannerPreview = document.getElementById('bannerPreview');
+    bannerPreview.src = offer.banner_image_url || '';
+    bannerPreview.hidden = !offer.banner_image_url;
+    const popupPreview = document.getElementById('popupPreview');
+    popupPreview.src = offer.popup_image_url || '';
+    popupPreview.hidden = !offer.popup_image_url;
+    renderTargets();
+  }
+
+  function buildPayload() {
+    const data = new FormData();
+    const type = form.elements.redirect_type.value;
+    [
+      'title', 'subtitle', 'description', 'button_text', 'redirect_type',
+      'status', 'popup_title', 'popup_description', 'popup_button_text',
+      'popup_display_mode'
+    ].forEach(name => data.append(name, form.elements[name].value));
+    data.append('display_priority_pc', form.elements.display_priority_pc.value || '0');
+    if (form.elements.display_priority_mobile.value) {
+      data.append('display_priority_mobile', form.elements.display_priority_mobile.value);
+    }
+    if (form.elements.start_at.value) data.append('start_at', new Date(form.elements.start_at.value).toISOString());
+    if (form.elements.end_at.value) data.append('end_at', new Date(form.elements.end_at.value).toISOString());
+    data.append('no_expiry', form.elements.no_expiry.checked ? 'true' : 'false');
+    data.append('show_as_popup', form.elements.show_as_popup.checked ? 'true' : 'false');
+    data.append('display_on_home', form.elements.display_on_home.checked ? 'true' : 'false');
+    data.append('display_on_offer_page', form.elements.display_on_offer_page.checked ? 'true' : 'false');
+    data.append('show_close_button', form.elements.show_close_button.checked ? 'true' : 'false');
+    if (type === 'category') data.append('category', targetSelect.value);
+    if (type === 'product') data.append('product', targetSelect.value);
+    if (type === 'page') data.append('customer_page', targetSelect.value);
+    if (type === 'external_url') data.append('external_url', externalUrl.value);
+    if (form.elements.banner_image.files[0]) data.append('banner_image', form.elements.banner_image.files[0]);
+    if (form.elements.popup_image.files[0]) data.append('popup_image', form.elements.popup_image.files[0]);
+    return data;
+  }
+
+  async function loadData() {
+    const [offerRes, categoryRes, productRes] = await Promise.all([
+      AdminApi.get('/api/offers/?all=true'),
+      AdminApi.get('/api/categories/?status=active'),
+      AdminApi.get('/api/products/?status=available')
+    ]);
+    offers = offerRes.data.offers || [];
+    categories = categoryRes.data || [];
+    products = productRes.data.products || [];
+    renderRows();
+    resetForm();
+  }
+
+  async function saveOffer(event) {
+    event.preventDefault();
+    const id = form.elements.id.value;
+    id
+      ? await AdminApi.patch(`/api/offers/${id}/`, buildPayload())
+      : await AdminApi.post('/api/offers/', buildPayload());
+    showToast('Offer saved', 'success');
+    hideToast();
+    await loadData();
+  }
+
+  async function deleteOffer(id) {
+    if (!confirm('Delete this offer?')) return;
+    await AdminApi.delete(`/api/offers/${id}/`);
+    showToast('Offer deleted', 'success');
+    hideToast();
+    await loadData();
+  }
+
+  rows.addEventListener('click', async event => {
+    const editId = event.target.dataset.editId;
+    const removeId = event.target.dataset.removeId;
+    const toggleId = event.target.dataset.toggleId;
+    if (editId) editOffer(Number(editId));
+    if (removeId) await deleteOffer(Number(removeId));
+    if (toggleId) {
+      await AdminApi.patch(`/api/offers/${toggleId}/toggle/`, {});
+      await loadData();
+    }
+  });
+  form.addEventListener('submit', saveOffer);
+  form.elements.redirect_type.addEventListener('change', () => {
+    selectedTarget = currentTargets()[0]?.id || '';
+    renderTargets();
+  });
+  form.elements.show_as_popup.addEventListener('change', () => {
+    popupSettings.hidden = !form.elements.show_as_popup.checked;
+  });
+  targetSearch.addEventListener('input', renderTargets);
+  targetSelect.addEventListener('change', () => { selectedTarget = targetSelect.value; });
+  ['offerSearch', 'statusFilter', 'placementFilter'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderRows);
+  });
+  document.getElementById('newOfferBtn').addEventListener('click', resetForm);
+  document.getElementById('clearBtn').addEventListener('click', resetForm);
+  document.getElementById('reloadBtn').addEventListener('click', loadData);
+  deleteBtn.addEventListener('click', () => deleteOffer(Number(form.elements.id.value)));
+
+  loadData().catch(error => {
+    rows.innerHTML = '<tr><td colspan="6">Unable to load offers.</td></tr>';
+    showToast(error.message || 'Could not load offers', 'danger');
+    hideToast();
+  });
+</script>
+{% endblock %}

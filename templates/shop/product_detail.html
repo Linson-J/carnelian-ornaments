@@ -1,18 +1,22 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ product.name }} - Carmelian</title>
-  <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-</head>
-<body>
-  {% include 'shop/includes/navbar.html' %}
+{% extends 'shop/base.html' %}
+
+{% block title %}{{ product.name }} - Carmelian{% endblock %}
+
+{% block content %}
   <main class="product-detail">
-    <div class="product-detail-image">{% with image=product.images.all|first %}{% if image %}<img src="{{ image.image.url }}" alt="{{ product.name }}">{% endif %}{% endwith %}</div>
-    <div class="product-detail-copy"><p>{{ product.category.name|default:"Collection" }}</p><h1>{{ product.name }}</h1><div class="product-detail-price">₹{{ product.discount_price|default:product.price }}</div><p>{{ product.description }}</p><a href="/" class="hero-btn primary">Continue shopping</a></div>
+    <div class="product-detail-image">
+      {% with image=product.images.all|first %}
+        {% if image %}
+          <img src="{{ image.image.url }}" alt="{{ product.name }}">
+        {% endif %}
+      {% endwith %}
+    </div>
+    <div class="product-detail-copy">
+      <p>{{ product.category.name|default:"Collection" }}</p>
+      <h1>{{ product.name }}</h1>
+      <div class="product-detail-price">Rs. {{ product.discount_price|default:product.price }}</div>
+      <p>{{ product.description }}</p>
+      <a href="/" class="hero-btn primary">Continue shopping</a>
+    </div>
   </main>
-</body>
-</html>
+{% endblock %}

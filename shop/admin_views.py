@@ -1,14 +1,26 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from datetime import timedelta
+
+import bcrypt
 from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
-from datetime import timedelta
-import bcrypt
 
 from .forms import CarouselItemForm
-from .models import AdminUser, LoginAttempt, Product, ProductImage, Category, CategoryTag, CarouselItem, HomeTheme, HomeSection
 from .decorators import admin_login_required
+from .models import (
+    AdminUser,
+    CarouselItem,
+    Category,
+    CategoryTag,
+    HomeSection,
+    HomeTheme,
+    LoginAttempt,
+    Offer,
+    Product,
+    ProductImage,
+)
 
 
 MAX_ATTEMPTS = 5
@@ -17,7 +29,7 @@ LOCKOUT_MINUTES = 15
 
 def _get_ip(request):
     x = request.META.get('HTTP_X_FORWARDED_FOR')
-    return x.split(',')[0].strip() if x else request.META.get('REMOTE_ADDR')
+    return x.split(',')[0].strip() if x else request.META.get('REMOTE_ADDR', '0.0.0.0')
 
 
 def _is_locked(ip):
@@ -69,7 +81,7 @@ def admin_dashboard(request):
     now = timezone.now()
     since = now - timedelta(days=30)
     week = now - timedelta(days=7)
-    admin = AdminUser.objects.get(pk=request.session['admin_id'])
+    admin = get_object_or_404(AdminUser, pk=request.session['admin_id'])
 
     success_logins = LoginAttempt.objects.filter(success=True, attempted_at__gte=since).count()
     failed_logins = LoginAttempt.objects.filter(success=False, attempted_at__gte=since).count()
@@ -94,7 +106,6 @@ def admin_dashboard(request):
     product_count = Product.objects.count()
     new_this_week = Product.objects.filter(created_at__gte=week).count()
 
-    # Dashboard metrics placeholders (orders/customers/sales not implemented yet)
     total_sales = 0
     total_orders = 0
     total_customers = 0
@@ -102,11 +113,10 @@ def admin_dashboard(request):
     low_stock_products = Product.objects.filter(stock__lte=5).count()
     revenue_this_month = 0.0
 
-    # Chart / widget data placeholders
-    sales_chart = []           # e.g. list of {label, value}
-    order_statistics = {}      # e.g. {'today':0,'this_week':0}
-    top_selling = []           # list of product summaries
-    recent_orders = []         # list of recent order dicts
+    sales_chart = []
+    order_statistics = {}
+    top_selling = []
+    recent_orders = []
 
     return render(request, 'adminpanel/dashboard.html', {
         'admin_name': request.session.get('admin_name'),
@@ -137,7 +147,7 @@ def admin_dashboard(request):
 @admin_login_required
 def admin_products(request):
     products = Product.objects.select_related('category').prefetch_related('images').order_by('-created_at')
-    categories = Category.objects.all()
+    categories = Category.objects.order_by('name')
 
     cat = request.GET.get('category')
     status = request.GET.get('status')
@@ -164,7 +174,7 @@ def admin_products(request):
 # ─── Add Product ─────────────────────────────────────────────
 @admin_login_required
 def add_product(request):
-    categories = Category.objects.filter(status=Category.Status.ACTIVE)
+    categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
     return render(request, 'adminpanel/add_product.html', {
         'categories': categories,
         'admin_name': request.session.get('admin_name'),
@@ -176,8 +186,8 @@ def add_product(request):
 # ─── Edit Product ─────────────────────────────────────────────
 @admin_login_required
 def edit_product(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    categories = Category.objects.filter(status=Category.Status.ACTIVE)
+    product = get_object_or_404(Product.objects.select_related('category'), pk=pk)
+    categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
     if product.category_id and product.category.status != Category.Status.ACTIVE:
         categories = Category.objects.filter(pk=product.category_id) | categories
 
@@ -238,8 +248,8 @@ def edit_product(request, pk):
 @admin_login_required
 def admin_categories(request):
     CategoryTag.ensure_defaults()
-    categories = Category.objects.prefetch_related('products', 'tags')
-    tags = CategoryTag.objects.prefetch_related('categories')
+    categories = Category.objects.prefetch_related('products', 'tags').order_by('name')
+    tags = CategoryTag.objects.prefetch_related('categories').order_by('name')
     status = request.GET.get('status')
     search = request.GET.get('search')
     if status:
@@ -363,4 +373,13 @@ def admin_home_sections(request):
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'home_sections',
         'section_count': HomeSection.objects.count(),
+    })
+
+
+@admin_login_required
+def admin_offers(request):
+    return render(request, 'adminpanel/offers.html', {
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'offers',
+        'offer_count': Offer.objects.count(),
     })

@@ -1,7 +1,7 @@
-# ─── FILE 6: shop/decorators.py  (CREATE NEW) ────────────────
-
 from functools import wraps
+
 from django.shortcuts import redirect
+
 
 def admin_login_required(view_func):
     @wraps(view_func)
@@ -9,4 +9,5 @@ def admin_login_required(view_func):
         if not request.session.get('admin_authenticated'):
             return redirect('admin_login')
         return view_func(request, *args, **kwargs)
+
     return wrapper

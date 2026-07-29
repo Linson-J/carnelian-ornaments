@@ -1,0 +1,49 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Categories - Carmelian{% endblock %}
+{% block body_class %}categories-page{% endblock %}
+
+{% block content %}
+    <main class="categories-shell">
+        <header class="categories-hero">
+            <h1>Curated <span class="desktop-only-text">Categories</span><span class="mobile-only-text">Collections</span></h1>
+            <p>Explore our thoughtfully selected categories designed for the modern lifestyle.</p>
+        </header>
+
+        <section class="curated-grid" aria-label="Curated categories">
+            {% for category in categories %}
+                <a class="curated-card curated-card-{{ forloop.counter }}" href="/shop/?category={{ category.slug }}">
+                    {% if category.image %}
+                        <img src="{{ category.image.url }}" alt="{{ category.name }}">
+                    {% else %}
+                        <span class="curated-card-fallback"></span>
+                    {% endif %}
+                    <span class="curated-card-copy">
+                        <strong>{{ category.name }}</strong>
+                        {% if category.description %}
+                            <small>{{ category.description|truncatechars:34 }}</small>
+                        {% endif %}
+                    </span>
+                </a>
+            {% empty %}
+                <p class="categories-empty">Categories will appear here after they are added from the admin panel.</p>
+            {% endfor %}
+        </section>
+
+        <section class="trending-tags" aria-labelledby="trending-tags-title">
+            <h2 id="trending-tags-title">Trending Tags</h2>
+            <div class="trending-tag-list">
+                {% for tag in tags %}
+                    <a href="/categories/?tag={{ tag.slug }}">{{ tag.name }}</a>
+                {% empty %}
+                    <span>Sustainable</span>
+                    <span>Minimalist</span>
+                    <span>Cruelty-Free</span>
+                    <span>Artisan</span>
+                    <span>New Arrivals</span>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+{% endblock %}

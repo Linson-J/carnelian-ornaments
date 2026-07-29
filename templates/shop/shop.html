@@ -1,21 +1,9 @@
-{% load static %}
+{% extends 'shop/base.html' %}
 
-<!DOCTYPE html>
-<html lang="en">
+{% block title %}Shop - Carmelian{% endblock %}
+{% block body_class %}shop-page{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop - Carmelian</title>
-
-    <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-</head>
-
-<body class="shop-page">
-    {% include 'shop/includes/navbar.html' %}
-
+{% block content %}
     <main class="catalog-shell">
         <section class="catalog-hero" aria-labelledby="catalog-title">
             <h1 id="catalog-title">The Summer Curated Shop</h1>
@@ -84,39 +72,9 @@
         </section>
     </main>
 
-    <footer class="site-footer catalog-footer">
-        <div class="catalog-footer-grid">
-            <div>
-                <h2>Carmelian</h2>
-                <p>Elevating the everyday with thoughtfully designed essentials and artisanal finds.</p>
-                <div class="footer-icons">
-                    <a href="#" aria-label="Website"><i class="ri-global-line"></i></a>
-                    <a href="#" aria-label="Share"><i class="ri-share-line"></i></a>
-                </div>
-            </div>
-            <nav aria-label="Shop footer">
-                <strong>Shop</strong>
-                <a href="/shop/">Collection</a>
-                <a href="/shop/">New Arrivals</a>
-                <a href="/shop/">Best Sellers</a>
-                <a href="/shop/">Gift Cards</a>
-            </nav>
-            <nav aria-label="Company footer">
-                <strong>Company</strong>
-                <a href="#">Sustainability</a>
-                <a href="#">Journal</a>
-                <a href="#">Concierge</a>
-                <a href="#">Privacy</a>
-            </nav>
-            <form class="catalog-footer-form" action="#" method="post">
-                <strong>Newsletter</strong>
-                <p>Join our community for early access and editorial stories.</p>
-                <input type="email" placeholder="Email Address" aria-label="Email address">
-                <button type="submit">Subscribe</button>
-            </form>
-        </div>
-    </footer>
+{% endblock %}
 
+{% block extra_js %}
     <script>
         const money = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
         const api = {
@@ -150,6 +108,17 @@
             return String(value || '').replace(/[&<>"']/g, char => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
             }[char]));
+        }
+
+        function safeUrl(value, fallback = '/') {
+            if (!value) return fallback;
+            try {
+                const url = new URL(value, location.origin);
+                if (url.protocol === 'http:' || url.protocol === 'https:') {
+                    return value.startsWith('/') ? `${url.pathname}${url.search}${url.hash}` : url.href;
+                }
+            } catch (error) {}
+            return fallback;
         }
 
         async function getJson(url) {
@@ -240,9 +209,9 @@
             grid.innerHTML = visibleProducts.map(product => {
                 const image = imageOf(product);
                 return `
-                    <a class="catalog-product" href="/products/${escapeHtml(product.slug)}/">
+                    <a class="catalog-product" href="/products/${encodeURIComponent(product.slug || '')}/">
                         <span class="catalog-product-image">
-                            ${image ? `<img src="${image}" alt="${escapeHtml(product.name)}">` : ''}
+                            ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}
                             <span class="catalog-wishlist"><i class="ri-heart-line"></i></span>
                         </span>
                         <span class="catalog-product-name">${escapeHtml(product.name)}</span>
@@ -339,9 +308,6 @@
             renderProducts();
         });
 
-        document.querySelector('.catalog-footer-form').addEventListener('submit', event => event.preventDefault());
         boot();
     </script>
-</body>
-
-</html>
+{% endblock %}

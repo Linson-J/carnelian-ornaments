@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Carmelian{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'shop/css/theme.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% include 'shop/includes/navbar.html' %}
+
+    {% block content %}{% endblock %}
+
+    {% include 'shop/includes/footer.html' %}
+
+    <script src="{% static 'shop/js/newsletter.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

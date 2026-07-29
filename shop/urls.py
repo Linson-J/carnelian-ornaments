@@ -13,7 +13,8 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('', views.home, name='home'),
     path('shop/', views.shop_all, name='shop_all'),
+    path('categories/', views.categories_all, name='categories_all'),
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
-    # path('api/', include('shop.api_urls')),
+    path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     path('swagger/', schema_view.with_ui('swagger'), name='swagger'),
 ]

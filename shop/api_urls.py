@@ -1,43 +1,42 @@
-# ─── shop/api_urls.py ─────────────────────────────────────────
 from django.urls import path
+
 from .api_views import (
-    CategoryListCreateView,
+    ActiveOfferListView,
+    CarouselDetailView,
+    CarouselListCreateView,
     CategoryDetailView,
-    CategoryTagListCreateView,
+    CategoryListCreateView,
     CategoryTagDetailView,
-    ProductListCreateView,
+    CategoryTagListCreateView,
+    HomeSectionDetailView,
+    HomeSectionListCreateView,
+    HomeThemeView,
+    OfferDetailView,
+    OfferListCreateView,
+    OfferToggleStatusView,
+    PopupOfferView,
     ProductDetailView,
     ProductImageView,
-    CarouselListCreateView,
-    CarouselDetailView,
-    HomeThemeView,
-    HomeSectionListCreateView,
-    HomeSectionDetailView,
+    ProductListCreateView,
 )
 
 urlpatterns = [
-    # Categories
-    path('categories/',      CategoryListCreateView.as_view()),
+    path('categories/', CategoryListCreateView.as_view()),
     path('categories/<int:pk>/', CategoryDetailView.as_view()),
-    path('category-tags/',      CategoryTagListCreateView.as_view()),
+    path('category-tags/', CategoryTagListCreateView.as_view()),
     path('category-tags/<int:pk>/', CategoryTagDetailView.as_view()),
-
-    # Products
-    path('products/',            ProductListCreateView.as_view()),
-    path('products/<int:pk>/',   ProductDetailView.as_view()),
-
-    # Product image gallery
-    path('products/<int:pk>/images/',                  ProductImageView.as_view()),
-    path('products/<int:pk>/images/<int:image_id>/',   ProductImageView.as_view()),
-
-    # Carousel
-    path('carousel/',            CarouselListCreateView.as_view()),
-    path('carousel/<int:pk>/',   CarouselDetailView.as_view()),
-
-    # Home theme settings
-    path('theme/',               HomeThemeView.as_view()),
-
-    # Homepage sections
-    path('home-sections/',            HomeSectionListCreateView.as_view()),
-    path('home-sections/<int:pk>/',   HomeSectionDetailView.as_view()),
+    path('products/', ProductListCreateView.as_view()),
+    path('products/<int:pk>/', ProductDetailView.as_view()),
+    path('products/<int:pk>/images/', ProductImageView.as_view()),
+    path('products/<int:pk>/images/<int:image_id>/', ProductImageView.as_view()),
+    path('carousel/', CarouselListCreateView.as_view()),
+    path('carousel/<int:pk>/', CarouselDetailView.as_view()),
+    path('theme/', HomeThemeView.as_view()),
+    path('home-sections/', HomeSectionListCreateView.as_view()),
+    path('home-sections/<int:pk>/', HomeSectionDetailView.as_view()),
+    path('offers/', OfferListCreateView.as_view()),
+    path('offers/active/', ActiveOfferListView.as_view()),
+    path('offers/popup/', PopupOfferView.as_view()),
+    path('offers/<int:pk>/', OfferDetailView.as_view()),
+    path('offers/<int:pk>/toggle/', OfferToggleStatusView.as_view()),
 ]

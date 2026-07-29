@@ -1,9 +1,21 @@
 from django import forms
 
-from .models import CarouselItem, Product
+from .models import CarouselItem, NewsletterSubscription, Product
 
 
 MAX_CAROUSEL_IMAGE_SIZE = 8 * 1024 * 1024
+
+
+class NewsletterSubscriptionForm(forms.ModelForm):
+    class Meta:
+        model = NewsletterSubscription
+        fields = ['email']
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if NewsletterSubscription.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('This email is already subscribed.')
+        return email
 
 
 class CarouselItemForm(forms.ModelForm):
