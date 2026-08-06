@@ -16,6 +16,13 @@
       <h1>{{ product.name }}</h1>
       <div class="product-detail-price">Rs. {{ product.discount_price|default:product.price }}</div>
       <p>{{ product.description }}</p>
+      <div class="product-detail-actions" style="margin: 2rem 0; display: flex; gap: 1rem; align-items: center;">
+          <button class="hero-btn primary" onclick="window.addToCart({{ product.id }})" style="flex: 1; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Add to Cart</button>
+          <button class="hero-btn" onclick="window.buyNow({{ product.id }})" style="flex: 1; background: var(--text-dark, #1a1c1a); color: var(--background, #fffdfa); border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Buy Now</button>
+          <button class="wishlist-btn" onclick="window.addToWishlist({{ product.id }})" style="background: none; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark, #1a1c1a);">
+              <i class="ri-heart-line" style="font-size: 1.3rem;"></i>
+          </button>
+      </div>
       <a href="/" class="hero-btn primary">Continue shopping</a>
     </div>
   </main>

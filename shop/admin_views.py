@@ -21,6 +21,7 @@ from .models import (
     Offer,
     Product,
     ProductImage,
+    Favorite,
 )
 
 
@@ -409,3 +410,36 @@ def delete_subscription(request, pk):
     subscription.delete()
     messages.success(request, f'Subscription for {email} deleted.')
     return redirect('admin_subscriptions')
+
+
+@admin_login_required
+def admin_customers(request):
+    from django.contrib.auth.models import User
+    from django.db.models import Count
+
+    search = request.GET.get('search', '').strip()
+    customers = User.objects.filter(is_superuser=False, is_staff=False).annotate(
+        favorites_count=Count('favorites')
+    ).order_by('-date_joined')
+
+    if search:
+        customers = customers.filter(email__icontains=search)
+
+    return render(request, 'adminpanel/customers.html', {
+        'customers': customers,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'customers',
+        'customer_count': customers.count(),
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_customer(request, pk):
+    from django.contrib.auth.models import User
+    customer = get_object_or_404(User, pk=pk, is_superuser=False, is_staff=False)
+    email = customer.email
+    customer.delete()
+    messages.success(request, f'Customer account for {email} has been deleted.')
+    return redirect('admin_customers')

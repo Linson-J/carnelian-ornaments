@@ -20,5 +20,7 @@ urlpatterns = [
     path('login-logs/', admin_views.admin_login_logs, name='admin_login_logs'),
     path('subscriptions/', admin_views.admin_subscriptions, name='admin_subscriptions'),
     path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
+    path('customers/', admin_views.admin_customers, name='admin_customers'),
+    path('customers/<int:pk>/delete/', admin_views.delete_customer, name='delete_customer'),
     path('settings/', admin_views.admin_settings, name='admin_settings'),
 ]

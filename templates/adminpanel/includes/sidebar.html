@@ -23,8 +23,9 @@
     <a href="#" class="nav-item">
       <span class="nav-icon">OR</span> Orders
     </a>
-    <a href="#" class="nav-item">
+    <a href="{% url 'admin_customers' %}" class="nav-item{% if active_nav == 'customers' %} active{% endif %}">
       <span class="nav-icon">CU</span> Customers
+      {% if customer_count %}<span class="nav-badge">{{ customer_count }}</span>{% endif %}
     </a>
   </div>
 

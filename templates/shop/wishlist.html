@@ -1,0 +1,358 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}My Wishlist - Carmelian{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Theme color variables fallback */
+    :root {
+        --wishlist-bg: #fffdfa;
+        --wishlist-card-bg: rgba(255, 255, 255, 0.6);
+        --wishlist-text-dark: #1a1c1a;
+        --wishlist-text-light: #504444;
+        --wishlist-primary: #7c5357;
+        --wishlist-border: rgba(0, 0, 0, 0.08);
+        --wishlist-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .wishlist-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4rem 1.5rem 6rem;
+        min-height: 70vh;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .wishlist-header {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    .wishlist-header h1 {
+        font-family: 'Noto Serif', serif;
+        font-size: 3rem;
+        color: var(--wishlist-text-dark);
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+
+    .wishlist-header p {
+        color: var(--wishlist-text-light);
+        font-size: 1.1rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Wishlist Grid */
+    .wishlist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 2.5rem;
+    }
+
+    /* Wishlist Card */
+    .wishlist-card {
+        background: var(--wishlist-card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--wishlist-border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--wishlist-shadow);
+        transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+    }
+
+    .wishlist-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    /* Wishlist Image Wrapper */
+    .wishlist-image-wrapper {
+        position: relative;
+        padding-top: 125%; /* 4:5 aspect ratio */
+        background: #f0ebe4;
+        overflow: hidden;
+    }
+
+    .wishlist-image-wrapper img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+
+    .wishlist-card:hover .wishlist-image-wrapper img {
+        transform: scale(1.05);
+    }
+
+    /* Remove Button */
+    .remove-wishlist-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--wishlist-primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+        z-index: 2;
+    }
+
+    .remove-wishlist-btn:hover {
+        transform: scale(1.1);
+        background: var(--wishlist-primary);
+        color: #fff;
+    }
+
+    /* Wishlist Card Content */
+    .wishlist-info {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .wishlist-product-name {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--wishlist-text-dark);
+        text-decoration: none;
+        margin-bottom: 0.5rem;
+        transition: color 0.2s ease;
+        line-height: 1.4;
+    }
+
+    .wishlist-product-name:hover {
+        color: var(--wishlist-primary);
+    }
+
+    .wishlist-product-price {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--wishlist-text-light);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Actions */
+    .wishlist-add-to-cart {
+        background: var(--wishlist-text-dark);
+        color: #fffdfa;
+        border: none;
+        padding: 0.9rem;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.25s ease, transform 0.2s ease;
+        text-align: center;
+        width: 100%;
+        margin-top: auto;
+    }
+
+    .wishlist-add-to-cart:hover {
+        background: var(--wishlist-primary);
+        transform: translateY(-1px);
+    }
+
+    /* Empty and Unauthenticated States */
+    .wishlist-state-card {
+        background: var(--wishlist-card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--wishlist-border);
+        border-radius: 16px;
+        padding: 5rem 2rem;
+        text-align: center;
+        max-width: 500px;
+        margin: 2rem auto 0;
+        box-shadow: var(--wishlist-shadow);
+    }
+
+    .wishlist-state-icon {
+        font-size: 4rem;
+        color: var(--wishlist-primary);
+        opacity: 0.5;
+        margin-bottom: 1.5rem;
+    }
+
+    .wishlist-state-card h2 {
+        font-family: 'Noto Serif', serif;
+        font-size: 2rem;
+        color: var(--wishlist-text-dark);
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    .wishlist-state-card p {
+        color: var(--wishlist-text-light);
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+        font-size: 1.05rem;
+    }
+
+    .wishlist-state-btn {
+        display: inline-block;
+        background: var(--wishlist-text-dark);
+        color: #fffdfa;
+        text-decoration: none;
+        padding: 1rem 2.5rem;
+        border-radius: 30px;
+        font-weight: 500;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .wishlist-state-btn:hover {
+        background: var(--wishlist-primary);
+        transform: translateY(-2px);
+    }
+
+    /* Fade-out Animation for Removal */
+    .fade-out {
+        opacity: 0;
+        transform: scale(0.9);
+        transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="wishlist-container">
+    {% if not is_auth %}
+        <!-- Unauthenticated State -->
+        <div class="wishlist-state-card">
+            <div class="wishlist-state-icon"><i class="ri-lock-2-line"></i></div>
+            <h2>Unlock Your Wishlist</h2>
+            <p>Save your favorite pieces, track stock status, and curate your collections. Sign in to access your personal wishlist.</p>
+            <a href="javascript:void(0)" class="wishlist-state-btn" onclick="window.openAuthModal()">Sign In / Sign Up</a>
+        </div>
+    {% else %}
+        <!-- Authenticated State -->
+        <div class="wishlist-header">
+            <h1>My Wishlist</h1>
+            <p>A curated collection of your favorite pieces. Add them to your cart to purchase or manage them at any time.</p>
+        </div>
+
+        <div class="wishlist-grid" id="wishlistGrid">
+            {% for favorite in favorites %}
+                {% with product=favorite.product %}
+                    <div class="wishlist-card" id="wishlist-card-{{ product.id }}">
+                        <div class="wishlist-image-wrapper">
+                            {% with image=product.images.all|first %}
+                                {% if image %}
+                                    <img src="{{ image.image.url }}" alt="{{ product.name }}">
+                                {% else %}
+                                    <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e5dfd8;color:#a59d95;">
+                                        <i class="ri-image-line" style="font-size:2.5rem;"></i>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                            <button class="remove-wishlist-btn" onclick="removeWishlistItem({{ product.id }})" aria-label="Remove from wishlist">
+                                <i class="ri-heart-fill"></i>
+                            </button>
+                        </div>
+                        <div class="wishlist-info">
+                            <a href="/products/{{ product.slug }}/" class="wishlist-product-name">{{ product.name }}</a>
+                            <div class="wishlist-product-price">Rs. {{ product.discount_price|default:product.price }}</div>
+                            <button class="wishlist-add-to-cart" onclick="window.addToCart({{ product.id }})">Add to Cart</button>
+                        </div>
+                    </div>
+                {% endwith %}
+            {% empty %}
+                <!-- Empty State within Grid -->
+                <div style="grid-column: 1 / -1;" id="wishlistEmptyState">
+                    <div class="wishlist-state-card">
+                        <div class="wishlist-state-icon"><i class="ri-heart-line"></i></div>
+                        <h2>Your Wishlist is Empty</h2>
+                        <p>Explore our thoughtfully designed collection and save the items you love to view them here later.</p>
+                        <a href="/shop/" class="wishlist-state-btn">Explore Collection</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function removeWishlistItem(productId) {
+        const card = document.getElementById(`wishlist-card-${productId}`);
+        if (!card) return;
+
+        try {
+            const response = await fetch('/wishlist/remove/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Apply a smooth fade out and scale down animation
+                card.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    card.remove();
+                    
+                    // If no wishlist cards are left, show the empty state dynamically
+                    const grid = document.getElementById('wishlistGrid');
+                    const remainingCards = grid.querySelectorAll('.wishlist-card');
+                    if (remainingCards.length === 0) {
+                        grid.innerHTML = `
+                            <div style="grid-column: 1 / -1;">
+                                <div class="wishlist-state-card">
+                                    <div class="wishlist-state-icon"><i class="ri-heart-line"></i></div>
+                                    <h2>Your Wishlist is Empty</h2>
+                                    <p>Explore our thoughtfully designed collection and save the items you love to view them here later.</p>
+                                    <a href="/shop/" class="wishlist-state-btn">Explore Collection</a>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }, 400);
+
+                window.showToast(data.message || 'Removed from wishlist.');
+            } else {
+                window.showToast(data.message || 'Failed to remove from wishlist.');
+            }
+        } catch (err) {
+            window.showToast('A connection error occurred.');
+        }
+    }
+
+    // Helper to get cookies (like CSRF token)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

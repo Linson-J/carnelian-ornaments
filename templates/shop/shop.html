@@ -3,6 +3,52 @@
 {% block title %}Shop - Carmelian{% endblock %}
 {% block body_class %}shop-page{% endblock %}
 
+{% block extra_css %}
+<style>
+/* CSS overrides for mobile slide-out sidebar filters */
+@media (max-width: 768px) {
+    .catalog-sidebar {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        right: -300px;
+        width: 300px;
+        height: 100vh;
+        background: #111111 !important;
+        z-index: 3000;
+        padding: 30px 24px;
+        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        transition: right 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        overflow-y: auto;
+    }
+    .catalog-sidebar.active {
+        right: 0;
+    }
+    .mobile-sidebar-header {
+        display: flex !important;
+    }
+    .filter-block h2 {
+        color: #ffffff !important;
+    }
+    .category-filter-list button {
+        color: #b3aaa7 !important;
+    }
+    .category-filter-list button.active {
+        color: var(--primary) !important;
+    }
+    .category-filter-list small {
+        color: #74706d !important;
+    }
+    .price-range-labels {
+        color: #b3aaa7 !important;
+    }
+    .rating-filter {
+        color: #b3aaa7 !important;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
     <main class="catalog-shell">
         <section class="catalog-hero" aria-labelledby="catalog-title">
@@ -21,6 +67,11 @@
 
         <section class="catalog-layout" aria-label="Product catalog">
             <aside class="catalog-sidebar" data-sidebar>
+                <!-- Mobile Close Header -->
+                <div class="mobile-sidebar-header" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                    <h3 style="font-family: 'Noto Serif', serif; font-size: 1.3rem; margin: 0; color: #fff;">Filters</h3>
+                    <button type="button" data-close-filters style="background: none; border: none; color: #fff; font-size: 1.6rem; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+                </div>
                 <div class="filter-block">
                     <h2>Categories</h2>
                     <div class="category-filter-list" data-category-filters></div>
@@ -212,7 +263,7 @@
                     <a class="catalog-product" href="/products/${encodeURIComponent(product.slug || '')}/">
                         <span class="catalog-product-image">
                             ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}
-                            <span class="catalog-wishlist"><i class="ri-heart-line"></i></span>
+                            <span class="catalog-wishlist" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});"><i class="ri-heart-line"></i></span>
                         </span>
                         <span class="catalog-product-name">${escapeHtml(product.name)}</span>
                         <span class="catalog-product-price">${money.format(priceOf(product))}</span>
@@ -307,6 +358,33 @@
             state.visible += currentVisibleStart();
             renderProducts();
         });
+
+        // Mobile filter drawer toggle logic
+        const mobileFilterBtn = document.querySelector('[data-mobile-filter]');
+        const closeFiltersBtn = document.querySelector('[data-close-filters]');
+        const sidebar = document.querySelector('[data-sidebar]');
+        const mainOverlay = document.getElementById('overlay');
+
+        if (mobileFilterBtn && sidebar && mainOverlay) {
+            mobileFilterBtn.addEventListener('click', () => {
+                sidebar.classList.add('active');
+                mainOverlay.classList.add('active');
+            });
+        }
+
+        const hideFilters = () => {
+            if (sidebar && mainOverlay) {
+                sidebar.classList.remove('active');
+                mainOverlay.classList.remove('active');
+            }
+        };
+
+        if (closeFiltersBtn) {
+            closeFiltersBtn.addEventListener('click', hideFilters);
+        }
+        if (mainOverlay) {
+            mainOverlay.addEventListener('click', hideFilters);
+        }
 
         boot();
     </script>

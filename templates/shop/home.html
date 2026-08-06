@@ -233,7 +233,10 @@
                 return `
                     <a class="product-card" href="/products/${encodeURIComponent(product.slug || '')}/">
                         <span class="product-badge">${escapeHtml(index === 0 ? 'New' : index === 1 ? 'Trending' : category)}</span>
-                        <span class="product-image">${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}</span>
+                        <span class="product-image" style="position: relative;">
+                            ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}
+                            <span class="catalog-wishlist" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});" style="position: absolute; top: 1rem; right: 1rem; background: var(--background, #fffdfa); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: var(--text-dark, #1a1c1a); z-index: 10; cursor: pointer;"><i class="ri-heart-line"></i></span>
+                        </span>
                         <span class="product-meta">
                             <small>${escapeHtml(category)}</small>
                             <strong>${escapeHtml(product.name)}</strong>

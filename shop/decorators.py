@@ -11,3 +11,15 @@ def admin_login_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapper
+
+
+def login_required_ajax(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            from django.http import JsonResponse
+            return JsonResponse({'login_required': True}, status=401)
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+

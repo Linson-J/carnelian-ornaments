@@ -7,8 +7,8 @@
     </div>
     <div class="mobile-links">
         <a href="/shop/">Shop</a>
-        <a href="#">New Arrivals</a>
-        <a href="#">Collections</a>
+        <a href="/shop/?sort=newest">New Arrivals</a>
+        <a href="/categories/">Collections</a>
         <a href="#">Sustainability</a>
     </div>
     <div class="mobile-icons">
@@ -25,17 +25,72 @@
             <a href="/" class="logo">Carmelian</a>
             <div class="nav-links">
                 <a href="/shop/">Shop</a>
-                <a href="#">Collections</a>
+                <div class="nav-dropdown-trigger">
+                    <a href="javascript:void(0)" class="collections-link" style="cursor: default;">Collections <i
+                            class="ri-arrow-down-s-line dropdown-arrow"></i></a>
+                    <div class="mega-menu">
+                        <div class="mega-menu-grid">
+                            <!-- Column 1: Featured Promo -->
+                            <div class="mega-menu-column promo-column">
+                                <div class="promo-card">
+                                    <div class="promo-image"
+                                        style="background-image: url('https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=350&auto=format&fit=crop');">
+                                    </div>
+                                    <div class="promo-overlay">
+                                        <h3>Ethically Crafted</h3>
+                                        <p>Discover our range of sustainable jewelry designed to last.</p>
+                                        <a href="/shop/" class="promo-btn">Explore Shop</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Dynamic Columns: Categories -->
+                            {% for category in all_categories %}
+                            <div class="mega-menu-column">
+                                <h4 class="category-title">
+                                    <a href="/shop/?category={{ category.slug }}">{{ category.name }}</a>
+                                </h4>
+                                <ul class="product-list">
+                                    {% for product in category.products.all|slice:":5" %}
+                                    <li><a href="/products/{{ product.slug }}/">{{ product.name }}</a></li>
+                                    {% empty %}
+                                    <li><span class="no-items">No items available</span></li>
+                                    {% endfor %}
+                                    <li class="view-all-link">
+                                        <a href="/shop/?category={{ category.slug }}">
+                                            View All <i class="ri-arrow-right-line"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
                 <a href="#">Sustainability</a>
             </div>
         </div>
         <div class="nav-right">
             <div class="nav-icon"><i class="ri-search-line"></i></div>
-            <div class="nav-icon"><i class="ri-heart-line"></i></div>
-            <div class="nav-icon"><i class="ri-shopping-bag-line"></i></div>
-            <div class="profile-image">
-                <img src="https://i.pravatar.cc/100" alt="">
+            <a href="/wishlist/" class="nav-icon" style="color: inherit;"><i class="ri-heart-line"></i></a>
+            <a href="/shop/#cart" class="nav-icon" style="color: inherit;"><i class="ri-shopping-bag-line"></i></a>
+            {% if request.user.is_authenticated %}
+            <div class="profile-dropdown-wrapper">
+                <div class="profile-image" id="profileDropdownBtn" style="cursor: pointer;">
+                    <img src="https://api.dicebear.com/7.x/initials/svg?seed={{ request.user.email }}" alt="Profile"
+                        style="border-radius: 50%;">
+                </div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="dropdown-header">{{ request.user.email }}</div>
+                    <a href="/wishlist/"><i class="ri-heart-line"></i> Wishlist</a>
+                    <a href="#" id="navbarLogoutBtn"><i class="ri-logout-box-line"></i> Logout</a>
+                </div>
             </div>
+            {% else %}
+            <button type="button" class="nav-icon" id="navbarLoginBtn"
+                style="background: none; border: none; cursor: pointer; color: inherit; padding: 0;">
+                <i class="ri-user-line"></i>
+            </button>
+            {% endif %}
         </div>
     </div>
 </nav>
@@ -45,21 +100,28 @@
         <i class="ri-store-2-fill"></i>
         <span>Shop</span>
     </a>
-    <a href="#" class="bottom-nav-item">
+    <a href="/wishlist/" class="bottom-nav-item">
         <i class="ri-heart-line"></i>
         <span>Wishlist</span>
     </a>
-    <a href="#" class="bottom-nav-item">
+    <a href="/shop/#cart" class="bottom-nav-item">
         <span class="bottom-nav-icon">
             <i class="ri-shopping-bag-line"></i>
             <span class="bottom-nav-badge" aria-label="0 cart items">0</span>
         </span>
         <span>Cart</span>
     </a>
-    <a href="#" class="bottom-nav-item">
+    {% if request.user.is_authenticated %}
+    <a href="#" class="bottom-nav-item" id="mobileLogoutBtn">
+        <i class="ri-logout-box-line"></i>
+        <span>Logout</span>
+    </a>
+    {% else %}
+    <a href="#" class="bottom-nav-item" id="mobileLoginBtn">
         <i class="ri-user-line"></i>
         <span>Profile</span>
     </a>
+    {% endif %}
 </nav>
 
 <script>

@@ -1,0 +1,1102 @@
+{% load static %}
+<div class="auth-modal-backdrop" id="authModalBackdrop" hidden>
+    <div class="auth-modal-card" id="authModalCard">
+        <button class="auth-modal-close" type="button" aria-label="Close modal" id="authModalCloseBtn">
+            <i class="ri-close-line"></i>
+        </button>
+
+        <!-- STEP 1: LOGIN SCREEN -->
+        <div class="auth-step-panel active" id="panelLogin">
+            <h2 class="auth-title">Welcome to Carmelian</h2>
+            <p class="auth-subtitle">Sign in to your account to continue</p>
+            <div class="auth-error-msg" id="loginError" hidden></div>
+            <form id="formLogin" novalidate>
+                <div class="auth-input-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="name@example.com" required>
+                </div>
+                <div class="auth-input-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+                <div class="auth-actions-row">
+                    <a href="#" class="auth-link" id="linkForgotPassword">Forgot Password?</a>
+                </div>
+                <button type="submit" class="auth-btn-primary">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
+                </button>
+            </form>
+            <div class="auth-divider"><span>or</span></div>
+            <a href="#" class="auth-btn-google" id="btnGoogleLogin">
+                <i class="ri-google-fill"></i> Continue with Google
+            </a>
+            <p class="auth-switch-text">Don't have an account? <a href="#" class="auth-link" id="linkGoToSignup">Sign Up</a></p>
+        </div>
+
+        <!-- STEP 2: SIGNUP SCREEN -->
+        <div class="auth-step-panel" id="panelSignup" hidden>
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Join us to save items and manage orders</p>
+            <div class="auth-error-msg" id="signupError" hidden></div>
+            <form id="formSignup" novalidate>
+                <div class="auth-input-group">
+                    <label for="signupEmail">Email Address</label>
+                    <input type="email" id="signupEmail" placeholder="name@example.com" required>
+                </div>
+                <div class="auth-input-group">
+                    <label for="signupPassword">Password (Min. 8 characters)</label>
+                    <input type="password" id="signupPassword" placeholder="••••••••" required>
+                </div>
+                <div class="auth-input-group">
+                    <label for="signupConfirmPassword">Confirm Password</label>
+                    <input type="password" id="signupConfirmPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="auth-btn-primary">
+                    <span class="btn-text">Create Account</span>
+                    <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
+                </button>
+            </form>
+            <p class="auth-switch-text">Already have an account? <a href="#" class="auth-link" id="linkGoToLogin">Sign In</a></p>
+        </div>
+
+        <!-- STEP 3: FORGOT PASSWORD (REQUEST OTP) -->
+        <div class="auth-step-panel" id="panelForgot" hidden>
+            <h2 class="auth-title">Reset Password</h2>
+            <p class="auth-subtitle">Enter your email and we'll send you a 4-digit verification code</p>
+            <div class="auth-error-msg" id="forgotError" hidden></div>
+            <form id="formForgot" novalidate>
+                <div class="auth-input-group">
+                    <label for="forgotEmail">Email Address</label>
+                    <input type="email" id="forgotEmail" placeholder="name@example.com" required>
+                </div>
+                <button type="submit" class="auth-btn-primary">
+                    <span class="btn-text">Send Code</span>
+                    <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
+                </button>
+            </form>
+            <p class="auth-switch-text"><a href="#" class="auth-link" id="linkForgotBackToLogin">Back to Sign In</a></p>
+        </div>
+
+        <!-- STEP 4: VERIFY OTP -->
+        <div class="auth-step-panel" id="panelVerifyOTP" hidden>
+            <h2 class="auth-title">Verify Code</h2>
+            <p class="auth-subtitle">We sent a 4-digit code to your email. Enter it below.</p>
+            <div class="auth-error-msg" id="verifyOTPError" hidden></div>
+            <form id="formVerifyOTP" novalidate>
+                <div class="otp-input-container">
+                    <input type="text" class="otp-box" maxlength="1" pattern="\d*" required id="otp1">
+                    <input type="text" class="otp-box" maxlength="1" pattern="\d*" required id="otp2">
+                    <input type="text" class="otp-box" maxlength="1" pattern="\d*" required id="otp3">
+                    <input type="text" class="otp-box" maxlength="1" pattern="\d*" required id="otp4">
+                </div>
+                <div class="otp-cooldown-row">
+                    <button type="button" class="otp-resend-btn" id="btnResendOTP" disabled>Resend Code (30s)</button>
+                </div>
+                <button type="submit" class="auth-btn-primary">
+                    <span class="btn-text">Verify Code</span>
+                    <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
+                </button>
+            </form>
+            <p class="auth-switch-text"><a href="#" class="auth-link" id="linkVerifyBackToForgot">Back</a></p>
+        </div>
+
+        <!-- STEP 5: RESET PASSWORD -->
+        <div class="auth-step-panel" id="panelResetPassword" hidden>
+            <h2 class="auth-title">New Password</h2>
+            <p class="auth-subtitle">Enter a new secure password for your account</p>
+            <div class="auth-error-msg" id="resetPasswordError" hidden></div>
+            <form id="formResetPassword" novalidate>
+                <div class="auth-input-group">
+                    <label for="resetNewPassword">New Password</label>
+                    <input type="password" id="resetNewPassword" placeholder="••••••••" required>
+                </div>
+                <div class="auth-input-group">
+                    <label for="resetConfirmPassword">Confirm Password</label>
+                    <input type="password" id="resetConfirmPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="auth-btn-primary">
+                    <span class="btn-text">Reset Password</span>
+                    <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* CSS Styling for Authentication Modals - Monochrome Glassmorphism Theme */
+
+.auth-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}
+
+.auth-modal-backdrop.active {
+    display: flex;
+}
+
+.auth-modal-card {
+    background: var(--background, #fffdfa);
+    color: var(--text-dark, #1a1c1a);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    width: 92%;
+    max-width: 440px;
+    padding: 2.5rem;
+    position: relative;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
+    animation: authModalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes authModalScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.auth-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--text-light, #504444);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.auth-modal-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-dark, #1a1c1a);
+}
+
+.auth-step-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-step-panel[hidden] {
+    display: none !important;
+}
+
+.auth-title {
+    font-family: 'Noto Serif', serif;
+    font-size: 1.75rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
+
+.auth-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-light, #504444);
+    margin-bottom: 1.75rem;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.auth-error-msg {
+    background: #fdf2f2;
+    color: #c81e1e;
+    border: 1px solid #fde8e8;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+    line-height: 1.4;
+}
+
+.auth-input-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+}
+
+.auth-input-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark, #1a1c1a);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.auth-input-group input {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-dark, #1a1c1a);
+    transition: all 0.2s ease;
+}
+
+.auth-input-group input:focus {
+    outline: none;
+    border-color: var(--primary, #7c5357);
+    background: var(--surface, #ffffff);
+    box-shadow: 0 0 0 3px rgba(124, 83, 87, 0.1);
+}
+
+.auth-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.auth-link {
+    font-size: 0.85rem;
+    color: var(--primary, #7c5357);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+    color: var(--text-dark, #1a1c1a);
+    text-decoration: underline;
+}
+
+.auth-btn-primary {
+    background: var(--text-dark, #1a1c1a);
+    color: var(--background, #fffdfa);
+    border: none;
+    border-radius: 8px;
+    padding: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+
+.auth-btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.auth-btn-primary:active {
+    transform: translateY(0);
+}
+
+.auth-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-spinner {
+    display: inline-flex;
+    margin-left: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.spin {
+    animation: authSpin 1s infinite linear;
+}
+
+@keyframes authSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-light, #504444);
+    font-size: 0.85rem;
+    margin: 1.5rem 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.auth-divider:not(:empty)::before {
+    margin-right: .75em;
+}
+
+.auth-divider:not(:empty)::after {
+    margin-left: .75em;
+}
+
+.auth-btn-google {
+    background: var(--surface, #ffffff);
+    color: var(--text-dark, #1a1c1a);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-decoration: none;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.auth-btn-google:hover {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.auth-switch-text {
+    font-size: 0.9rem;
+    color: var(--text-light, #504444);
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+/* OTP Code Specifics */
+.otp-input-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.otp-box {
+    width: 60px;
+    height: 60px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    background: rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.otp-box:focus {
+    outline: none;
+    border-color: var(--primary, #7c5357);
+    background: var(--surface, #ffffff);
+    box-shadow: 0 0 0 3px rgba(124, 83, 87, 0.1);
+}
+
+.otp-cooldown-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.otp-resend-btn {
+    background: none;
+    border: none;
+    color: var(--primary, #7c5357);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.otp-resend-btn:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.otp-resend-btn:disabled {
+    color: var(--text-light, #504444);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Navbar Profile Dropdown Styles */
+.profile-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-dropdown {
+    position: absolute;
+    right: 0;
+    top: 120%;
+    background: var(--background, #fffdfa);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    min-width: 200px;
+    z-index: 1000;
+    display: none;
+    padding: 0.5rem 0;
+    animation: dropdownFadeIn 0.2s ease;
+}
+
+.profile-dropdown.active {
+    display: block;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.profile-dropdown .dropdown-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-light, #504444);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    margin-bottom: 0.25rem;
+    word-break: break-all;
+}
+
+.profile-dropdown a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    color: var(--text-dark, #1a1c1a);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.2s ease;
+}
+
+.profile-dropdown a:hover {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--primary, #7c5357);
+}
+</style>
+
+<script>
+(function() {
+    // --- State & Selectors ---
+    const state = {
+        email: '',
+        otpCode: '',
+        cooldown: 0,
+        cooldownTimer: null,
+        successCallback: null
+    };
+
+    const backdrop = document.getElementById('authModalBackdrop');
+    const closeBtn = document.getElementById('authModalCloseBtn');
+    
+    const panels = {
+        login: document.getElementById('panelLogin'),
+        signup: document.getElementById('panelSignup'),
+        forgot: document.getElementById('panelForgot'),
+        verify: document.getElementById('panelVerifyOTP'),
+        reset: document.getElementById('panelResetPassword')
+    };
+
+    const forms = {
+        login: document.getElementById('formLogin'),
+        signup: document.getElementById('formSignup'),
+        forgot: document.getElementById('formForgot'),
+        verify: document.getElementById('formVerifyOTP'),
+        reset: document.getElementById('formResetPassword')
+    };
+
+    // --- Helper functions ---
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function switchPanel(activeId) {
+        Object.entries(panels).forEach(([key, panel]) => {
+            if (panel) {
+                const isActive = panel.id === activeId;
+                panel.hidden = !isActive;
+                if (isActive) panel.classList.add('active');
+                else panel.classList.remove('active');
+            }
+        });
+        
+        // Clear all errors
+        document.querySelectorAll('.auth-error-msg').forEach(el => {
+            el.hidden = true;
+            el.textContent = '';
+        });
+    }
+
+    function openAuthModal() {
+        backdrop.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        switchPanel('panelLogin');
+    }
+
+    function closeAuthModal() {
+        backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+        state.successCallback = null;
+    }
+
+    function showSpinner(formEl, show) {
+        const btn = formEl.querySelector('.auth-btn-primary');
+        if (btn) {
+            btn.disabled = show;
+            const text = btn.querySelector('.btn-text');
+            const spinner = btn.querySelector('.btn-spinner');
+            if (text) text.style.opacity = show ? '0' : '1';
+            if (spinner) spinner.hidden = !show;
+        }
+    }
+
+    function showError(errorElId, msg) {
+        const errEl = document.getElementById(errorElId);
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.hidden = false;
+        }
+    }
+
+    function startResendCooldown() {
+        const btn = document.getElementById('btnResendOTP');
+        if (!btn) return;
+        state.cooldown = 30;
+        btn.disabled = true;
+        
+        clearInterval(state.cooldownTimer);
+        state.cooldownTimer = setInterval(() => {
+            state.cooldown--;
+            if (state.cooldown <= 0) {
+                clearInterval(state.cooldownTimer);
+                btn.disabled = false;
+                btn.textContent = 'Resend Code';
+            } else {
+                btn.textContent = `Resend Code (${state.cooldown}s)`;
+            }
+        }, 1000);
+    }
+
+    // --- Dynamic Google Redirect URL ---
+    const googleBtn = document.getElementById('btnGoogleLogin');
+    if (googleBtn) {
+        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        googleBtn.href = `/accounts/google/login/?process=login&next=${nextUrl}`;
+    }
+
+    // --- Event Listeners for Navigation ---
+    document.getElementById('linkGoToSignup')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPanel('panelSignup');
+    });
+
+    document.getElementById('linkGoToLogin')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPanel('panelLogin');
+    });
+
+    document.getElementById('linkForgotPassword')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPanel('panelForgot');
+    });
+
+    document.getElementById('linkForgotBackToLogin')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPanel('panelLogin');
+    });
+
+    document.getElementById('linkVerifyBackToForgot')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPanel('panelForgot');
+    });
+
+    closeBtn.addEventListener('click', closeAuthModal);
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeAuthModal();
+    });
+
+    // --- Profile Dropdown Toggle ---
+    const profileBtn = document.getElementById('profileDropdownBtn');
+    const profileDropdown = document.getElementById('profileDropdown');
+    
+    if (profileBtn && profileDropdown) {
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('active');
+        });
+        document.addEventListener('click', () => {
+            profileDropdown.classList.remove('active');
+        });
+    }
+
+    // Navbar Login Button
+    document.getElementById('navbarLoginBtn')?.addEventListener('click', openAuthModal);
+    document.getElementById('mobileLoginBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAuthModal();
+    });
+
+    // Navbar Logout Button
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        const csrfToken = getCookie('csrftoken');
+        const response = await fetch('/auth/logout/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            window.location.reload();
+        }
+    };
+    document.getElementById('navbarLogoutBtn')?.addEventListener('click', handleLogout);
+    document.getElementById('mobileLogoutBtn')?.addEventListener('click', handleLogout);
+
+    // --- OTP Input Auto-Tabbing ---
+    const otpBoxes = document.querySelectorAll('.otp-box');
+    otpBoxes.forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.length === 1 && index < otpBoxes.length - 1) {
+                otpBoxes[index + 1].focus();
+            }
+        });
+
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                otpBoxes[index - 1].focus();
+            }
+        });
+    });
+
+    // --- API Handlers ---
+
+    // 1. LOGIN Form Submit
+    forms.login.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showSpinner(forms.login, true);
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        try {
+            const response = await fetch('/auth/login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                window.isUserAuthenticated = true;
+                window.currentUserEmail = email;
+                
+                // Complete original action or reload
+                const cb = state.successCallback;
+                closeAuthModal();
+                if (typeof cb === 'function') {
+                    cb();
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                showError('loginError', data.message || 'Login failed.');
+            }
+        } catch (err) {
+            showError('loginError', 'A connection error occurred.');
+        } finally {
+            showSpinner(forms.login, false);
+        }
+    });
+
+    // 2. SIGNUP Form Submit
+    forms.signup.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showSpinner(forms.signup, true);
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirm_password = document.getElementById('signupConfirmPassword').value;
+
+        if (password.length < 8) {
+            showError('signupError', 'Password must be at least 8 characters long.');
+            showSpinner(forms.signup, false);
+            return;
+        }
+
+        if (password !== confirm_password) {
+            showError('signupError', 'Passwords do not match.');
+            showSpinner(forms.signup, false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/signup/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ email, password, confirm_password })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                window.isUserAuthenticated = true;
+                window.currentUserEmail = email;
+                const cb = state.successCallback;
+                closeAuthModal();
+                if (typeof cb === 'function') {
+                    cb();
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                showError('signupError', data.message || 'Sign up failed.');
+            }
+        } catch (err) {
+            showError('signupError', 'A connection error occurred.');
+        } finally {
+            showSpinner(forms.signup, false);
+        }
+    });
+
+    // 3. REQUEST OTP Form Submit
+    forms.forgot.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showSpinner(forms.forgot, true);
+        const email = document.getElementById('forgotEmail').value.trim();
+        state.email = email;
+
+        try {
+            const response = await fetch('/auth/otp/request/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                switchPanel('panelVerifyOTP');
+                startResendCooldown();
+                if (data.debug_otp) {
+                    console.log("DEBUG OTP RECEIVED:", data.debug_otp);
+                    const codeChars = data.debug_otp.split('');
+                    otpBoxes.forEach((box, idx) => {
+                        box.value = codeChars[idx] || '';
+                    });
+                }
+            } else {
+                showError('forgotError', data.message || 'Failed to request OTP.');
+            }
+        } catch (err) {
+            showError('forgotError', 'A connection error occurred.');
+        } finally {
+            showSpinner(forms.forgot, false);
+        }
+    });
+
+    // RESEND OTP BUTTON Action
+    document.getElementById('btnResendOTP')?.addEventListener('click', async () => {
+        const response = await fetch('/auth/otp/request/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ email: state.email })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            startResendCooldown();
+            document.querySelectorAll('.otp-error-msg').forEach(el => el.hidden = true);
+        } else {
+            showError('verifyOTPError', data.message || 'Failed to resend OTP.');
+        }
+    });
+
+    // 4. VERIFY OTP Form Submit
+    forms.verify.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showSpinner(forms.verify, true);
+        const otp_code = Array.from(otpBoxes).map(box => box.value).join('');
+        state.otpCode = otp_code;
+
+        if (otp_code.length !== 4) {
+            showError('verifyOTPError', 'Please enter a 4-digit code.');
+            showSpinner(forms.verify, false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/otp/verify/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ email: state.email, otp_code })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                switchPanel('panelResetPassword');
+            } else {
+                showError('verifyOTPError', data.message || 'Invalid or expired OTP.');
+            }
+        } catch (err) {
+            showError('verifyOTPError', 'A connection error occurred.');
+        } finally {
+            showSpinner(forms.verify, false);
+        }
+    });
+
+    // 5. RESET PASSWORD Form Submit
+    forms.reset.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showSpinner(forms.reset, true);
+        const password = document.getElementById('resetNewPassword').value;
+        const confirm_password = document.getElementById('resetConfirmPassword').value;
+
+        if (password.length < 8) {
+            showError('resetPasswordError', 'Password must be at least 8 characters long.');
+            showSpinner(forms.reset, false);
+            return;
+        }
+
+        if (password !== confirm_password) {
+            showError('resetPasswordError', 'Passwords do not match.');
+            showSpinner(forms.reset, false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/otp/reset/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    email: state.email,
+                    otp_code: state.otpCode,
+                    password,
+                    confirm_password
+                })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                switchPanel('panelLogin');
+                showError('loginError', 'Password reset successful! Please sign in with your new password.');
+                // Style the success msg nicely (hacky override of error container class for success state representation)
+                const loginErrBox = document.getElementById('loginError');
+                if (loginErrBox) {
+                    loginErrBox.style.background = '#f3faf7';
+                    loginErrBox.style.color = '#0e6245';
+                    loginErrBox.style.borderColor = '#def7ec';
+                }
+            } else {
+                showError('resetPasswordError', data.message || 'Failed to reset password.');
+            }
+        } catch (err) {
+            showError('resetPasswordError', 'A connection error occurred.');
+        } finally {
+            showSpinner(forms.reset, false);
+        }
+    });
+
+    // --- REUSABLE INTERCEPTOR & JS HELPER ---
+    window.requireLogin = function(onSuccessCallback) {
+        if (window.isUserAuthenticated) {
+            if (typeof onSuccessCallback === 'function') onSuccessCallback();
+        } else {
+            state.successCallback = onSuccessCallback;
+            openAuthModal();
+        }
+    };
+
+    // --- TOAST NOTIFICATIONS ---
+    window.showToast = function(message, isError = false) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = 'position: fixed; bottom: 2rem; right: 2rem; z-index: 11000; display: flex; flex-direction: column; gap: 0.75rem;';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: ${isError ? '#fdf2f2' : 'var(--background, #fffdfa)'};
+            color: ${isError ? '#c81e1e' : 'var(--text-dark, #1a1c1a)'};
+            border: 1px solid ${isError ? '#fde8e8' : 'rgba(0,0,0,0.08)'};
+            border-radius: 8px;
+            padding: 0.85rem 1.25rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        `;
+        toast.textContent = message;
+        container.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Animate out and remove
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    };
+
+    // --- GLOBAL AJAX ACTIONS ---
+    window.addToCart = async function(productId, callback) {
+        try {
+            const response = await fetch('/cart/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await response.json();
+            
+            if (response.status === 401 || data.login_required) {
+                window.requireLogin(() => window.addToCart(productId, callback));
+                return;
+            }
+            
+            if (response.ok && data.success) {
+                window.showToast(data.message || 'Added to cart!');
+                // Update badge if element exists
+                document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
+                    badge.textContent = data.cart_count;
+                });
+                if (callback) callback(data);
+            } else {
+                window.showToast(data.message || 'Failed to add to cart.', true);
+            }
+        } catch (e) {
+            window.showToast('Connection error.', true);
+        }
+    };
+
+    window.addToWishlist = async function(productId, callback) {
+        try {
+            const response = await fetch('/wishlist/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await response.json();
+            
+            if (response.status === 401 || data.login_required) {
+                window.requireLogin(() => window.addToWishlist(productId, callback));
+                return;
+            }
+            
+            if (response.ok && data.success) {
+                window.showToast(data.message || 'Added to wishlist!');
+                if (callback) callback(data);
+            } else {
+                window.showToast(data.message || 'Failed to add to wishlist.', true);
+            }
+        } catch (e) {
+            window.showToast('Connection error.', true);
+        }
+    };
+
+    window.buyNow = async function(productId) {
+        try {
+            const response = await fetch('/buy-now/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await response.json();
+            
+            if (response.status === 401 || data.login_required) {
+                window.requireLogin(() => window.buyNow(productId));
+                return;
+            }
+            
+            if (response.ok && data.success) {
+                window.showToast(data.message || 'Proceeding to checkout...');
+                setTimeout(() => {
+                    window.location.href = data.checkout_url || '/checkout/';
+                }, 1000);
+            } else {
+                window.showToast(data.message || 'Failed to checkout.', true);
+            }
+        } catch (e) {
+            window.showToast('Connection error.', true);
+        }
+    };
+
+})();
+</script>

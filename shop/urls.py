@@ -16,5 +16,21 @@ urlpatterns = [
     path('categories/', views.categories_all, name='categories_all'),
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
+    
+    # AJAX Authentication
+    path('auth/login/', views.ajax_login, name='ajax_login'),
+    path('auth/signup/', views.ajax_signup, name='ajax_signup'),
+    path('auth/logout/', views.ajax_logout, name='ajax_logout'),
+    path('auth/otp/request/', views.request_otp, name='request_otp'),
+    path('auth/otp/verify/', views.verify_otp, name='verify_otp'),
+    path('auth/otp/reset/', views.reset_password, name='reset_password'),
+    
+    # AJAX Actions
+    path('cart/add/', views.add_to_cart, name='add_to_cart'),
+    path('wishlist/', views.wishlist_page, name='wishlist_page'),
+    path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('buy-now/', views.buy_now, name='buy_now'),
+    
     path('swagger/', schema_view.with_ui('swagger'), name='swagger'),
 ]
