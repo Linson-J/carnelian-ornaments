@@ -16,14 +16,124 @@
       <h1>{{ product.name }}</h1>
       <div class="product-detail-price">Rs. {{ product.discount_price|default:product.price }}</div>
       <p>{{ product.description }}</p>
-      <div class="product-detail-actions" style="margin: 2rem 0; display: flex; gap: 1rem; align-items: center;">
-          <button class="hero-btn primary" onclick="window.addToCart({{ product.id }})" style="flex: 1; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Add to Cart</button>
-          <button class="hero-btn" onclick="window.buyNow({{ product.id }})" style="flex: 1; background: var(--text-dark, #1a1c1a); color: var(--background, #fffdfa); border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Buy Now</button>
-          <button class="wishlist-btn" onclick="window.addToWishlist({{ product.id }})" style="background: none; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark, #1a1c1a);">
+      <div class="product-detail-actions" style="margin: 2rem 0; display: flex; gap: 1rem; align-items: center; min-height: 52px;">
+          <!-- Add to Cart Button -->
+          <button id="detailAddToCartBtn" class="hero-btn primary" onclick="addDetailToCart()" style="flex: 1; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; height: 50px; {% if cart_qty > 0 %}display: none;{% endif %}">Add to Cart</button>
+          
+          <!-- Quantity Control Pill -->
+          <div id="cartQuantitySelector" class="quantity-control" style="{% if cart_qty == 0 %}display: none;{% else %}display: flex;{% endif %} align-items: center; justify-content: space-between; border: 1.5px solid var(--primary, #7c5357); border-radius: 30px; padding: 6px 12px; background: rgba(124, 83, 87, 0.05); flex: 1; box-sizing: border-box; height: 50px;">
+              <button class="qty-btn" onclick="updateDetailQty(-1)" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary, #7c5357); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='rgba(124, 83, 87, 0.1)'" onmouseout="this.style.background='none'" aria-label="Decrease quantity">
+                  <i class="ri-subtract-line"></i>
+              </button>
+              <span id="detailQtyVal" style="font-size: 1.2rem; font-weight: 700; color: var(--text-dark, #1a1c1a); text-align: center;">{{ cart_qty }}</span>
+              <button class="qty-btn" onclick="updateDetailQty(1)" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary, #7c5357); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='rgba(124, 83, 87, 0.1)'" onmouseout="this.style.background='none'" aria-label="Increase quantity">
+                  <i class="ri-add-line"></i>
+              </button>
+          </div>
+
+          <button class="hero-btn" onclick="window.buyNow({{ product.id }})" style="flex: 1; background: var(--text-dark, #1a1c1a); color: var(--background, #fffdfa); border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; height: 50px; display: flex; align-items: center; justify-content: center;">Buy Now</button>
+          <button class="wishlist-btn" onclick="window.addToWishlist({{ product.id }})" style="background: none; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark, #1a1c1a); flex-shrink: 0;">
               <i class="ri-heart-line" style="font-size: 1.3rem;"></i>
           </button>
       </div>
       <a href="/" class="hero-btn primary">Continue shopping</a>
     </div>
   </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Helper to get cookies (like CSRF token)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function addDetailToCart() {
+        const productId = {{ product.id }};
+        window.addToCart(productId, function(data) {
+            // Callback on success
+            document.getElementById('detailAddToCartBtn').style.display = 'none';
+            document.getElementById('cartQuantitySelector').style.display = 'flex';
+            document.getElementById('detailQtyVal').textContent = '1';
+        });
+    }
+
+    async function updateDetailQty(delta) {
+        const qtyEl = document.getElementById('detailQtyVal');
+        if (!qtyEl) return;
+        
+        const currentQty = parseInt(qtyEl.textContent);
+        const newQty = currentQty + delta;
+        const productId = {{ product.id }};
+        
+        if (newQty <= 0) {
+            // Remove item from cart
+            try {
+                const response = await fetch('/cart/remove/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ product_id: productId })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Show Add to Cart button, hide selector
+                    document.getElementById('detailAddToCartBtn').style.display = 'block';
+                    document.getElementById('cartQuantitySelector').style.display = 'none';
+                    
+                    // Update badge cart count globally
+                    document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
+                        badge.textContent = data.cart_count;
+                    });
+                    
+                    window.showToast(data.message || 'Item removed from cart.');
+                } else {
+                    window.showToast(data.message || 'Failed to remove item.', true);
+                }
+            } catch (e) {
+                window.showToast('Connection error.', true);
+            }
+        } else {
+            // Update quantity in cart
+            try {
+                const response = await fetch('/cart/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ product_id: productId, quantity: newQty })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    qtyEl.textContent = newQty;
+                    
+                    // Update badge cart count globally
+                    document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
+                        badge.textContent = data.cart_count;
+                    });
+                } else {
+                    window.showToast(data.message || 'Failed to update quantity.', true);
+                }
+            } catch (e) {
+                window.showToast('Connection error.', true);
+            }
+        }
+    }
+</script>
 {% endblock %}

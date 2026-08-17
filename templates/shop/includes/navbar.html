@@ -13,8 +13,11 @@
     </div>
     <div class="mobile-icons">
         <div class="nav-icon"><i class="ri-search-line"></i></div>
-        <div class="nav-icon"><i class="ri-heart-line"></i></div>
-        <div class="nav-icon"><i class="ri-shopping-bag-line"></i></div>
+        <a href="/wishlist/" class="nav-icon" style="color: inherit;"><i class="ri-heart-line"></i></a>
+        <a href="/cart/" class="nav-icon" style="color: inherit; position: relative;">
+            <i class="ri-shopping-bag-line"></i>
+            <span class="bottom-nav-badge" style="position: absolute; top: -2px; right: -2px; background: var(--primary); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center;">{{ cart_count|default:0 }}</span>
+        </a>
     </div>
 </div>
 
@@ -72,7 +75,10 @@
         <div class="nav-right">
             <div class="nav-icon"><i class="ri-search-line"></i></div>
             <a href="/wishlist/" class="nav-icon" style="color: inherit;"><i class="ri-heart-line"></i></a>
-            <a href="/shop/#cart" class="nav-icon" style="color: inherit;"><i class="ri-shopping-bag-line"></i></a>
+            <a href="/cart/" class="nav-icon" style="color: inherit; position: relative;">
+                <i class="ri-shopping-bag-line"></i>
+                <span class="bottom-nav-badge" style="position: absolute; top: -2px; right: -2px; background: var(--primary); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center;">{{ cart_count|default:0 }}</span>
+            </a>
             {% if request.user.is_authenticated %}
             <div class="profile-dropdown-wrapper">
                 <div class="profile-image" id="profileDropdownBtn" style="cursor: pointer;">
@@ -104,10 +110,10 @@
         <i class="ri-heart-line"></i>
         <span>Wishlist</span>
     </a>
-    <a href="/shop/#cart" class="bottom-nav-item">
+    <a href="/cart/" class="bottom-nav-item">
         <span class="bottom-nav-icon">
             <i class="ri-shopping-bag-line"></i>
-            <span class="bottom-nav-badge" aria-label="0 cart items">0</span>
+            <span class="bottom-nav-badge" aria-label="{{ cart_count|default:0 }} cart items">{{ cart_count|default:0 }}</span>
         </span>
         <span>Cart</span>
     </a>

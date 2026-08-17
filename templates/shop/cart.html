@@ -1,0 +1,1024 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}My Cart - Carmelian{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Cart page variables and fallback */
+    :root {
+        --cart-bg: #faf9f6;
+        --cart-card-bg: rgba(255, 255, 255, 0.7);
+        --cart-text-dark: #1a1c1a;
+        --cart-text-light: #504444;
+        --cart-primary: #7c5357;
+        --cart-border: rgba(124, 83, 87, 0.12);
+        --cart-shadow: 0 12px 40px 0 rgba(124, 83, 87, 0.04);
+        --cart-radius: 16px;
+    }
+
+    .cart-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4rem 1.5rem 6rem;
+        min-height: 75vh;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .cart-header {
+        text-align: center;
+        margin-bottom: 3.5rem;
+    }
+
+    .cart-header h1 {
+        font-family: 'Noto Serif', serif;
+        font-size: 3rem;
+        color: var(--cart-text-dark);
+        font-weight: 500;
+        margin-bottom: 0.8rem;
+    }
+
+    .cart-header p {
+        color: var(--cart-text-light);
+        font-size: 1.1rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Asymmetric 2-Column PC Layout */
+    .cart-layout {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 3rem;
+        align-items: start;
+    }
+
+    /* Cart Items Section */
+    .cart-items-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .cart-item-card {
+        background: var(--cart-card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--cart-border);
+        border-radius: var(--cart-radius);
+        padding: 1.5rem;
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        box-shadow: var(--cart-shadow);
+        transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.3s ease;
+        position: relative;
+    }
+
+    .cart-item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 40px rgba(124, 83, 87, 0.08);
+    }
+
+    .cart-item-image-wrapper {
+        width: 110px;
+        height: 138px; /* 4:5 aspect ratio */
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f0ebe4;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .cart-item-image-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+    }
+
+    .cart-item-card:hover .cart-item-image-wrapper img {
+        transform: scale(1.04);
+    }
+
+    .cart-item-info {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .cart-item-category {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--cart-primary);
+        font-weight: 600;
+    }
+
+    .cart-item-name {
+        font-size: 1.15rem;
+        font-weight: 500;
+        color: var(--cart-text-dark);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .cart-item-name:hover {
+        color: var(--cart-primary);
+    }
+
+    .cart-item-price-info {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-top: 0.2rem;
+    }
+
+    .cart-item-price {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--cart-text-dark);
+    }
+
+    .cart-item-original-price {
+        font-size: 0.95rem;
+        text-decoration: line-through;
+        color: rgba(80, 68, 68, 0.5);
+    }
+
+    /* Quantity and Action Controls */
+    .cart-item-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1.2rem;
+        justify-content: space-between;
+        align-self: stretch;
+    }
+
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        background: rgba(124, 83, 87, 0.05);
+        border: 1px solid rgba(124, 83, 87, 0.1);
+        border-radius: 30px;
+        padding: 4px;
+    }
+
+    .qty-btn {
+        background: none;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--cart-primary);
+        font-size: 1.1rem;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .qty-btn:hover {
+        background: var(--cart-primary);
+        color: #fff;
+    }
+
+    .qty-val {
+        width: 36px;
+        text-align: center;
+        font-weight: 600;
+        color: var(--cart-text-dark);
+        font-size: 1rem;
+    }
+
+    .remove-cart-btn {
+        background: none;
+        border: none;
+        color: #b54747;
+        cursor: pointer;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .remove-cart-btn:hover {
+        background: rgba(181, 71, 71, 0.08);
+        color: #912b2b;
+    }
+
+    .item-subtotal-display {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--cart-primary);
+    }
+
+    /* Summary Card Section (PC) */
+    .cart-summary-section {
+        position: sticky;
+        top: 110px; /* offset navbar */
+    }
+
+    .summary-card {
+        background: #fff;
+        border: 1px solid var(--cart-border);
+        border-radius: var(--cart-radius);
+        padding: 2.2rem;
+        box-shadow: var(--cart-shadow);
+    }
+
+    .summary-card h2 {
+        font-family: 'Noto Serif', serif;
+        font-size: 1.6rem;
+        font-weight: 500;
+        color: var(--cart-text-dark);
+        margin-bottom: 1.8rem;
+        border-bottom: 1px solid rgba(124, 83, 87, 0.1);
+        padding-bottom: 0.8rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1.2rem;
+        font-size: 1rem;
+        color: var(--cart-text-light);
+    }
+
+    .summary-row.discount-row {
+        color: #2b7d52;
+        font-weight: 500;
+    }
+
+    .summary-total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.8rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed rgba(124, 83, 87, 0.2);
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--cart-text-dark);
+    }
+
+    .summary-total-price {
+        color: var(--cart-primary);
+    }
+
+    /* Promo Code Input */
+    .promo-code-box {
+        margin: 1.8rem 0;
+        display: flex;
+        gap: 0.6rem;
+    }
+
+    .promo-input {
+        flex-grow: 1;
+        border: 1px solid var(--cart-border);
+        border-radius: 30px;
+        padding: 0.7rem 1.2rem;
+        font-family: inherit;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s ease;
+        background: #fafafa;
+    }
+
+    .promo-input:focus {
+        border-color: var(--cart-primary);
+    }
+
+    .promo-btn {
+        background: var(--cart-text-dark);
+        color: #fffdfa;
+        border: none;
+        border-radius: 30px;
+        padding: 0.7rem 1.4rem;
+        font-family: inherit;
+        font-weight: 500;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.25s ease;
+    }
+
+    .promo-btn:hover {
+        background: var(--cart-primary);
+    }
+
+    /* Checkout Buttons */
+    .checkout-btn {
+        display: block;
+        width: 100%;
+        background: var(--cart-primary);
+        color: #fffdfa;
+        border: none;
+        border-radius: 30px;
+        padding: 1.1rem;
+        font-family: inherit;
+        font-size: 1.05rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.25s ease, transform 0.2s ease;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(124, 83, 87, 0.2);
+    }
+
+    .checkout-btn:hover {
+        background: #653f43;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(124, 83, 87, 0.25);
+    }
+
+    .continue-btn {
+        display: block;
+        width: 100%;
+        background: transparent;
+        color: var(--cart-text-light);
+        border: 1.5px solid var(--cart-text-dark);
+        border-radius: 30px;
+        padding: 0.9rem;
+        margin-top: 1rem;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        text-align: center;
+    }
+
+    .continue-btn:hover {
+        background: var(--cart-text-dark);
+        color: #fffdfa;
+    }
+
+    /* Trust & Payment Badges */
+    .summary-trust-badges {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        color: var(--cart-text-light);
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
+
+    .summary-trust-badges span {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Empty and Unauthenticated States */
+    .cart-state-card {
+        background: var(--cart-card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--cart-border);
+        border-radius: 18px;
+        padding: 5rem 2rem;
+        text-align: center;
+        max-width: 500px;
+        margin: 2rem auto 0;
+        box-shadow: var(--cart-shadow);
+    }
+
+    .cart-state-icon {
+        font-size: 4rem;
+        color: var(--cart-primary);
+        opacity: 0.55;
+        margin-bottom: 1.5rem;
+    }
+
+    .cart-state-card h2 {
+        font-family: 'Noto Serif', serif;
+        font-size: 2.2rem;
+        color: var(--cart-text-dark);
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    .cart-state-card p {
+        color: var(--cart-text-light);
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+        font-size: 1.05rem;
+    }
+
+    .cart-state-btn {
+        display: inline-block;
+        background: var(--cart-text-dark);
+        color: #fffdfa;
+        text-decoration: none;
+        padding: 1rem 2.5rem;
+        border-radius: 30px;
+        font-weight: 500;
+        transition: background 0.25s ease, transform 0.2s ease;
+    }
+
+    .cart-state-btn:hover {
+        background: var(--cart-primary);
+        transform: translateY(-2px);
+    }
+
+    /* Animations */
+    .fade-out {
+        opacity: 0;
+        transform: scale(0.92);
+        transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .highlight-value {
+        animation: valueFlash 0.5s ease-out;
+    }
+
+    @keyframes valueFlash {
+        0% { color: var(--cart-primary); transform: scale(1.05); }
+        100% { color: inherit; transform: scale(1); }
+    }
+
+    /* ================= RESPONSIVE LAYOUT OVERRIDES ================= */
+    
+    /* MOBILE-SPECIFIC UNIQUE LAYOUT */
+    @media (max-width: 768px) {
+        .cart-container {
+            padding: 2rem 1rem 14rem; /* extra space at bottom for floating drawer + nav */
+        }
+
+        .cart-header {
+            margin-bottom: 2rem;
+        }
+
+        .cart-header h1 {
+            font-size: 2.2rem;
+        }
+
+        .cart-header p {
+            font-size: 0.95rem;
+        }
+
+        .cart-layout {
+            grid-template-columns: 1fr;
+            gap: 1.8rem;
+        }
+
+        /* Cart cards redesigned for mobile list-view */
+        .cart-item-card {
+            padding: 1rem;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .cart-item-image-wrapper {
+            width: 80px;
+            height: 100px;
+        }
+
+        .cart-item-info {
+            gap: 0.25rem;
+            justify-content: center;
+        }
+
+        .cart-item-name {
+            font-size: 0.95rem;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .cart-item-price {
+            font-size: 0.95rem;
+        }
+
+        .cart-item-original-price {
+            font-size: 0.85rem;
+        }
+
+        /* Layout cart item controls on right vertically or horizontally */
+        .cart-item-controls {
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: space-between;
+            width: auto;
+            gap: 0.5rem;
+        }
+
+        .quantity-control {
+            padding: 2px;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            font-size: 1rem;
+        }
+
+        .qty-val {
+            width: 28px;
+            font-size: 0.9rem;
+        }
+
+        .item-subtotal-display {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        /* Hide standard PC Summary Card on Mobile */
+        .cart-summary-section {
+            display: none;
+        }
+
+        /* UNIQUE MOBILE STICKY DRAWER */
+        .mobile-cart-drawer {
+            display: block !important;
+            position: fixed;
+            left: 14px;
+            right: 14px;
+            bottom: calc(98px + env(safe-area-inset-bottom)); /* sit safely above floating mobile bottom nav */
+            width: calc(100% - 28px);
+            background: #ffffff;
+            border: 1px solid var(--cart-border);
+            box-shadow: 0 -4px 25px rgba(0,0,0,0.06);
+            z-index: 990;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+            border-radius: 20px;
+        }
+
+        .mobile-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.2rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(124, 83, 87, 0.05);
+        }
+
+        .mobile-drawer-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-drawer-info .drawer-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--cart-text-light);
+        }
+
+        .mobile-drawer-info .drawer-price {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--cart-primary);
+        }
+
+        .mobile-drawer-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--cart-text-light);
+            font-weight: 550;
+        }
+
+        .mobile-drawer-toggle-btn i {
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Rotated state when drawer is expanded */
+        .mobile-cart-drawer.expanded .mobile-drawer-toggle-btn i {
+            transform: rotate(180deg);
+        }
+
+        .mobile-drawer-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease-out;
+            padding: 0 1.2rem;
+            background: #faf9f6;
+        }
+
+        .mobile-cart-drawer.expanded .mobile-drawer-details {
+            max-height: 350px;
+            padding: 1.2rem;
+            border-bottom: 1px solid rgba(124, 83, 87, 0.05);
+        }
+
+        .mobile-drawer-actions {
+            padding: 1rem 1.2rem;
+            display: flex;
+            gap: 0.8rem;
+            background: #fff;
+        }
+
+        .mobile-drawer-actions .checkout-btn {
+            padding: 0.85rem;
+            font-size: 0.95rem;
+            flex: 1.5;
+        }
+
+        .mobile-drawer-actions .continue-btn {
+            margin-top: 0;
+            padding: 0.85rem;
+            font-size: 0.9rem;
+            flex: 1;
+            border: 1.5px solid var(--cart-text-dark);
+        }
+    }
+
+    /* Hide Mobile Drawer on PC */
+    .mobile-cart-drawer {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="cart-container">
+    {% if not is_auth %}
+        <!-- Unauthenticated State -->
+        <div class="cart-state-card">
+            <div class="cart-state-icon"><i class="ri-shopping-bag-line"></i></div>
+            <h2>Unlock Your Cart</h2>
+            <p>Access your curated list of premium garments, track sizing, and enjoy secure checkouts. Log in to your Carmelian account to view your items.</p>
+            <a href="javascript:void(0)" class="cart-state-btn" onclick="window.openAuthModal()">Sign In / Sign Up</a>
+        </div>
+    {% else %}
+        <!-- Authenticated State -->
+        <div class="cart-header">
+            <h1>Shopping Cart</h1>
+            <p id="cartHeaderSub">Manage your items and proceed to secure checkout.</p>
+        </div>
+
+        <div class="cart-layout" id="cartLayout" {% if not cart_items %}style="display: none;"{% endif %}>
+            <!-- Left: List of Items -->
+            <div class="cart-items-section" id="cartItemsList">
+                {% for item in cart_items %}
+                    {% with product=item.product %}
+                        <div class="cart-item-card" id="cart-item-{{ product.id }}">
+                            <!-- Image -->
+                            <div class="cart-item-image-wrapper">
+                                {% if item.image %}
+                                    <img src="{{ item.image.image.url }}" alt="{{ product.name }}">
+                                {% else %}
+                                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e5dfd8;color:#a59d95;">
+                                        <i class="ri-image-line" style="font-size:2rem;"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Info -->
+                            <div class="cart-item-info">
+                                <span class="cart-item-category">{{ product.category.name|default:"Garments" }}</span>
+                                <a href="/products/{{ product.slug }}/" class="cart-item-name">{{ product.name }}</a>
+                                <div class="cart-item-price-info">
+                                    <span class="cart-item-price">Rs. <span id="price-val-{{ product.id }}">{{ product.discount_price|default:product.price }}</span></span>
+                                    {% if product.discount_price %}
+                                        <span class="cart-item-original-price">Rs. {{ product.price }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="item-subtotal-display-wrapper" style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                    Subtotal: <span class="item-subtotal-display" id="subtotal-val-{{ product.id }}">Rs. {{ item.subtotal }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Controls -->
+                            <div class="cart-item-controls">
+                                <button class="remove-cart-btn" onclick="removeCartItem({{ product.id }})" aria-label="Remove item">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                                
+                                <div class="quantity-control">
+                                    <button class="qty-btn" onclick="changeQty({{ product.id }}, -1)" aria-label="Decrease quantity">
+                                        <i class="ri-subtract-line"></i>
+                                    </button>
+                                    <span class="qty-val" id="qty-val-{{ product.id }}">{{ item.quantity }}</span>
+                                    <button class="qty-btn" onclick="changeQty({{ product.id }}, 1)" aria-label="Increase quantity">
+                                        <i class="ri-add-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+
+            <!-- Right: Sticky Order Summary (PC only) -->
+            <div class="cart-summary-section">
+                <div class="summary-card">
+                    <h2>Order Summary</h2>
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span id="summary-subtotal">Rs. {{ subtotal }}</span>
+                    </div>
+                    <div class="summary-row discount-row" id="discountRow" {% if discount == 0 %}style="display: none;"{% endif %}>
+                        <span>Discount</span>
+                        <span id="summary-discount">-Rs. {{ discount }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span id="summary-shipping">{% if shipping == 0 %}Free{% else %}Rs. {{ shipping }}{% endif %}</span>
+                    </div>
+                    <div class="summary-total-row">
+                        <span>Total</span>
+                        <span class="summary-total-price" id="summary-total">Rs. {{ grand_total }}</span>
+                    </div>
+
+                    <!-- Promo Code Box -->
+                    <div class="promo-code-box">
+                        <input type="text" placeholder="Promo Code" class="promo-input" id="promoInput">
+                        <button class="promo-btn" onclick="applyPromo()">Apply</button>
+                    </div>
+
+                    <!-- Checkout Actions -->
+                    <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
+                    <a href="/shop/" class="continue-btn">Continue Shopping</a>
+
+                    <!-- Guarantee badges -->
+                    <div class="summary-trust-badges">
+                        <span><i class="ri-shield-check-line"></i> Secure Payment</span>
+                        <span><i class="ri-refresh-line"></i> 14-Day Returns</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State Container -->
+        <div id="cartEmptyState" {% if cart_items %}style="display: none;"{% endif %}>
+            <div class="cart-state-card">
+                <div class="cart-state-icon"><i class="ri-shopping-bag-line"></i></div>
+                <h2>Your Shopping Cart is Empty</h2>
+                <p>Explore our carefully crafted collections and select the pieces you wish to wear.</p>
+                <a href="/shop/" class="cart-state-btn">Explore Collections</a>
+            </div>
+        </div>
+
+        <!-- UNIQUE MOBILE PERSISTENT STICKY DRAWER (Mobile View Only) -->
+        <div class="mobile-cart-drawer" id="mobileCartDrawer" {% if not cart_items %}style="display: none;"{% endif %}>
+            <div class="mobile-drawer-header" onclick="toggleMobileDrawer()">
+                <div class="mobile-drawer-info">
+                    <span class="drawer-label">Total to pay</span>
+                    <span class="drawer-price" id="mobile-drawer-total">Rs. {{ grand_total }}</span>
+                </div>
+                <div class="mobile-drawer-toggle-btn">
+                    <span>Summary Details</span>
+                    <i class="ri-arrow-up-s-line" id="mobile-drawer-arrow"></i>
+                </div>
+            </div>
+            
+            <div class="mobile-drawer-details" id="mobileDrawerDetails">
+                <div style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.95rem;">
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>Subtotal</span>
+                        <span id="mobile-subtotal">Rs. {{ subtotal }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: #2b7d52; font-weight: 550;" id="mobileDiscountRow" {% if discount == 0 %}style="display: none;"{% endif %}>
+                        <span>Discount</span>
+                        <span id="mobile-discount">-Rs. {{ discount }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>Shipping</span>
+                        <span id="mobile-shipping">{% if shipping == 0 %}Free{% else %}Rs. {{ shipping }}{% endif %}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; border-top: 1px dashed rgba(124,83,87,0.15); padding-top: 0.8rem; font-size: 1.1rem; color: var(--cart-text-dark); margin-top: 0.2rem;">
+                        <span>Grand Total</span>
+                        <span id="mobile-grandtotal" style="color: var(--cart-primary);">Rs. {{ grand_total }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mobile-drawer-actions">
+                <a href="/shop/" class="continue-btn">Shop More</a>
+                <button class="checkout-btn" onclick="proceedToCheckout()">Checkout</button>
+            </div>
+        </div>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Toggle mobile drawer details expansion
+    function toggleMobileDrawer() {
+        const drawer = document.getElementById('mobileCartDrawer');
+        if (!drawer) return;
+        
+        drawer.classList.toggle('expanded');
+        const details = document.getElementById('mobileDrawerDetails');
+        if (drawer.classList.contains('expanded')) {
+            details.style.maxHeight = '350px';
+        } else {
+            details.style.maxHeight = '0px';
+        }
+    }
+
+    // Helper to get cookies (like CSRF token)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Smooth value flashing animation when updated
+    function animateUpdatedElements(selectors) {
+        selectors.forEach(sel => {
+            const el = document.getElementById(sel);
+            if (el) {
+                el.classList.remove('highlight-value');
+                void el.offsetWidth; // trigger reflow
+                el.classList.add('highlight-value');
+            }
+        });
+    }
+
+    // AJAX to change cart quantity
+    async function changeQty(productId, delta) {
+        const qtyElement = document.getElementById(`qty-val-${productId}`);
+        if (!qtyElement) return;
+
+        const currentQty = parseInt(qtyElement.textContent);
+        const newQty = currentQty + delta;
+        if (newQty < 1) return; // cannot go below 1
+
+        try {
+            const response = await fetch('/cart/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId, quantity: newQty })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Update quantity display
+                qtyElement.textContent = newQty;
+                
+                // Update item subtotal
+                const itemSubElement = document.getElementById(`subtotal-val-${productId}`);
+                if (itemSubElement) {
+                    itemSubElement.textContent = `Rs. ${data.item_subtotal.toFixed(2)}`;
+                }
+
+                // Update summary totals (PC and Mobile)
+                document.getElementById('summary-subtotal').textContent = `Rs. ${data.subtotal.toFixed(2)}`;
+                document.getElementById('mobile-subtotal').textContent = `Rs. ${data.subtotal.toFixed(2)}`;
+                
+                if (data.discount > 0) {
+                    document.getElementById('discountRow').style.display = 'flex';
+                    document.getElementById('mobileDiscountRow').style.display = 'flex';
+                    document.getElementById('summary-discount').textContent = `-Rs. ${data.discount.toFixed(2)}`;
+                    document.getElementById('mobile-discount').textContent = `-Rs. ${data.discount.toFixed(2)}`;
+                } else {
+                    document.getElementById('discountRow').style.display = 'none';
+                    document.getElementById('mobileDiscountRow').style.display = 'none';
+                }
+
+                const shippingStr = data.shipping === 0 ? 'Free' : `Rs. ${data.shipping.toFixed(2)}`;
+                document.getElementById('summary-shipping').textContent = shippingStr;
+                document.getElementById('mobile-shipping').textContent = shippingStr;
+
+                const grandTotalStr = `Rs. ${data.grand_total.toFixed(2)}`;
+                document.getElementById('summary-total').textContent = grandTotalStr;
+                document.getElementById('mobile-drawer-total').textContent = grandTotalStr;
+                document.getElementById('mobile-grandtotal').textContent = grandTotalStr;
+
+                // Update badge cart count globally
+                document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
+                    badge.textContent = data.cart_count;
+                    if (badge.tagName === 'SPAN') {
+                        badge.setAttribute('aria-label', `${data.cart_count} cart items`);
+                    }
+                });
+
+                // Apply dynamic highlight animations
+                animateUpdatedElements([
+                    `qty-val-${productId}`,
+                    `subtotal-val-${productId}`,
+                    'summary-subtotal',
+                    'summary-total',
+                    'mobile-drawer-total',
+                    'mobile-grandtotal'
+                ]);
+
+            } else {
+                window.showToast(data.message || 'Failed to update quantity.', true);
+            }
+        } catch (err) {
+            window.showToast('Connection error occurred.', true);
+        }
+    }
+
+    // AJAX to remove item from cart
+    async function removeCartItem(productId) {
+        const card = document.getElementById(`cart-item-${productId}`);
+        if (!card) return;
+
+        try {
+            const response = await fetch('/cart/remove/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Apply a smooth fade out animation
+                card.classList.add('fade-out');
+                
+                setTimeout(() => {
+                    card.remove();
+                    
+                    // If no items are left, show the empty state dynamically
+                    const remainingItems = document.querySelectorAll('.cart-item-card');
+                    if (remainingItems.length === 0) {
+                        document.getElementById('cartLayout').style.display = 'none';
+                        document.getElementById('mobileCartDrawer').style.display = 'none';
+                        document.getElementById('cartEmptyState').style.display = 'block';
+                    }
+                }, 350);
+
+                // Update summary totals (PC and Mobile)
+                document.getElementById('summary-subtotal').textContent = `Rs. ${data.subtotal.toFixed(2)}`;
+                document.getElementById('mobile-subtotal').textContent = `Rs. ${data.subtotal.toFixed(2)}`;
+                
+                if (data.discount > 0) {
+                    document.getElementById('discountRow').style.display = 'flex';
+                    document.getElementById('mobileDiscountRow').style.display = 'flex';
+                    document.getElementById('summary-discount').textContent = `-Rs. ${data.discount.toFixed(2)}`;
+                    document.getElementById('mobile-discount').textContent = `-Rs. ${data.discount.toFixed(2)}`;
+                } else {
+                    document.getElementById('discountRow').style.display = 'none';
+                    document.getElementById('mobileDiscountRow').style.display = 'none';
+                }
+
+                const shippingStr = data.shipping === 0 ? 'Free' : `Rs. ${data.shipping.toFixed(2)}`;
+                document.getElementById('summary-shipping').textContent = shippingStr;
+                document.getElementById('mobile-shipping').textContent = shippingStr;
+
+                const grandTotalStr = `Rs. ${data.grand_total.toFixed(2)}`;
+                document.getElementById('summary-total').textContent = grandTotalStr;
+                document.getElementById('mobile-drawer-total').textContent = grandTotalStr;
+                document.getElementById('mobile-grandtotal').textContent = grandTotalStr;
+
+                // Update badge cart count globally
+                document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
+                    badge.textContent = data.cart_count;
+                });
+
+                window.showToast(data.message || 'Item removed from cart.');
+                
+                animateUpdatedElements([
+                    'summary-subtotal',
+                    'summary-total',
+                    'mobile-drawer-total',
+                    'mobile-grandtotal'
+                ]);
+
+            } else {
+                window.showToast(data.message || 'Failed to remove item.', true);
+            }
+        } catch (err) {
+            window.showToast('Connection error occurred.', true);
+        }
+    }
+
+    // Apply promo code (visual effect/toast for this design)
+    function applyPromo() {
+        const input = document.getElementById('promoInput').value.trim();
+        if (!input) {
+            window.showToast('Please enter a promo code.', true);
+            return;
+        }
+        window.showToast(`Promo code "${input}" applied successfully!`);
+    }
+
+    // Trigger mock checkout proceeding
+    function proceedToCheckout() {
+        window.showToast('Proceeding to checkout...');
+        setTimeout(() => {
+            window.location.href = '/checkout/';
+        }, 1200);
+    }
+</script>
+{% endblock %}

@@ -42,7 +42,19 @@ def product_detail(request, slug):
         Product.objects.select_related('category').prefetch_related('images'),
         slug=slug,
     )
-    return render(request, 'shop/product_detail.html', {'product': product})
+    cart_qty = 0
+    if request.user.is_authenticated:
+        cart = request.session.get('cart', {})
+        if isinstance(cart, dict):
+            try:
+                cart_qty = int(cart.get(str(product.id), 0))
+            except (ValueError, TypeError):
+                cart_qty = 0
+                
+    return render(request, 'shop/product_detail.html', {
+        'product': product,
+        'cart_qty': cart_qty
+    })
 
 
 @require_POST
@@ -350,4 +362,162 @@ def remove_from_wishlist(request):
         'success': True,
         'message': 'Removed item from wishlist.',
         'wishlist_count': wishlist_count
+    })
+
+
+def cart_page(request):
+    if not request.user.is_authenticated:
+        return render(request, 'shop/cart.html', {'is_auth': False})
+    
+    cart = request.session.get('cart', {})
+    cart_items = []
+    subtotal = 0.0
+    original_total = 0.0
+    
+    # Clean up cart session if any invalid keys are present
+    valid_cart = {}
+    if isinstance(cart, dict):
+        for prod_id, qty in list(cart.items()):
+            try:
+                prod_id_int = int(prod_id)
+                if qty <= 0:
+                    continue
+                product = Product.objects.filter(id=prod_id_int).first()
+                if product:
+                    valid_cart[str(product.id)] = qty
+                    price = float(product.discount_price if product.discount_price else product.price)
+                    orig_price = float(product.price)
+                    item_subtotal = price * qty
+                    item_original = orig_price * qty
+                    subtotal += item_subtotal
+                    original_total += item_original
+                    
+                    # Fetch primary image or first image
+                    primary_image = product.images.filter(is_primary=True).first()
+                    if not primary_image:
+                        primary_image = product.images.first()
+                    
+                    cart_items.append({
+                        'product': product,
+                        'quantity': qty,
+                        'subtotal': item_subtotal,
+                        'image': primary_image,
+                    })
+            except ValueError:
+                continue
+            
+    # Update cleaned cart back to session if changed
+    request.session['cart'] = valid_cart
+        
+    discount = original_total - subtotal
+    # Shipping rules: Free shipping if subtotal >= Rs. 2000, otherwise Rs. 150. Free if empty.
+    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
+    grand_total = subtotal + shipping
+    
+    return render(request, 'shop/cart.html', {
+        'cart_items': cart_items,
+        'subtotal': subtotal,
+        'original_total': original_total,
+        'discount': discount,
+        'shipping': shipping,
+        'grand_total': grand_total,
+        'is_auth': True
+    })
+
+
+@require_POST
+@login_required_ajax
+def update_cart_quantity(request):
+    try:
+        data = json.loads(request.body)
+        product_id = str(data.get('product_id'))
+        quantity = int(data.get('quantity'))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Invalid input data.'}, status=400)
+        
+    if quantity <= 0:
+        return JsonResponse({'success': False, 'message': 'Quantity must be at least 1.'}, status=400)
+        
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Check inventory
+    if product.stock < quantity:
+        return JsonResponse({
+            'success': False, 
+            'message': f'Only {product.stock} items available in stock.'
+        }, status=400)
+        
+    cart = request.session.get('cart', {})
+    cart[product_id] = quantity
+    request.session['cart'] = cart
+    
+    # Calculate new totals
+    subtotal = 0.0
+    original_total = 0.0
+    item_subtotal = 0.0
+    for prod_id, qty in cart.items():
+        prod = Product.objects.filter(id=int(prod_id)).first()
+        if prod:
+            price = float(prod.discount_price if prod.discount_price else prod.price)
+            orig_price = float(prod.price)
+            subtotal += price * qty
+            original_total += orig_price * qty
+            if prod_id == product_id:
+                item_subtotal = price * qty
+                
+    discount = original_total - subtotal
+    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
+    grand_total = subtotal + shipping
+    cart_count = sum(cart.values())
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Quantity updated.',
+        'item_subtotal': item_subtotal,
+        'cart_count': cart_count,
+        'subtotal': subtotal,
+        'discount': discount,
+        'shipping': shipping,
+        'grand_total': grand_total
+    })
+
+
+@require_POST
+@login_required_ajax
+def remove_from_cart(request):
+    try:
+        data = json.loads(request.body)
+        product_id = str(data.get('product_id'))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Invalid input data.'}, status=400)
+        
+    cart = request.session.get('cart', {})
+    if product_id in cart:
+        del cart[product_id]
+        request.session['cart'] = cart
+        
+    # Calculate new totals
+    subtotal = 0.0
+    original_total = 0.0
+    for prod_id, qty in cart.items():
+        prod = Product.objects.filter(id=int(prod_id)).first()
+        if prod:
+            price = float(prod.discount_price if prod.discount_price else prod.price)
+            orig_price = float(prod.price)
+            subtotal += price * qty
+            original_total += orig_price * qty
+            
+    discount = original_total - subtotal
+    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
+    grand_total = subtotal + shipping
+    cart_count = sum(cart.values())
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Item removed from cart.',
+        'cart_count': cart_count,
+        'subtotal': subtotal,
+        'discount': discount,
+        'shipping': shipping,
+        'grand_total': grand_total
     })

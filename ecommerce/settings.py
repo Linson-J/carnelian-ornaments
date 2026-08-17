@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 def env_bool(name, default=False):
@@ -168,6 +168,11 @@ SITE_ID = 1
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'key': ''
+        },
         'SCOPE': [
             'profile',
             'email',
@@ -178,6 +183,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'OAUTH_PKCE_ENABLED': True,
     }
 }
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*']

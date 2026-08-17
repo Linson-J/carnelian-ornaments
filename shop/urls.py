@@ -26,7 +26,10 @@ urlpatterns = [
     path('auth/otp/reset/', views.reset_password, name='reset_password'),
     
     # AJAX Actions
+    path('cart/', views.cart_page, name='cart_page'),
     path('cart/add/', views.add_to_cart, name='add_to_cart'),
+    path('cart/update/', views.update_cart_quantity, name='update_cart_quantity'),
+    path('cart/remove/', views.remove_from_cart, name='remove_from_cart'),
     path('wishlist/', views.wishlist_page, name='wishlist_page'),
     path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),

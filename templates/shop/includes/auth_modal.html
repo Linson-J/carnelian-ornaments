@@ -57,6 +57,10 @@
                     <span class="btn-spinner" hidden><i class="ri-loader-4-line spin"></i></span>
                 </button>
             </form>
+            <div class="auth-divider"><span>or</span></div>
+            <a href="#" class="auth-btn-google" id="btnGoogleSignup">
+                <i class="ri-google-fill"></i> Continue with Google
+            </a>
             <p class="auth-switch-text">Already have an account? <a href="#" class="auth-link" id="linkGoToLogin">Sign In</a></p>
         </div>
 
@@ -371,11 +375,18 @@
     gap: 0.5rem;
     transition: all 0.2s ease;
     box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .auth-btn-google:hover {
     background: rgba(0, 0, 0, 0.02);
     border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+    transform: translateY(-1px);
+}
+
+.auth-btn-google:active {
+    transform: translateY(0);
 }
 
 .auth-switch-text {
@@ -618,11 +629,10 @@
     }
 
     // --- Dynamic Google Redirect URL ---
-    const googleBtn = document.getElementById('btnGoogleLogin');
-    if (googleBtn) {
-        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
-        googleBtn.href = `/accounts/google/login/?process=login&next=${nextUrl}`;
-    }
+    const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    document.querySelectorAll('.auth-btn-google').forEach(btn => {
+        btn.href = `/accounts/google/login/?process=login&next=${nextUrl}`;
+    });
 
     // --- Event Listeners for Navigation ---
     document.getElementById('linkGoToSignup')?.addEventListener('click', (e) => {
