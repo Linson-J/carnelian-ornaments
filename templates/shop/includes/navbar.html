@@ -87,6 +87,7 @@
                 </div>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dropdown-header">{{ request.user.email }}</div>
+                    <a href="/profile/"><i class="ri-user-line"></i> Profile</a>
                     <a href="/wishlist/"><i class="ri-heart-line"></i> Wishlist</a>
                     <a href="#" id="navbarLogoutBtn"><i class="ri-logout-box-line"></i> Logout</a>
                 </div>
@@ -118,9 +119,9 @@
         <span>Cart</span>
     </a>
     {% if request.user.is_authenticated %}
-    <a href="#" class="bottom-nav-item" id="mobileLogoutBtn">
-        <i class="ri-logout-box-line"></i>
-        <span>Logout</span>
+    <a href="/profile/" class="bottom-nav-item">
+        <i class="ri-user-line"></i>
+        <span>Profile</span>
     </a>
     {% else %}
     <a href="#" class="bottom-nav-item" id="mobileLoginBtn">

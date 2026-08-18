@@ -1,0 +1,857 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+
+{% block title %}My Profile - Carmelian{% endblock %}
+
+{% block extra_css %}
+<style>
+  .profile-container {
+    max-width: 1200px;
+    margin: 8rem auto 4rem auto;
+    padding: 0 20px;
+  }
+  @media (max-width: 992px) {
+    .profile-container {
+      margin-top: 6rem;
+    }
+  }
+
+  .profile-header-card {
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 10px 40px -10px rgba(124, 83, 87, 0.05);
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  @media (max-width: 576px) {
+    .profile-header-card {
+      flex-direction: column;
+      text-align: center;
+      padding: 20px;
+    }
+  }
+  .profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--primary, #7c5357);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(124, 83, 87, 0.2);
+  }
+  .profile-meta-info h2 {
+    font-family: Georgia, serif;
+    font-size: 1.8rem;
+    color: var(--text-dark, #1a1c1a);
+    margin: 0 0 5px 0;
+  }
+  .profile-meta-info p {
+    color: var(--text-light, #504444);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  /* Tabs Navigation */
+  .profile-tabs {
+    display: flex;
+    gap: 15px;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.1);
+    margin-bottom: 30px;
+  }
+  .profile-tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-light, #504444);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s ease;
+  }
+  .profile-tab-btn.active {
+    color: var(--primary, #7c5357);
+  }
+  .profile-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary, #7c5357);
+  }
+
+  /* Tab content panel */
+  .profile-panel {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+  .profile-panel.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .grid-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+  @media (max-width: 768px) {
+    .grid-two-col {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Forms styling */
+  .profile-card {
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 10px 40px -10px rgba(124, 83, 87, 0.05);
+  }
+  .card-subtitle {
+    font-family: Georgia, serif;
+    font-size: 1.4rem;
+    color: var(--text-dark, #1a1c1a);
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.05);
+    padding-bottom: 10px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+  @media (max-width: 576px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+    position: relative;
+  }
+  .form-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-dark, #1a1c1a);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .form-group input {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(124, 83, 87, 0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-dark, #1a1c1a);
+    transition: all 0.2s ease;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--primary, #7c5357);
+    box-shadow: 0 0 0 3px rgba(124, 83, 87, 0.08);
+  }
+  
+  /* Autocomplete styling */
+  .autocomplete-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  .suggestions-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid rgba(124, 83, 87, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+    margin-top: 4px;
+  }
+  .autocomplete-suggestion {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    color: var(--text-dark, #1a1c1a);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    transition: background 0.2s;
+  }
+  .autocomplete-suggestion:hover {
+    background: rgba(124, 83, 87, 0.05);
+    color: var(--primary, #7c5357);
+  }
+
+  .save-btn {
+    background: var(--text-dark, #1a1c1a);
+    color: var(--background, #fffdfa);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .save-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  /* Orders layout */
+  .orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .order-card {
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(124, 83, 87, 0.02);
+  }
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.05);
+    padding-bottom: 12px;
+    margin-bottom: 15px;
+  }
+  @media (max-width: 576px) {
+    .order-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+  }
+  .order-id {
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+    font-size: 1.05rem;
+  }
+  .order-date {
+    font-size: 0.85rem;
+    color: var(--text-light, #504444);
+    margin-left: 10px;
+  }
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  .status-pending { background: #fef3c7; color: #d97706; }
+  .status-processing { background: #dbeafe; color: #2563eb; }
+  .status-shipped { background: #e0f2fe; color: #0284c7; }
+  .status-delivered { background: #dcfce7; color: #16a34a; }
+  .status-cancelled { background: #fee2e2; color: #dc2626; }
+
+  .order-details-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .order-details-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .order-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .order-item-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.4);
+    padding: 10px;
+    border-radius: 12px;
+  }
+  .order-item-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: rgba(0,0,0,0.02);
+  }
+  .order-item-info {
+    flex: 1;
+  }
+  .item-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-dark, #1a1c1a);
+    margin: 0;
+  }
+  .item-price-qty {
+    font-size: 0.85rem;
+    color: var(--text-light, #504444);
+    margin: 3px 0 0 0;
+  }
+  .item-subtotal {
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+  }
+
+  .order-summary-box {
+    background: rgba(124, 83, 87, 0.02);
+    border: 1px solid rgba(124, 83, 87, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+  }
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: var(--text-light, #504444);
+  }
+  .summary-line.total-line {
+    border-top: 1px solid rgba(124, 83, 87, 0.08);
+    padding-top: 8px;
+    margin-top: 8px;
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+    font-size: 1rem;
+  }
+
+  /* Unauthenticated view styles */
+  .auth-notice-card {
+    max-width: 500px;
+    margin: 4rem auto;
+    text-align: center;
+    padding: 40px;
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+  }
+  .auth-notice-card i {
+    font-size: 3rem;
+    color: var(--primary, #7c5357);
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+  .auth-notice-card h2 {
+    font-family: Georgia, serif;
+    margin-top: 0;
+    color: var(--text-dark, #1a1c1a);
+  }
+  .auth-notice-card p {
+    color: var(--text-light, #504444);
+    margin-bottom: 25px;
+    line-height: 1.5;
+  }
+
+  .order-delivery-address {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-light, #504444);
+    line-height: 1.4;
+    border-top: 1px solid rgba(124, 83, 87, 0.04);
+    padding-top: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+  {% if not is_auth %}
+  <div class="auth-notice-card">
+    <i class="ri-user-shared-line"></i>
+    <h2>Sign In Required</h2>
+    <p>Please log in to your account to view your profile settings, save shipping addresses, and review your order history.</p>
+    <button class="save-btn" id="profilePageLoginBtn">
+      <i class="ri-login-box-line"></i> Sign In Now
+    </button>
+  </div>
+  {% else %}
+  <!-- Header Card -->
+  <div class="profile-header-card">
+    <div class="profile-avatar-large">
+      {{ request.user.email|slice:":1"|upper }}
+    </div>
+    <div class="profile-meta-info">
+      <h2>Account Dashboard</h2>
+      <p><i class="ri-mail-line"></i> {{ request.user.email }}</p>
+      <p><i class="ri-calendar-line"></i> Member since {{ request.user.date_joined|date:"F Y" }}</p>
+    </div>
+  </div>
+
+  <!-- Tabs Nav -->
+  <div class="profile-tabs">
+    <button class="profile-tab-btn active" data-tab="tabAddress">
+      <i class="ri-map-pin-line"></i> Account & Address
+    </button>
+    <button class="profile-tab-btn" data-tab="tabOrders">
+      <i class="ri-shopping-bag-line"></i> Order History ({{ orders.count }})
+    </button>
+  </div>
+
+  <!-- Tab Contents -->
+  <div class="profile-panels">
+    
+    <!-- Tab 1: Saved Address Form -->
+    <div class="profile-panel active" id="tabAddress">
+      <div class="grid-two-col">
+        
+        <div class="profile-card">
+          <h3 class="card-subtitle">Saved Shipping Address</h3>
+          <div id="addressStatusMsg" style="margin-bottom:15px; display:none;" class="alert"></div>
+          
+          <form id="profileAddressForm">
+            <div class="form-group">
+              <label for="addressSearch">Search Address (OSM Autocomplete)</label>
+              <div class="autocomplete-wrapper">
+                <input type="text" id="addressSearch" placeholder="Type here to search street, city..." autocomplete="off">
+                <div class="suggestions-box" id="suggestionsBox"></div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="text" id="phone" value="{{ profile.phone|default:'' }}" placeholder="+91 XXXXX XXXXX">
+            </div>
+
+            <div class="form-group">
+              <label for="streetAddress">Street Address *</label>
+              <input type="text" id="streetAddress" value="{{ profile.street_address|default:'' }}" placeholder="123 Main St, Apt 4B" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="city">City / Town *</label>
+                <input type="text" id="city" value="{{ profile.city|default:'' }}" required>
+              </div>
+              <div class="form-group">
+                <label for="county">District / County</label>
+                <input type="text" id="county" value="{{ profile.county|default:'' }}">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="state">State *</label>
+                <input type="text" id="state" value="{{ profile.state|default:'' }}" required>
+              </div>
+              <div class="form-group">
+                <label for="postalCode">Postal Code (ZIP) *</label>
+                <input type="text" id="postalCode" value="{{ profile.postal_code|default:'' }}" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="country">Country *</label>
+              <input type="text" id="country" value="{{ profile.country|default:'India' }}" required>
+            </div>
+
+            <button type="submit" class="save-btn" style="width:100%; margin-top:10px;">
+              <i class="ri-save-line"></i> Save Address Details
+            </button>
+          </form>
+        </div>
+
+        <div class="profile-card">
+          <h3 class="card-subtitle">Saved Address Info</h3>
+          <div class="saved-address-display" id="savedAddressDisplayContainer" style="padding: 15px; background: rgba(124, 83, 87, 0.03); border-radius: 12px; border: 1px solid rgba(124, 83, 87, 0.05); line-height: 1.6;">
+            {% if profile.street_address %}
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Phone Number</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.phone|default:'-' }}</strong>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Street Address</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.street_address }}</strong>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">City / Town</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.city }}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">District / County</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.county|default:'-' }}</strong>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">State</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.state }}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Postal Code</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.postal_code }}</strong>
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Country</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">{{ profile.country }}</strong>
+              </div>
+            {% else %}
+              <div style="text-align: center; padding: 20px 10px; color: var(--text-light);">
+                <i class="ri-map-pin-add-line" style="font-size: 2rem; color: var(--primary); opacity: 0.6; display: block; margin-bottom: 8px;"></i>
+                <span>No saved address details found. Please complete the form to save your address.</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 2: Orders List -->
+    <div class="profile-panel" id="tabOrders">
+      {% if not orders %}
+      <div class="profile-card" style="text-align: center; padding: 60px 20px;">
+        <i class="ri-shopping-bag-3-line" style="font-size: 3rem; color: var(--primary); opacity: 0.5; margin-bottom: 15px; display: inline-block;"></i>
+        <h3 style="font-family: Georgia, serif; font-size: 1.3rem; margin: 0 0 10px 0;">No Orders Placed Yet</h3>
+        <p style="color: var(--text-light); max-width: 400px; margin: 0 auto 20px auto;">You haven't ordered anything from Carmelian yet. Explore our handcrafted, sustainable jewelry products to make your first purchase.</p>
+        <a href="/shop/" class="save-btn" style="text-decoration: none;">
+          <i class="ri-store-2-line"></i> Start Shopping
+        </a>
+      </div>
+      {% else %}
+      <div class="orders-list">
+        {% for order in orders %}
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <span class="order-id">Order #{{ order.id }}</span>
+              <span class="order-date">{{ order.created_at|date:"F d, Y - H:i" }}</span>
+            </div>
+            <div>
+              <span class="status-badge 
+                {% if order.status == 'pending' %}status-pending
+                {% elif order.status == 'processing' %}status-processing
+                {% elif order.status == 'shipped' %}status-shipped
+                {% elif order.status == 'delivered' %}status-delivered
+                {% else %}status-cancelled{% endif %}">
+                {{ order.status }}
+              </span>
+            </div>
+          </div>
+
+          <div class="order-details-grid">
+            <div class="order-items-list">
+              {% for item in order.items.all %}
+              <div class="order-item-row">
+                {% if item.product.images.first %}
+                <img src="{{ item.product.images.first.image.url }}" alt="{{ item.product_name }}" class="order-item-thumb">
+                {% else %}
+                <div class="order-item-thumb" style="display:flex; align-items:center; justify-content:center; background:#eee; font-size:10px;">No Img</div>
+                {% endif %}
+                <div class="order-item-info">
+                  <h4 class="item-name">{{ item.product_name }}</h4>
+                  <p class="item-price-qty">Qty: {{ item.quantity }} × Rs. {{ item.price }}</p>
+                </div>
+                <div class="item-subtotal">
+                  Rs. {% widthratio item.price 1 item.quantity %}
+                </div>
+              </div>
+              {% endfor %}
+
+              <!-- Shipping Info -->
+              <div class="order-delivery-address">
+                <strong>Ship To:</strong> {{ order.full_name }} ({{ order.phone }})<br>
+                {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }} - {{ order.postal_code }}
+              </div>
+            </div>
+
+            <div>
+              <div class="order-summary-box">
+                <div class="summary-line">
+                  <span>Subtotal</span>
+                  <span>Rs. {{ order.subtotal }}</span>
+                </div>
+                <div class="summary-line">
+                  <span>Delivery Fee</span>
+                  <span>Rs. {{ order.delivery_fee }}</span>
+                </div>
+                {% if order.discount > 0 %}
+                <div class="summary-line" style="color: #16a34a;">
+                  <span>Discount</span>
+                  <span>- Rs. {{ order.discount }}</span>
+                </div>
+                {% endif %}
+                <div class="summary-line">
+                  <span>Payment Method</span>
+                  <span style="text-transform: uppercase;">{{ order.payment_method }}</span>
+                </div>
+                <div class="summary-line total-line">
+                  <span>Total Paid</span>
+                  <span>Rs. {{ order.total }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  // --- Tab Switching Logic ---
+  const tabs = document.querySelectorAll('.profile-tab-btn');
+  const panels = document.querySelectorAll('.profile-panel');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+
+      tab.classList.add('active');
+      const targetId = tab.getAttribute('data-tab');
+      document.getElementById(targetId).classList.add('active');
+    });
+  });
+
+  // --- Auth trigger on Profile page ---
+  const authTrigger = document.getElementById('profilePageLoginBtn');
+  if (authTrigger) {
+    authTrigger.addEventListener('click', () => {
+      const loginBtn = document.getElementById('navbarLoginBtn');
+      if (loginBtn) {
+        loginBtn.click();
+      } else {
+        const mobileLogin = document.getElementById('mobileLoginBtn');
+        if (mobileLogin) mobileLogin.click();
+      }
+    });
+  }
+
+  // --- Save Address Form Submit ---
+  const addressForm = document.getElementById('profileAddressForm');
+  const addressStatusMsg = document.getElementById('addressStatusMsg');
+
+  function showAddressStatus(msg, type) {
+    addressStatusMsg.style.display = 'block';
+    addressStatusMsg.className = 'alert ' + (type === 'success' ? 'succ' : 'err');
+    addressStatusMsg.textContent = msg;
+    addressStatusMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  if (addressForm) {
+    addressForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const payload = {
+        phone: document.getElementById('phone').value.trim(),
+        street_address: document.getElementById('streetAddress').value.trim(),
+        city: document.getElementById('city').value.trim(),
+        county: document.getElementById('county').value.trim(),
+        state: document.getElementById('state').value.trim(),
+        country: document.getElementById('country').value.trim(),
+        postal_code: document.getElementById('postalCode').value.trim()
+      };
+
+      try {
+        const response = await fetch('/profile/address/save/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showAddressStatus(data.message, 'success');
+          const container = document.getElementById('savedAddressDisplayContainer');
+          if (container) {
+            container.innerHTML = `
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Phone Number</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.phone || '-'}</strong>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Street Address</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.street_address}</strong>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">City / Town</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.city}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">District / County</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.county || '-'}</strong>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">State</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.state}</strong>
+                </div>
+                <div>
+                  <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Postal Code</span>
+                  <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.postal_code}</strong>
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); font-weight: 500; display: block; letter-spacing: 0.03em;">Country</span>
+                <strong style="color: var(--text-dark); font-size: 0.95rem;">${payload.country}</strong>
+              </div>
+            `;
+          }
+        } else {
+          showAddressStatus(data.message || 'Failed to save address.', 'error');
+        }
+      } catch (err) {
+        showAddressStatus('A connection error occurred. Please try again.', 'error');
+      }
+    });
+  }
+
+  // --- Profile Logout Action ---
+  const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+  if (profileLogoutBtn) {
+    profileLogoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const response = await fetch('/auth/logout/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        window.location.href = '/';
+      }
+    });
+  }
+
+  // --- OpenStreetMap (Nominatim) Autocomplete Suggestion Integration ---
+  const searchInput = document.getElementById('addressSearch');
+  const suggestionsBox = document.getElementById('suggestionsBox');
+  let debounceTimeout;
+
+  if (searchInput && suggestionsBox) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimeout);
+      const query = searchInput.value.trim();
+      
+      if (query.length < 3) {
+        suggestionsBox.style.display = 'none';
+        return;
+      }
+      
+      debounceTimeout = setTimeout(async () => {
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&countrycodes=in`, {
+            headers: {
+              'Accept-Language': 'en'
+            }
+          });
+          const results = await response.json();
+          
+          if (results && results.length > 0) {
+            suggestionsBox.innerHTML = '';
+            results.forEach(item => {
+              const suggestion = document.createElement('div');
+              suggestion.className = 'autocomplete-suggestion';
+              suggestion.textContent = item.display_name;
+              suggestion.addEventListener('click', () => {
+                selectAddressSuggestion(item);
+              });
+              suggestionsBox.appendChild(suggestion);
+            });
+            suggestionsBox.style.display = 'block';
+          } else {
+            suggestionsBox.style.display = 'none';
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }, 400);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target !== searchInput && e.target !== suggestionsBox) {
+        suggestionsBox.style.display = 'none';
+      }
+    });
+
+    function selectAddressSuggestion(item) {
+      searchInput.value = item.display_name;
+      suggestionsBox.style.display = 'none';
+      
+      const addr = item.address;
+      if (addr) {
+        document.getElementById('streetAddress').value = 
+          (addr.road || '') + 
+          (addr.neighbourhood ? ', ' + addr.neighbourhood : '') + 
+          (addr.suburb ? ', ' + addr.suburb : '') + 
+          (addr.house_number ? ' No. ' + addr.house_number : '');
+          
+        document.getElementById('city').value = addr.city || addr.town || addr.village || addr.suburb || '';
+        document.getElementById('county').value = addr.county || addr.district || '';
+        document.getElementById('state').value = addr.state || '';
+        document.getElementById('country').value = addr.country || 'India';
+        document.getElementById('postalCode').value = addr.postcode || '';
+      }
+    }
+  }
+</script>
+{% endblock %}

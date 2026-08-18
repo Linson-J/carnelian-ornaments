@@ -11,7 +11,7 @@ import random
 import re
 
 from .forms import NewsletterSubscriptionForm
-from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite
+from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile
 from .decorators import login_required_ajax
 
 
@@ -521,3 +521,322 @@ def remove_from_cart(request):
         'shipping': shipping,
         'grand_total': grand_total
     })
+
+
+# ─── Checkout & Shipping Views ────────────────────────────────
+
+import math
+
+def _haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculates distance in kilometers between two coordinates."""
+    try:
+        degrees_to_radians = math.pi / 180.0
+        phi1 = float(lat1) * degrees_to_radians
+        phi2 = float(lat2) * degrees_to_radians
+        theta1 = float(lon1) * degrees_to_radians
+        theta2 = float(lon2) * degrees_to_radians
+        
+        cos = (math.sin(phi1) * math.sin(phi2) +
+               math.cos(phi1) * math.cos(phi2) * math.cos(theta1 - theta2))
+        cos = max(-1.0, min(1.0, cos))
+        arc = math.acos(cos)
+        return arc * 6371.0
+    except Exception:
+        return 0.0
+
+
+def checkout_page(request):
+    if not request.user.is_authenticated:
+        return redirect('/?login_required=1')
+        
+    cart = request.session.get('cart', {})
+    if not cart:
+        return redirect('cart_page')
+        
+    subtotal = 0.0
+    original_total = 0.0
+    cart_items = []
+    
+    for prod_id, qty in cart.items():
+        prod = Product.objects.filter(id=int(prod_id)).first()
+        if prod:
+            price = float(prod.discount_price if prod.discount_price else prod.price)
+            orig_price = float(prod.price)
+            subtotal += price * qty
+            original_total += orig_price * qty
+            cart_items.append({
+                'product': prod,
+                'quantity': qty,
+                'total_price': price * qty
+            })
+            
+    discount = original_total - subtotal
+    config = DeliveryConfig.current()
+    
+    # Calculate a default delivery fee based on flat rules
+    if config.fee_type == DeliveryConfig.FeeType.THRESHOLD and subtotal >= float(config.free_threshold):
+        default_shipping = 0.0
+    else:
+        default_shipping = float(config.base_fee)
+        
+    grand_total = subtotal + default_shipping
+    
+    profile = None
+    if request.user.is_authenticated:
+        profile = UserProfile.objects.filter(user=request.user).first()
+        
+    return render(request, 'shop/checkout.html', {
+        'cart_items': cart_items,
+        'subtotal': subtotal,
+        'discount': discount,
+        'default_shipping': default_shipping,
+        'grand_total': grand_total,
+        'config': config,
+        'profile': profile,
+    })
+
+
+@require_POST
+def verify_checkout_address(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+        
+    try:
+        data = json.loads(request.body)
+        country = data.get('country', 'India').strip()
+        state = data.get('state', '').strip()
+        city = data.get('city', '').strip()
+        county = data.get('county', '').strip()
+        subtotal = float(data.get('subtotal', 0.0))
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': 'Invalid address inputs.'}, status=400)
+        
+    if not state:
+        return JsonResponse({'success': False, 'message': 'State is required to check delivery availability.'}, status=400)
+        
+    # Check if delivery is allowed in this zone and find matching zone for rate
+    matching_zone = None
+    allowed_zones = DeliveryZone.objects.filter(is_active=True)
+    
+    if allowed_zones.exists():
+        matching_zones = allowed_zones.filter(country__iexact=country, state__iexact=state)
+        
+        # Resolve most specific zone
+        for zone in matching_zones:
+            if zone.county and zone.county.lower() != county.lower():
+                continue
+            if zone.city and zone.city.lower() != city.lower():
+                continue
+            matching_zone = zone
+            break
+            
+        if not matching_zone:
+            return JsonResponse({
+                'available': False,
+                'message': f'Sorry, we do not deliver to {state} ({country}) at this time.'
+            })
+            
+    # Calculate fee
+    config = DeliveryConfig.current()
+    
+    # Check if subtotal qualifies for free shipping
+    is_free = False
+    if subtotal >= float(config.free_threshold):
+        is_free = True
+        delivery_fee = 0.0
+    else:
+        # Determine zone fee or flat fallback
+        if config.fee_type == DeliveryConfig.FeeType.ZONE and matching_zone:
+            delivery_fee = float(matching_zone.delivery_fee)
+        elif config.fee_type == DeliveryConfig.FeeType.THRESHOLD and matching_zone:
+            delivery_fee = float(matching_zone.delivery_fee)
+        else:
+            delivery_fee = float(config.base_fee)
+            
+    return JsonResponse({
+        'available': True,
+        'delivery_fee': round(delivery_fee, 2),
+        'distance_km': 0.0,
+        'is_free': is_free,
+        'message': 'Delivery is available for your address!'
+    })
+
+
+@require_POST
+def place_order(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+        
+    cart = request.session.get('cart', {})
+    if not cart:
+        return JsonResponse({'success': False, 'message': 'Your cart is empty.'}, status=400)
+        
+    try:
+        data = json.loads(request.body)
+        full_name = data.get('full_name', '').strip()
+        phone = data.get('phone', '').strip()
+        country = data.get('country', '').strip()
+        state = data.get('state', '').strip()
+        city = data.get('city', '').strip()
+        county = data.get('county', '').strip()
+        street_address = data.get('street_address', '').strip()
+        postal_code = data.get('postal_code', '').strip()
+        
+        payment_method = data.get('payment_method', 'Card').strip()
+        payment_id = data.get('payment_id', '').strip()
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid checkout data.'}, status=400)
+        
+    if not (full_name and phone and country and state and city and street_address and postal_code):
+        return JsonResponse({'success': False, 'message': 'Please fill all required address fields.'}, status=400)
+        
+    # Re-verify delivery availability and calculate fee securely
+    matching_zone = None
+    allowed_zones = DeliveryZone.objects.filter(is_active=True)
+    
+    if allowed_zones.exists():
+        matching_zones = allowed_zones.filter(country__iexact=country, state__iexact=state)
+        for zone in matching_zones:
+            if zone.county and zone.county.lower() != county.lower():
+                continue
+            if zone.city and zone.city.lower() != city.lower():
+                continue
+            matching_zone = zone
+            break
+            
+        if not matching_zone:
+            return JsonResponse({'success': False, 'message': 'Selected shipping address is outside our delivery zones.'}, status=400)
+            
+    # Calculate secure totals
+    subtotal = 0.0
+    order_items_data = []
+    
+    for prod_id, qty in cart.items():
+        prod = Product.objects.filter(id=int(prod_id)).first()
+        if not prod:
+            continue
+            
+        if prod.stock < qty:
+            return JsonResponse({
+                'success': False,
+                'message': f'Sorry, {prod.name} only has {prod.stock} items left in stock.'
+            }, status=400)
+            
+        price = float(prod.discount_price if prod.discount_price else prod.price)
+        subtotal += price * qty
+        order_items_data.append((prod, qty, price))
+        
+    # Calculate delivery fee
+    config = DeliveryConfig.current()
+    
+    is_free = False
+    if subtotal >= float(config.free_threshold):
+        is_free = True
+        delivery_fee = 0.0
+    else:
+        if config.fee_type == DeliveryConfig.FeeType.ZONE and matching_zone:
+            delivery_fee = float(matching_zone.delivery_fee)
+        elif config.fee_type == DeliveryConfig.FeeType.THRESHOLD and matching_zone:
+            delivery_fee = float(matching_zone.delivery_fee)
+        else:
+            delivery_fee = float(config.base_fee)
+            
+    total = subtotal + delivery_fee
+    
+    # Create the Order
+    order = Order.objects.create(
+        user=request.user,
+        full_name=full_name,
+        phone=phone,
+        country=country,
+        state=state,
+        city=city,
+        county=county,
+        street_address=street_address,
+        postal_code=postal_code,
+        subtotal=subtotal,
+        delivery_fee=delivery_fee,
+        total=total,
+        status=Order.Status.PROCESSING if payment_method == 'Card' else Order.Status.PENDING,
+        payment_method=payment_method,
+        payment_id=payment_id
+    )
+    
+    # Create order items and deduct stock
+    for prod, qty, price in order_items_data:
+        OrderItem.objects.create(
+            order=order,
+            product=prod,
+            product_name=prod.name,
+            price=price,
+            quantity=qty
+        )
+        prod.stock -= qty
+        if prod.stock <= 0:
+            prod.status = Product.Status.OUT_OF_STOCK
+        prod.save()
+        
+    # Clear the cart session
+    request.session['cart'] = {}
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Order placed successfully!',
+        'order_id': order.id
+    })
+
+
+def order_success(request, order_id):
+    if not request.user.is_authenticated:
+        return redirect('/')
+        
+    order = get_object_or_404(Order.objects.prefetch_related('items'), id=order_id, user=request.user)
+    return render(request, 'shop/order_success.html', {'order': order})
+
+
+def profile_page(request):
+    if not request.user.is_authenticated:
+        return render(request, 'shop/profile.html', {'is_auth': False})
+        
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    orders = Order.objects.filter(user=request.user).prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')
+    
+    return render(request, 'shop/profile.html', {
+        'profile': profile,
+        'orders': orders,
+        'is_auth': True
+    })
+
+
+@require_POST
+def save_profile_address(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+        
+    try:
+        data = json.loads(request.body)
+        phone = data.get('phone', '').strip()
+        street_address = data.get('street_address', '').strip()
+        city = data.get('city', '').strip()
+        county = data.get('county', '').strip()
+        state = data.get('state', '').strip()
+        country = data.get('country', 'India').strip()
+        postal_code = data.get('postal_code', '').strip()
+        
+        if not street_address or not city or not state or not postal_code:
+            return JsonResponse({'success': False, 'message': 'Please fill out all required fields (*).'}, status=400)
+            
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile.phone = phone
+        profile.street_address = street_address
+        profile.city = city
+        profile.county = county
+        profile.state = state
+        profile.country = country
+        profile.postal_code = postal_code
+        profile.save()
+        
+        return JsonResponse({'success': True, 'message': 'Address saved successfully!'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+

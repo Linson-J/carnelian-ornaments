@@ -17,6 +17,11 @@ from .models import (
     Offer,
     Product,
     ProductImage,
+    DeliveryZone,
+    DeliveryConfig,
+    Order,
+    OrderItem,
+    UserProfile,
 )
 
 
@@ -128,3 +133,35 @@ class NewsletterSubscriptionAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context['subscription_count'] = self.model.objects.count()
         return super().changelist_view(request, extra_context=extra_context)
+
+
+@admin.register(DeliveryZone)
+class DeliveryZoneAdmin(admin.ModelAdmin):
+    list_display = ('country', 'state', 'county', 'city', 'is_active')
+    list_filter = ('country', 'state', 'is_active')
+    search_fields = ('state', 'county', 'city')
+
+
+@admin.register(DeliveryConfig)
+class DeliveryConfigAdmin(admin.ModelAdmin):
+    list_display = ('fee_type', 'base_fee', 'free_threshold')
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'full_name', 'total', 'status', 'payment_method', 'created_at')
+    list_filter = ('status', 'payment_method', 'created_at')
+    search_fields = ('full_name', 'phone', 'street_address', 'city')
+    inlines = (OrderItemInline,)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'phone', 'city', 'state', 'country', 'postal_code')
+    search_fields = ('user__email', 'phone', 'city', 'state', 'postal_code')
+

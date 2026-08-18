@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
+from django.contrib.auth.models import User
+from django.db.models import Sum
 
 from .forms import CarouselItemForm
 from .decorators import admin_login_required
@@ -22,6 +24,10 @@ from .models import (
     Product,
     ProductImage,
     Favorite,
+    DeliveryZone,
+    DeliveryConfig,
+    Order,
+    OrderItem,
 )
 
 
@@ -108,17 +114,51 @@ def admin_dashboard(request):
     product_count = Product.objects.count()
     new_this_week = Product.objects.filter(created_at__gte=week).count()
 
-    total_sales = 0
-    total_orders = 0
-    total_customers = 0
-    pending_orders = 0
+    # Dynamic Order Stats
+    total_orders = Order.objects.count()
+    sales_agg = Order.objects.exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))
+    total_sales = float(sales_agg['total_sum'] or 0.0)
+    
+    total_customers = User.objects.filter(is_superuser=False, is_staff=False).count()
+    pending_orders = Order.objects.filter(status=Order.Status.PENDING).count()
     low_stock_products = Product.objects.filter(stock__lte=5).count()
-    revenue_this_month = 0.0
-
-    sales_chart = []
-    order_statistics = {}
-    top_selling = []
+    
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_rev_agg = Order.objects.filter(created_at__gte=month_start).exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))
+    revenue_this_month = float(monthly_rev_agg['total_sum'] or 0.0)
+    
+    db_recent_orders = Order.objects.order_by('-created_at')[:5]
     recent_orders = []
+    for o in db_recent_orders:
+        o.customer_name = o.full_name
+        recent_orders.append(o)
+        
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    order_statistics = {
+        'today': Order.objects.filter(created_at__gte=today_start).count(),
+        'this_week': Order.objects.filter(created_at__gte=week).count(),
+        'this_month': Order.objects.filter(created_at__gte=month_start).count(),
+    }
+    
+    top_selling_data = OrderItem.objects.values('product__name').annotate(sold=Sum('quantity')).order_by('-sold')[:5]
+    top_selling = [{'name': item['product__name'], 'sold': item['sold']} for item in top_selling_data if item['product__name']]
+    
+    sales_chart = []
+    for i in range(6, -1, -1):
+        day = now - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        day_sum = Order.objects.filter(created_at__gte=day_start, created_at__lt=day_end).exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))['total_sum'] or 0.0
+        sales_chart.append({
+            'label': day.strftime('%a'),
+            'value': float(day_sum)
+        })
+        
+    max_val = max(item['value'] for item in sales_chart) if sales_chart else 0
+    if max_val > 0:
+        for item in sales_chart:
+            item['original_value'] = item['value']
+            item['value'] = round((item['original_value'] / max_val) * 90) + 10
 
     return render(request, 'adminpanel/dashboard.html', {
         'admin_name': request.session.get('admin_name'),
@@ -443,3 +483,116 @@ def delete_customer(request, pk):
     customer.delete()
     messages.success(request, f'Customer account for {email} has been deleted.')
     return redirect('admin_customers')
+
+
+# ─── Delivery Settings & Zones Views ──────────────────────────
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def admin_delivery(request):
+    config = DeliveryConfig.current()
+    zones = DeliveryZone.objects.all()
+    
+    if request.method == 'POST':
+        config.fee_type = request.POST.get('fee_type', config.fee_type)
+        try:
+            config.base_fee = float(request.POST.get('base_fee', config.base_fee))
+            config.free_threshold = float(request.POST.get('free_threshold', config.free_threshold))
+        except ValueError:
+            messages.error(request, 'Please enter valid numbers for fee values.')
+            return redirect('admin_delivery')
+            
+        config.save()
+        messages.success(request, 'Delivery configuration updated successfully.')
+        return redirect('admin_delivery')
+        
+    return render(request, 'adminpanel/delivery.html', {
+        'config': config,
+        'zones': zones,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'delivery',
+    })
+
+
+@admin_login_required
+@require_POST
+def add_delivery_zone(request):
+    country = request.POST.get('country', 'India').strip()
+    state = request.POST.get('state', '').strip()
+    city = request.POST.get('city', '').strip()
+    county = request.POST.get('county', '').strip()
+    
+    try:
+        delivery_fee = float(request.POST.get('delivery_fee', 150.00))
+    except ValueError:
+        delivery_fee = 150.00
+        
+    if not state:
+        messages.error(request, 'State field is required to add a delivery zone.')
+        return redirect('admin_delivery')
+        
+    DeliveryZone.objects.create(
+        country=country,
+        state=state,
+        city=city,
+        county=county,
+        delivery_fee=delivery_fee,
+        is_active=True
+    )
+    messages.success(request, f'Delivery zone for {state} added successfully.')
+    return redirect('admin_delivery')
+
+
+@admin_login_required
+@require_POST
+def delete_delivery_zone(request, pk):
+    zone = get_object_or_404(DeliveryZone, pk=pk)
+    details = str(zone)
+    zone.delete()
+    messages.success(request, f'Delivery zone [{details}] deleted successfully.')
+    return redirect('admin_delivery')
+
+
+# ─── Order Management Views ───────────────────────────────────
+
+@admin_login_required
+def admin_orders(request):
+    orders = Order.objects.prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')
+    
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+        
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        if search_query.isdigit():
+            orders = orders.filter(id=search_query)
+        else:
+            orders = orders.filter(full_name__icontains=search_query)
+
+    return render(request, 'adminpanel/orders.html', {
+        'orders': orders,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'orders',
+        'order_count': Order.objects.count(),
+        'choices': Order.Status.choices,
+    })
+
+
+@admin_login_required
+@require_POST
+def update_order_status(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    new_status = request.POST.get('status', '').strip()
+    
+    if new_status in dict(Order.Status.choices):
+        order.status = new_status
+        order.save()
+        messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
+    else:
+        messages.error(request, "Invalid status transition selected.")
+        
+    return redirect('admin_orders')
+

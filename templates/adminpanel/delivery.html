@@ -1,0 +1,149 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Delivery Settings{% endblock %}
+{% block page_title %}Delivery Settings & Zones{% endblock %}
+
+{% block content %}
+<div class="settings-grid">
+  <!-- Left Side: Fee Configurations -->
+  <form class="card" method="POST" action="{% url 'admin_delivery' %}">
+    {% csrf_token %}
+    <div class="card-hd">
+      <h3>Delivery Fee Rules</h3>
+      <button class="btn-primary" type="submit">Save Settings</button>
+    </div>
+    <div class="card-body">
+      <p class="settings-help">Configure how delivery fees are calculated for customers at checkout.</p>
+
+      <div class="field">
+        <label for="fee_type">Calculation Model</label>
+        <select id="fee_type" name="fee_type" onchange="toggleFeeFields()">
+          <option value="flat" {% if config.fee_type == 'flat' %}selected{% endif %}>Flat Base Fee</option>
+          <option value="zone" {% if config.fee_type == 'zone' %}selected{% endif %}>Zone-based Fee</option>
+          <option value="threshold" {% if config.fee_type == 'threshold' %}selected{% endif %}>Free shipping above threshold, else Zone/Flat</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <div class="field" id="base_fee_container">
+          <label for="base_fee">Fallback Base Delivery Fee (Rs.)</label>
+          <input type="number" step="0.01" id="base_fee" name="base_fee" value="{{ config.base_fee }}">
+        </div>
+        <div class="field" id="free_threshold_container">
+          <label for="free_threshold">Free Shipping Threshold (Rs.)</label>
+          <input type="number" step="0.01" id="free_threshold" name="free_threshold" value="{{ config.free_threshold }}">
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Right Side: Allowed Zones Manager -->
+  <div class="card">
+    <div class="card-hd">
+      <h3>Add Allowed Delivery Zone</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{% url 'add_delivery_zone' %}">
+        {% csrf_token %}
+        <div class="field-row">
+          <div class="field">
+            <label for="country">Country</label>
+            <input type="text" id="country" name="country" value="India" required>
+          </div>
+          <div class="field">
+            <label for="state">State <span class="req">*</span></label>
+            <input type="text" id="state" name="state" placeholder="e.g. Karnataka" required>
+          </div>
+        </div>
+        
+        <div class="field-row">
+          <div class="field">
+            <label for="county">County / District</label>
+            <input type="text" id="county" name="county" placeholder="e.g. Bengaluru Urban">
+          </div>
+          <div class="field">
+            <label for="city">City / Town</label>
+            <input type="text" id="city" name="city" placeholder="e.g. Bengaluru">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="delivery_fee">Delivery Fee to this Zone (Rs.) <span class="req">*</span></label>
+          <input type="number" step="0.01" id="delivery_fee" name="delivery_fee" value="150.00" required>
+        </div>
+        
+        <button class="btn-primary" type="submit" style="width: 100%; justify-content: center; margin-top: 10px;">Add Zone</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Area: Active Allowed Zones List -->
+<div class="card" style="margin-top: 20px;">
+  <div class="card-hd">
+    <h3>Active Delivery Zones</h3>
+    <span class="badge popular">{{ zones.count }} Zones Allowed</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th>State</th>
+          <th>County / District</th>
+          <th>City / Town</th>
+          <th>Zone Delivery Fee</th>
+          <th style="text-align: right; width: 120px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for zone in zones %}
+        <tr>
+          <td>{{ zone.country }}</td>
+          <td><strong>{{ zone.state }}</strong></td>
+          <td>{{ zone.county|default:"—" }}</td>
+          <td>{{ zone.city|default:"—" }}</td>
+          <td><strong>Rs. {{ zone.delivery_fee }}</strong></td>
+          <td style="text-align: right;">
+            <form method="POST" action="{% url 'delete_delivery_zone' zone.pk %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this zone?')">
+              {% csrf_token %}
+              <button class="btn-sm danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--muted); padding: 30px;">
+            No delivery zones configured. All addresses will fail delivery availability checks! Please add at least one zone.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function toggleFeeFields() {
+    const feeType = document.getElementById('fee_type').value;
+    const baseFeeContainer = document.getElementById('base_fee_container');
+    const freeThresholdContainer = document.getElementById('free_threshold_container');
+
+    if (feeType === 'flat') {
+      baseFeeContainer.style.display = 'block';
+      freeThresholdContainer.style.display = 'none';
+    } else if (feeType === 'zone') {
+      baseFeeContainer.style.display = 'block';
+      freeThresholdContainer.style.display = 'none';
+    } else if (feeType === 'threshold') {
+      baseFeeContainer.style.display = 'block';
+      freeThresholdContainer.style.display = 'block';
+    }
+  }
+
+  // Run on page load
+  document.addEventListener("DOMContentLoaded", toggleFeeFields);
+</script>
+{% endblock %}

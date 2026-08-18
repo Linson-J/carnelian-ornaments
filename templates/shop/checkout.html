@@ -1,0 +1,924 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+
+{% block title %}Checkout - Carmelian{% endblock %}
+
+{% block extra_css %}
+<style>
+  .checkout-container {
+    max-width: 1200px;
+    margin: 8rem auto 4rem auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1.25fr 0.75fr;
+    gap: 30px;
+  }
+  @media (max-width: 992px) {
+    .checkout-container {
+      grid-template-columns: 1fr;
+      margin-top: 6rem;
+    }
+  }
+  .checkout-card {
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 10px 40px -10px rgba(124, 83, 87, 0.05);
+  }
+  .checkout-title {
+    font-family: Georgia, serif;
+    font-size: 1.8rem;
+    color: var(--text-dark, #1a1c1a);
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  /* Stepper */
+  .stepper {
+    display: flex;
+    margin-bottom: 30px;
+    position: relative;
+    justify-content: space-between;
+  }
+  .stepper::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: rgba(124, 83, 87, 0.1);
+    z-index: 1;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+    flex: 1;
+  }
+  .step-num {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--background, #fffdfa);
+    border: 2px solid rgba(124, 83, 87, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--text-muted, #504444);
+    transition: all 0.3s;
+    font-size: 1rem;
+  }
+  .step.active .step-num {
+    background: var(--primary, #7c5357);
+    border-color: var(--primary, #7c5357);
+    color: #white;
+    color: var(--background, #fffdfa);
+    box-shadow: 0 0 15px rgba(124, 83, 87, 0.3);
+  }
+  .step.completed .step-num {
+    background: #4caf50;
+    border-color: #4caf50;
+    color: var(--background, #fffdfa);
+  }
+  .step-label {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #504444);
+  }
+  .step.active .step-label {
+    color: var(--primary, #7c5357);
+  }
+
+  /* Form layouts */
+  .form-sec {
+    display: none;
+    animation: fadeIn 0.4s ease forwards;
+  }
+  .form-sec.active {
+    display: block;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .form-grid-3.three {
+    grid-template-columns: 1fr 1fr 1.2fr;
+  }
+  @media (max-width: 576px) {
+    .form-grid-3, .form-grid-3.three {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+  }
+  .form-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--primary, #7c5357);
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1.5px solid rgba(124, 83, 87, 0.15);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text-dark, #1a1c1a);
+    outline: none;
+    transition: all 0.3s;
+  }
+  .form-group input:focus {
+    border-color: var(--primary, #7c5357);
+    box-shadow: 0 0 10px rgba(124, 83, 87, 0.08);
+  }
+  
+  /* Location Buttons */
+  .btn-outline {
+    background: none;
+    border: 1.5px solid var(--primary, #7c5357);
+    color: var(--primary, #7c5357);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+  .btn-outline:hover {
+    background: rgba(124, 83, 87, 0.06);
+    transform: translateY(-2px);
+  }
+  
+  /* Order summary column */
+  .summary-card {
+    position: sticky;
+    top: 8rem;
+  }
+  .summary-title {
+    font-family: Georgia, serif;
+    font-size: 1.4rem;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.08);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    color: var(--text-dark, #1a1c1a);
+  }
+  .item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+  }
+  .item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .item-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #fcf8f5;
+    border: 1px solid rgba(124, 83, 87, 0.05);
+  }
+  .item-details {
+    display: flex;
+    flex-direction: column;
+  }
+  .item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+  }
+  .item-qty {
+    font-size: 0.78rem;
+    color: var(--text-muted, #504444);
+  }
+  .item-price {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-dark, #1a1c1a);
+  }
+  
+  .calc-sec {
+    border-top: 1px solid rgba(124, 83, 87, 0.08);
+    margin-top: 20px;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .calc-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.92rem;
+    color: var(--text-muted, #504444);
+  }
+  .calc-row.total {
+    border-top: 1.5px dashed rgba(124, 83, 87, 0.15);
+    margin-top: 10px;
+    padding-top: 15px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-dark, #1a1c1a);
+  }
+  
+  /* Status Info Box */
+  .status-box {
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    margin-bottom: 22px;
+    display: none;
+  }
+  .status-box.success {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(76, 175, 80, 0.08);
+    border: 1px solid rgba(76, 175, 80, 0.25);
+    color: #2e7d32;
+  }
+  .status-box.error {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(244, 67, 54, 0.08);
+    border: 1px solid rgba(244, 67, 54, 0.25);
+    color: #c62828;
+  }
+  .status-box.loading {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(124, 83, 87, 0.05);
+    border: 1px solid rgba(124, 83, 87, 0.15);
+    color: var(--primary, #7c5357);
+  }
+
+  /* Credit Card Preview */
+  .card-wrapper {
+    width: 100%;
+    perspective: 1000px;
+    margin-bottom: 25px;
+  }
+  .credit-card {
+    width: 100%;
+    aspect-ratio: 1.58;
+    background: linear-gradient(135deg, #2b2325 0%, #150f11 100%);
+    border-radius: 16px;
+    padding: 20px 24px;
+    color: #fff;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .credit-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(124, 83, 87, 0.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-chip {
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(135deg, #d4af37 0%, #f9e8a2 100%);
+    border-radius: 6px;
+  }
+  .card-logo {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .card-number-view {
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    margin: 20px 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+  }
+  .card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .card-holder-view, .card-expiry-view {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .card-lbl {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+  }
+  .card-val {
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  
+  .payment-methods {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+  .pay-method-btn {
+    border: 1.5px solid rgba(124, 83, 87, 0.15);
+    background: rgba(255,255,255,0.8);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+    transition: all 0.3s;
+  }
+  .pay-method-btn.active {
+    border-color: var(--primary, #7c5357);
+    background: rgba(124, 83, 87, 0.05);
+    color: var(--primary, #7c5357);
+  }
+
+  .autocomplete-suggestions {
+    border: 1px solid rgba(124, 83, 87, 0.1);
+    background: #fffdfa;
+    border-radius: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: 100%;
+    z-index: 99;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    margin-top: 76px;
+    display: none;
+  }
+  .autocomplete-suggestion {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.03);
+    transition: background 0.2s;
+  }
+  .autocomplete-suggestion:hover {
+    background: rgba(124, 83, 87, 0.04);
+  }
+  .autocomplete-suggestion:last-child {
+    border-bottom: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="checkout-container">
+  
+  <!-- Left Side: Interactive Checkout Steps -->
+  <div class="checkout-card">
+    <div class="checkout-title">
+      <i class="ri-secure-payment-line" style="color: var(--primary, #7c5357);"></i> Checkout
+    </div>
+    
+    <!-- Stepper Navigation -->
+    <div class="stepper">
+      <div class="step active" id="step1-indicator">
+        <div class="step-num">1</div>
+        <div class="step-label">Delivery Address</div>
+      </div>
+      <div class="step" id="step2-indicator">
+        <div class="step-num">2</div>
+        <div class="step-label">Payment Method</div>
+      </div>
+    </div>
+    
+    <!-- Status Notification Panel -->
+    <div class="status-box" id="checkoutStatusPanel">
+      <div class="status-icon"></div>
+      <div class="status-msg"></div>
+    </div>
+    
+    <!-- STEP 1 FORM: Delivery details -->
+    <div class="form-sec active" id="addressStepSec">
+      <!-- Autocomplete input search -->
+      <div class="form-group" style="position: relative; margin-bottom: 24px;">
+        <label for="addressSearch">Search / Autocomplete Address</label>
+        <input type="text" id="addressSearch" placeholder="Start typing address..." autocomplete="off">
+        <div class="autocomplete-suggestions" id="suggestionsBox"></div>
+      </div>
+      
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="fullName">Full Name <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="fullName" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="phone" placeholder="+91 98765 43210" required>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="streetAddress">Street Address & Apartment/Suite <span style="color: var(--primary);">*</span></label>
+        <input type="text" id="streetAddress" placeholder="e.g. 123 Luxury Main Rd, Apt 4B" required>
+      </div>
+      
+      <div class="form-grid-3 three">
+        <div class="form-group">
+          <label for="city">City / Town <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="city" placeholder="Bengaluru" required>
+        </div>
+        <div class="form-group">
+          <label for="county">District / County</label>
+          <input type="text" id="county" placeholder="Bengaluru Urban">
+        </div>
+        <div class="form-group">
+          <label for="state">State <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="state" placeholder="Karnataka" required>
+        </div>
+      </div>
+      
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="country">Country <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="country" value="India" required>
+        </div>
+        <div class="form-group">
+          <label for="postalCode">Postal Code / Zip <span style="color: var(--primary);">*</span></label>
+          <input type="text" id="postalCode" placeholder="560001" required>
+        </div>
+      </div>
+      
+      <button class="hero-btn primary" onclick="verifyAddress()" style="width: 100%; border: none; padding: 1.1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 15px;">Verify & Continue</button>
+    </div>
+    
+    <!-- STEP 2 FORM: Payment -->
+    <div class="form-sec" id="paymentStepSec">
+      <div class="payment-methods">
+        <div class="pay-method-btn active" id="btnCardPay" onclick="setPaymentMethod('Card')">
+          <i class="ri-bank-card-line"></i> Credit / Debit Card
+        </div>
+        <div class="pay-method-btn" id="btnCodPay" onclick="setPaymentMethod('COD')">
+          <i class="ri-coins-line"></i> Cash on Delivery (COD)
+        </div>
+      </div>
+      
+      <div id="cardPaymentDetails">
+        <!-- Interactive Card Preview -->
+        <div class="card-wrapper">
+          <div class="credit-card">
+            <div class="card-top">
+              <div class="card-chip"></div>
+              <div class="card-logo">Carmelian</div>
+            </div>
+            <div class="card-number-view" id="cardNumPreview">•••• •••• •••• ••••</div>
+            <div class="card-bottom">
+              <div class="card-holder-view">
+                <span class="card-lbl">Card Holder</span>
+                <span class="card-val" id="cardHolderPreview">Your Name</span>
+              </div>
+              <div class="card-expiry-view">
+                <span class="card-lbl">Expires</span>
+                <span class="card-val" id="cardExpiryPreview">MM/YY</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="cardNum">Card Number</label>
+          <input type="text" id="cardNum" placeholder="4111 2222 3333 4444" maxlength="19" oninput="formatCardNum(this)">
+        </div>
+        
+        <div class="form-grid-3">
+          <div class="form-group" style="grid-column: span 1;">
+            <label for="cardExpiry">Expiration Date</label>
+            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" oninput="formatCardExpiry(this)">
+          </div>
+          <div class="form-group" style="grid-column: span 1;">
+            <label for="cardCvv">CVV Code</label>
+            <input type="password" id="cardCvv" placeholder="•••" maxlength="3" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="cardName">Cardholder Name</label>
+          <input type="text" id="cardName" placeholder="JOHN DOE" oninput="document.getElementById('cardHolderPreview').textContent = this.value.toUpperCase() || 'YOUR NAME'">
+        </div>
+      </div>
+      
+      <div id="codPaymentDetails" style="display: none; padding: 10px 0 25px 0;">
+        <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #504444);">
+          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i> You can pay in cash or via mobile scanner when our delivery agent arrives at your shipping address.
+        </p>
+      </div>
+      
+      <div style="display: flex; gap: 15px; margin-top: 20px;">
+        <button class="hero-btn" onclick="backToAddress()" style="flex: 1; background: none; border: 1px solid rgba(0,0,0,0.15); color: var(--text-dark, #1a1c1a); padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Back</button>
+        <button class="hero-btn primary" id="btnPlaceOrder" onclick="submitOrder()" style="flex: 2; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Place Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Order Calculation & Items Summary -->
+  <div class="summary-card checkout-card">
+    <div class="summary-title">Order Summary</div>
+    
+    <div style="max-height: 250px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
+      {% for item in cart_items %}
+      <div class="item-row">
+        <div class="item-info">
+          {% with image=item.product.images.all|first %}
+            {% if image %}
+              <img src="{{ image.image.url }}" alt="{{ item.product.name }}" class="item-thumb">
+            {% else %}
+              <div class="item-thumb" style="display:flex;align-items:center;justify-content:center;"><i class="ri-image-line"></i></div>
+            {% endif %}
+          {% endwith %}
+          <div class="item-details">
+            <span class="item-name">{{ item.product.name }}</span>
+            <span class="item-qty">Qty: {{ item.quantity }}</span>
+          </div>
+        </div>
+        <span class="item-price">Rs. {{ item.total_price }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <div class="calc-sec">
+      <div class="calc-row">
+        <span>Subtotal</span>
+        <span id="subtotalVal">Rs. {{ subtotal }}</span>
+      </div>
+      <div class="calc-row" style="color: #4caf50;">
+        <span>Discount</span>
+        <span>-Rs. {{ discount }}</span>
+      </div>
+      <div class="calc-row">
+        <span>Delivery Fee</span>
+        <span id="deliveryFeeVal">Rs. {{ default_shipping }}</span>
+      </div>
+      <div class="calc-row total">
+        <span>Total Amount</span>
+        <span id="grandTotalVal">Rs. {{ grand_total }}</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let addressVerified = false;
+  let paymentMethod = 'Card';
+  const subtotal = parseFloat("{{ subtotal }}");
+  
+  // Custom UI notification helpers
+  function showStatus(message, type = 'loading') {
+    const panel = document.getElementById('checkoutStatusPanel');
+    const msgEl = panel.querySelector('.status-msg');
+    const iconEl = panel.querySelector('.status-icon');
+    
+    panel.className = `status-box ${type}`;
+    msgEl.innerHTML = message;
+    
+    if (type === 'loading') {
+      iconEl.innerHTML = '<i class="ri-loader-4-line ri-spin" style="font-size: 1.2rem;"></i>';
+    } else if (type === 'success') {
+      iconEl.innerHTML = '<i class="ri-checkbox-circle-line" style="font-size: 1.2rem;"></i>';
+    } else {
+      iconEl.innerHTML = '<i class="ri-error-warning-line" style="font-size: 1.2rem;"></i>';
+    }
+    panel.style.display = 'flex';
+    window.scrollTo({ top: panel.offsetTop - 100, behavior: 'smooth' });
+  }
+
+  function hideStatus() {
+    document.getElementById('checkoutStatusPanel').style.display = 'none';
+  }
+
+  // Formatting helpers
+  function formatCardNum(el) {
+    let val = el.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    let matches = val.match(/\d{4,16}/g);
+    let match = matches && matches[0] || '';
+    let parts = [];
+
+    for (let i=0, len=match.length; i<len; i+=4) {
+      parts.push(match.substring(i, i+4));
+    }
+
+    if (parts.length > 0) {
+      el.value = parts.join(' ');
+    } else {
+      el.value = val;
+    }
+    document.getElementById('cardNumPreview').textContent = el.value || '•••• •••• •••• ••••';
+  }
+
+  function formatCardExpiry(el) {
+    let val = el.value.replace(/\D/g, '');
+    if (val.length >= 2) {
+      el.value = val.substring(0, 2) + '/' + val.substring(2, 4);
+    } else {
+      el.value = val;
+    }
+    document.getElementById('cardExpiryPreview').textContent = el.value || 'MM/YY';
+  }
+
+  // Address steps toggling
+  function backToAddress() {
+    document.getElementById('step2-indicator').classList.remove('active');
+    document.getElementById('step1-indicator').classList.add('active');
+    document.getElementById('addressStepSec').classList.add('active');
+    document.getElementById('paymentStepSec').classList.remove('active');
+    hideStatus();
+  }
+
+  function setPaymentMethod(method) {
+    paymentMethod = method;
+    const cardBtn = document.getElementById('btnCardPay');
+    const codBtn = document.getElementById('btnCodPay');
+    const cardDetails = document.getElementById('cardPaymentDetails');
+    const codDetails = document.getElementById('codPaymentDetails');
+    
+    if (method === 'Card') {
+      cardBtn.classList.add('active');
+      codBtn.classList.remove('active');
+      cardDetails.style.display = 'block';
+      codDetails.style.display = 'none';
+    } else {
+      cardBtn.classList.remove('active');
+      codBtn.classList.add('active');
+      cardDetails.style.display = 'none';
+      codDetails.style.display = 'block';
+    }
+  }
+
+  // DELIVERY VERIFICATION & FEE CALCULATION
+  async function verifyAddress(silent = false) {
+    const country = document.getElementById('country').value.trim();
+    const state = document.getElementById('state').value.trim();
+    const city = document.getElementById('city').value.trim();
+    const county = document.getElementById('county').value.trim();
+    const postalCode = document.getElementById('postalCode').value.trim();
+    const streetAddress = document.getElementById('streetAddress').value.trim();
+    
+    if (!state || !country || !city || !streetAddress || !postalCode) {
+      showStatus("Please complete all required fields (marked *) to check delivery eligibility.", "error");
+      return;
+    }
+    
+    if (!silent) {
+      showStatus("Checking delivery availability & fee rules...", "loading");
+    }
+    
+    try {
+      const response = await fetch('/checkout/verify-address/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          country, state, city, county, subtotal
+        })
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.available) {
+        addressVerified = true;
+        
+        // Update Order calculation display
+        document.getElementById('deliveryFeeVal').textContent = `Rs. ${data.delivery_fee.toFixed(2)}`;
+        const grandTotal = subtotal + data.delivery_fee;
+        document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+        
+        let successMsg = data.message;
+        if (data.delivery_fee > 0) {
+          successMsg += ` Delivery Fee: <strong>Rs. ${data.delivery_fee.toFixed(2)}</strong>`;
+        } else {
+          successMsg += ` Free Shipping!`;
+        }
+        showStatus(successMsg, "success");
+        
+        if (!silent) {
+          // Transition to Payment step
+          setTimeout(() => {
+            document.getElementById('step1-indicator').classList.remove('active');
+            document.getElementById('step1-indicator').classList.add('completed');
+            document.getElementById('step2-indicator').classList.add('active');
+            document.getElementById('addressStepSec').classList.remove('active');
+            document.getElementById('paymentStepSec').classList.add('active');
+            hideStatus();
+          }, 1500);
+        }
+      } else {
+        addressVerified = false;
+        showStatus(data.message || "Delivery to this address is unavailable.", "error");
+      }
+    } catch (e) {
+      showStatus("Failed to contact delivery verification server.", "error");
+    }
+  }
+
+  // ORDER SUBMIT (Card and COD payment methods supported)
+  async function submitOrder() {
+    if (!addressVerified) {
+      showStatus("Please verify your delivery address first.", "error");
+      backToAddress();
+      return;
+    }
+    
+    const fullName = document.getElementById('fullName').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const country = document.getElementById('country').value.trim();
+    const state = document.getElementById('state').value.trim();
+    const city = document.getElementById('city').value.trim();
+    const county = document.getElementById('county').value.trim();
+    const streetAddress = document.getElementById('streetAddress').value.trim();
+    const postalCode = document.getElementById('postalCode').value.trim();
+    
+    if (paymentMethod === 'Card') {
+      const cardNum = document.getElementById('cardNum').value.trim();
+      const cardExpiry = document.getElementById('cardExpiry').value.trim();
+      const cardCvv = document.getElementById('cardCvv').value.trim();
+      const cardName = document.getElementById('cardName').value.trim();
+      
+      if (!cardNum || !cardExpiry || !cardCvv || !cardName) {
+        showStatus("Please fill in card payment details.", "error");
+        return;
+      }
+    }
+    
+    showStatus("Processing checkout and placing order...", "loading");
+    
+    try {
+      const response = await fetch('/checkout/place-order/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          full_name: fullName,
+          phone: phone,
+          country: country,
+          state: state,
+          city: city,
+          county: county,
+          street_address: streetAddress,
+          postal_code: postalCode,
+          payment_method: paymentMethod,
+          payment_id: paymentMethod === 'Card' ? 'MOCK_PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase() : ''
+        })
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        showStatus("Order placed successfully! Redirecting...", "success");
+        setTimeout(() => {
+          window.location.href = `/checkout/order-success/${data.order_id}/`;
+        }, 1500);
+      } else {
+        showStatus(data.message || "Failed to submit checkout.", "error");
+      }
+    } catch (e) {
+      showStatus("Connection error while submitting order.", "error");
+    }
+  }
+
+  // SUGGESTIONS SEARCH: Free OpenStreetMap (Nominatim) autocomplete fallback
+  const searchInput = document.getElementById('addressSearch');
+  const suggestionsBox = document.getElementById('suggestionsBox');
+  let debounceTimeout;
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounceTimeout);
+    const query = searchInput.value.trim();
+    
+    if (query.length < 3) {
+      suggestionsBox.style.display = 'none';
+      return;
+    }
+    
+    debounceTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&countrycodes=in`, {
+          headers: {
+            'Accept-Language': 'en'
+          }
+        });
+        const results = await response.json();
+        
+        if (results && results.length > 0) {
+          suggestionsBox.innerHTML = '';
+          results.forEach(item => {
+            const suggestion = document.createElement('div');
+            suggestion.className = 'autocomplete-suggestion';
+            suggestion.textContent = item.display_name;
+            suggestion.addEventListener('click', () => {
+              selectAddressSuggestion(item);
+            });
+            suggestionsBox.appendChild(suggestion);
+          });
+          suggestionsBox.style.display = 'block';
+        } else {
+          suggestionsBox.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 400);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target !== searchInput && e.target !== suggestionsBox) {
+      suggestionsBox.style.display = 'none';
+    }
+  });
+
+  function selectAddressSuggestion(item) {
+    searchInput.value = item.display_name;
+    suggestionsBox.style.display = 'none';
+    
+    const addr = item.address;
+    if (addr) {
+      document.getElementById('streetAddress').value = 
+        (addr.road || '') + 
+        (addr.neighbourhood ? ', ' + addr.neighbourhood : '') + 
+        (addr.suburb ? ', ' + addr.suburb : '') + 
+        (addr.house_number ? ' No. ' + addr.house_number : '');
+        
+      document.getElementById('city').value = addr.city || addr.town || addr.village || addr.suburb || '';
+      document.getElementById('county').value = addr.county || addr.district || '';
+      document.getElementById('state').value = addr.state || '';
+      document.getElementById('country').value = addr.country || 'India';
+      document.getElementById('postalCode').value = addr.postcode || '';
+      
+      // Auto verify address
+      verifyAddress(true);
+    }
+  }
+
+  // Retrieve CSRF token helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+{% endblock %}

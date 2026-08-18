@@ -1,0 +1,357 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Orders — Admin{% endblock %}
+{% block page_title %}Orders{% endblock %}
+
+{% block extra_css %}
+<style>
+  .detail-card {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 10px 0;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 30px;
+    color: #e2e8f0;
+  }
+  @media (max-width: 768px) {
+    .detail-card {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+  }
+  .detail-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 8px;
+  }
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .item-img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .order-summary-box {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: #cbd5e1;
+  }
+  .summary-line.total {
+    font-weight: 700;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 8px;
+    margin-top: 8px;
+    color: #ffffff;
+    font-size: 1rem;
+  }
+  .status-select {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+  }
+  .status-select:focus {
+    outline: none;
+  }
+  .filter-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+  .filter-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+  }
+  .filter-input::placeholder {
+    color: #94a3b8;
+  }
+  .filter-select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+  }
+  .filter-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  .status-select.status-pending-payment,
+  .status-select.status-pending,
+  .filter-select.status-pending-payment,
+  .filter-select.status-pending {
+    background: rgba(217, 119, 6, 0.15);
+    color: #f59e0b;
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+  .status-select.status-processing,
+  .filter-select.status-processing {
+    background: rgba(37, 99, 235, 0.15);
+    color: #60a5fa;
+    border-color: rgba(37, 99, 235, 0.3);
+  }
+  .status-select.status-shipped,
+  .filter-select.status-shipped {
+    background: rgba(147, 51, 234, 0.15);
+    color: #c084fc;
+    border-color: rgba(147, 51, 234, 0.3);
+  }
+  .status-select.status-delivered,
+  .filter-select.status-delivered {
+    background: rgba(22, 163, 74, 0.15);
+    color: #4ade80;
+    border-color: rgba(22, 163, 74, 0.3);
+  }
+  .status-select.status-cancelled,
+  .filter-select.status-cancelled {
+    background: rgba(220, 38, 38, 0.15);
+    color: #f87171;
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+  .status-select option,
+  .filter-select option {
+    background: #1e1e24;
+    color: #e2e8f0;
+  }
+  .btn-view-details {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn-view-details:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-hd">
+    <h3>Manage Orders ({{ orders.count }} Total)</h3>
+  </div>
+
+  <form class="filters" method="get" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:15px;">
+    <input type="text" name="search" placeholder="Search by ID or customer..." value="{{ search_query }}" class="filter-input"/>
+    
+    <select name="status" class="filter-select status-{{ status_filter|slugify }}">
+      <option value="">All Statuses</option>
+      {% for val, lbl in choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn-primary" style="padding:8px 20px; border-radius:6px; border:none; cursor:pointer;">Filter</button>
+    {% if search_query or status_filter %}
+      <a href="{% url 'admin_orders' %}" class="btn-sm" style="text-decoration:none; padding:8px 15px; display:inline-flex; align-items:center;">Clear</a>
+    {% endif %}
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Customer Info</th>
+          <th>Placed On</th>
+          <th>Total Amount</th>
+          <th>Order Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td><strong>#{{ order.id }}</strong></td>
+          <td>
+            <strong>{{ order.full_name }}</strong><br>
+            <span style="font-size:0.8rem; color:var(--muted)">{{ order.user.email }}</span>
+          </td>
+          <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+          <td>
+            <strong>₹{{ order.total }}</strong><br>
+            <span style="font-size:0.8rem; color:var(--muted); text-transform:uppercase;">{{ order.payment_method }}</span>
+          </td>
+          <td>
+            <form method="POST" action="{% url 'update_order_status' order.id %}">
+              {% csrf_token %}
+              <select name="status" onchange="this.form.submit()" class="status-select status-{{ order.status|slugify }}">
+                {% for status_val, status_lbl in choices %}
+                  <option value="{{ status_val }}" {% if order.status == status_val %}selected{% endif %}>{{ status_lbl }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>
+            <button class="btn-view-details" onclick="toggleOrderDetails({{ order.id }})">👁 View Details</button>
+          </td>
+        </tr>
+
+        <!-- Expanded details row -->
+        <tr id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
+          <td colspan="6" style="padding: 15px 30px;">
+            <div class="detail-card">
+              <div>
+                <div class="detail-title">Purchased Items</div>
+                <div class="items-list">
+                  {% for item in order.items.all %}
+                  <div class="item-row">
+                    <div class="item-info">
+                      {% if item.product.images.first %}
+                        <img src="{{ item.product.images.first.image.url }}" class="item-img" alt="{{ item.product_name }}">
+                      {% else %}
+                        <div class="item-img" style="display:flex; align-items:center; justify-content:center; font-size:9px; background:#ddd;">No Image</div>
+                      {% endif %}
+                      <div>
+                        <strong>{{ item.product_name }}</strong><br>
+                        <span style="color:var(--muted); font-size:0.8rem;">Qty: {{ item.quantity }} × ₹{{ item.price }}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <strong>₹{% widthratio item.price 1 item.quantity %}</strong>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                <div class="detail-title" style="margin-top:20px;">Shipping & Contact Details</div>
+                <p style="font-size:0.9rem; line-height:1.5; margin:0;">
+                  <strong>Recipient:</strong> {{ order.full_name }}<br>
+                  <strong>Contact Phone:</strong> {{ order.phone }}<br>
+                  <strong>Delivery Address:</strong><br>
+                  {{ order.street_address }}<br>
+                  {{ order.city }}, {{ order.state }}, {{ order.country }} - {{ order.postal_code }}<br>
+                  {% if order.county %}<em>County/District: {{ order.county }}</em>{% endif %}
+                </p>
+              </div>
+
+              <div>
+                <div class="detail-title">Order Pricing Summary</div>
+                <div class="order-summary-box">
+                  <div class="summary-line">
+                    <span>Subtotal</span>
+                    <span>₹{{ order.subtotal }}</span>
+                  </div>
+                  <div class="summary-line">
+                    <span>Delivery Fee</span>
+                    <span>₹{{ order.delivery_fee }}</span>
+                  </div>
+                  {% if order.discount > 0 %}
+                  <div class="summary-line" style="color:var(--success);">
+                    <span>Discount Applied</span>
+                    <span>- ₹{{ order.discount }}</span>
+                  </div>
+                  {% endif %}
+                  <div class="summary-line total">
+                    <span>Grand Total</span>
+                    <span>₹{{ order.total }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center; color:var(--muted); padding:30px;">
+            No orders matching the criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function toggleOrderDetails(orderId) {
+    const detailsRow = document.getElementById(`details-row-${orderId}`);
+    if (detailsRow) {
+      if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+      } else {
+        detailsRow.style.display = 'none';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterSelect = document.querySelector('.filter-select');
+    if (filterSelect) {
+      filterSelect.addEventListener('change', () => {
+        // Clear previous status classes
+        filterSelect.className = 'filter-select';
+        if (filterSelect.value) {
+          const statusClass = 'status-' + filterSelect.value.toLowerCase().replace(/_/g, '-');
+          filterSelect.classList.add(statusClass);
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

@@ -22,5 +22,10 @@ urlpatterns = [
     path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
     path('customers/', admin_views.admin_customers, name='admin_customers'),
     path('customers/<int:pk>/delete/', admin_views.delete_customer, name='delete_customer'),
+    path('orders/', admin_views.admin_orders, name='admin_orders'),
+    path('orders/<int:pk>/status/', admin_views.update_order_status, name='update_order_status'),
     path('settings/', admin_views.admin_settings, name='admin_settings'),
+    path('delivery/', admin_views.admin_delivery, name='admin_delivery'),
+    path('delivery/zones/add/', admin_views.add_delivery_zone, name='add_delivery_zone'),
+    path('delivery/zones/<int:pk>/delete/', admin_views.delete_delivery_zone, name='delete_delivery_zone'),
 ]

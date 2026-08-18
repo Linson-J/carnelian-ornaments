@@ -1,0 +1,236 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+
+{% block title %}Order Placed Successfully - Carmelian{% endblock %}
+
+{% block extra_css %}
+<style>
+  .success-container {
+    max-width: 760px;
+    margin: 8rem auto 4rem auto;
+    padding: 0 20px;
+  }
+  @media (max-width: 576px) {
+    .success-container {
+      margin-top: 6rem;
+    }
+  }
+  .success-card {
+    background: rgba(255, 253, 250, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 83, 87, 0.08);
+    border-radius: 24px;
+    padding: 40px 30px;
+    text-align: center;
+    box-shadow: 0 10px 40px -10px rgba(124, 83, 87, 0.05);
+  }
+  .success-icon-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(76, 175, 80, 0.08);
+    border: 2px solid rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    font-size: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px auto;
+    animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  @keyframes scaleUp {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .success-title {
+    font-family: Georgia, serif;
+    font-size: 2rem;
+    color: var(--text-dark, #1a1c1a);
+    margin-bottom: 8px;
+  }
+  .success-sub {
+    font-size: 0.95rem;
+    color: var(--text-muted, #504444);
+    margin-bottom: 30px;
+  }
+  .order-details-box {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(124, 83, 87, 0.05);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: left;
+    margin-bottom: 30px;
+  }
+  .details-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--primary, #7c5357);
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(124, 83, 87, 0.05);
+    padding-bottom: 8px;
+  }
+  .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 576px) {
+    .details-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+  }
+  .detail-lbl {
+    font-size: 0.82rem;
+    color: var(--text-muted, #504444);
+  }
+  .detail-val {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-dark, #1a1c1a);
+    margin-top: 2px;
+  }
+  
+  /* Items recap */
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-dark, #1a1c1a);
+  }
+  .item-name {
+    font-weight: 500;
+  }
+  .item-qty {
+    color: var(--text-muted, #504444);
+    font-size: 0.8rem;
+    margin-left: 6px;
+  }
+  .item-price {
+    font-weight: 700;
+  }
+  
+  .totals-sec {
+    border-top: 1px dashed rgba(124, 83, 87, 0.1);
+    padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-muted, #504444);
+  }
+  .totals-row.grand {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-dark, #1a1c1a);
+    margin-top: 5px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+  }
+  @media (max-width: 576px) {
+    .btn-row {
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+  <div class="success-card">
+    <div class="success-icon-wrap">
+      <i class="ri-checkbox-circle-fill"></i>
+    </div>
+    <h1 class="success-title">Thank You For Your Order!</h1>
+    <p class="success-sub">Your payment has been accepted and order #{{ order.id }} is being processed.</p>
+    
+    <div class="order-details-box">
+      <div class="details-title">Order Information</div>
+      <div class="details-grid">
+        <div>
+          <span class="detail-lbl">Order Number</span>
+          <div class="detail-val">#{{ order.id }}</div>
+        </div>
+        <div>
+          <span class="detail-lbl">Date & Time</span>
+          <div class="detail-val">{{ order.created_at|date:"F j, Y, g:i a" }}</div>
+        </div>
+        <div>
+          <span class="detail-lbl">Shipping Method</span>
+          <div class="detail-val">Standard Delivery</div>
+        </div>
+        <div>
+          <span class="detail-lbl">Payment Status</span>
+          <div class="detail-val">
+            {% if order.payment_method == 'Card' %}
+              Paid (via Card)
+            {% else %}
+              Pending COD Verification
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      <div class="details-title">Shipping Address</div>
+      <p style="font-size: 0.92rem; line-height: 1.5; color: var(--text-dark, #1a1c1a); margin-bottom: 20px;">
+        <strong>{{ order.full_name }}</strong><br>
+        {{ order.street_address }}<br>
+        {{ order.city }}, {{ order.state }} {{ order.postal_code }}<br>
+        {{ order.country }}<br>
+        Phone: {{ order.phone }}
+      </p>
+      
+      <div class="details-title">Items Ordered</div>
+      <div class="items-list">
+        {% for item in order.items.all %}
+        <div class="item-row">
+          <div>
+            <span class="item-name">{{ item.product_name }}</span>
+            <span class="item-qty">x {{ item.quantity }}</span>
+          </div>
+          <span class="item-price">Rs. {{ item.price }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <div class="totals-sec">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span>Rs. {{ order.subtotal }}</span>
+        </div>
+        <div class="totals-row">
+          <span>Delivery Fee</span>
+          <span>Rs. {{ order.delivery_fee }}</span>
+        </div>
+        <div class="totals-row grand">
+          <span>Grand Total</span>
+          <span>Rs. {{ order.total }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="btn-row">
+      <a href="{% url 'shop_all' %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">Continue Shopping</a>
+      <a href="{% url 'home' %}" class="hero-btn" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block; border: 1px solid rgba(0,0,0,0.15);">Back to Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

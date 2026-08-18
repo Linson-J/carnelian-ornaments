@@ -34,6 +34,14 @@ urlpatterns = [
     path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('buy-now/', views.buy_now, name='buy_now'),
+    path('checkout/', views.checkout_page, name='checkout_page'),
+    path('checkout/verify-address/', views.verify_checkout_address, name='verify_checkout_address'),
+    path('checkout/place-order/', views.place_order, name='place_order'),
+    path('checkout/order-success/<int:order_id>/', views.order_success, name='order_success'),
+    
+    # User Profile & Saved Address
+    path('profile/', views.profile_page, name='profile_page'),
+    path('profile/address/save/', views.save_profile_address, name='save_profile_address'),
     
     path('swagger/', schema_view.with_ui('swagger'), name='swagger'),
 ]

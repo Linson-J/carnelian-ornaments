@@ -485,3 +485,129 @@ class Favorite(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.product.name}"
 
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    street_address = models.CharField(max_length=255, blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    state = models.CharField(max_length=100, blank=True, default='')
+    county = models.CharField(max_length=100, blank=True, default='', help_text='District / County')
+    country = models.CharField(max_length=100, blank=True, default='India')
+    postal_code = models.CharField(max_length=20, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_user_profiles'
+
+    def __str__(self):
+        return f"Profile for {self.user.email}"
+
+
+# ─── Shipping & Orders ────────────────────────────────────────
+
+class DeliveryZone(models.Model):
+    country = models.CharField(max_length=100, default='India')
+    state = models.CharField(max_length=100)
+    city = models.CharField(max_length=100, blank=True, default='')
+    county = models.CharField(max_length=100, blank=True, default='', help_text='County or District')
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=150.00)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'shop_delivery_zones'
+        ordering = ['country', 'state', 'city']
+
+    def __str__(self):
+        parts = [self.country, self.state]
+        if self.county:
+            parts.append(self.county)
+        if self.city:
+            parts.append(self.city)
+        return f"{', '.join(parts)} (Rs. {self.delivery_fee})"
+
+
+class DeliveryConfig(models.Model):
+    class FeeType(models.TextChoices):
+        FLAT = 'flat', 'Flat Base Fee'
+        ZONE = 'zone', 'Zone-based Fee'
+        THRESHOLD = 'threshold', 'Free Above Threshold, Else Zone/Flat'
+
+    fee_type = models.CharField(max_length=20, choices=FeeType.choices, default=FeeType.FLAT)
+    base_fee = models.DecimalField(max_digits=10, decimal_places=2, default=150.00)
+    free_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=2000.00)
+
+    class Meta:
+        db_table = 'shop_delivery_config'
+        verbose_name = 'delivery configuration'
+        verbose_name_plural = 'delivery configuration'
+
+    def __str__(self):
+        return 'Delivery Settings'
+
+    @classmethod
+    def current(cls):
+        config, _ = cls.objects.get_or_create(pk=1)
+        return config
+
+
+class Order(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending Payment'
+        PROCESSING = 'processing', 'Processing'
+        SHIPPED = 'shipped', 'Shipped'
+        DELIVERED = 'delivered', 'Delivered'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    full_name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=20)
+    
+    # Address details
+    country = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    city = models.CharField(max_length=100)
+    county = models.CharField(max_length=100, blank=True, default='')
+    street_address = models.CharField(max_length=255)
+    postal_code = models.CharField(max_length=20)
+    
+    # Coordinates (for distance validation if saved)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    # Pricing fields
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    payment_method = models.CharField(max_length=50, default='Card')
+    payment_id = models.CharField(max_length=100, blank=True, default='')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_orders'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Order #{self.id} by {self.user.email}"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    product_name = models.CharField(max_length=255) # snapshot name in case product gets deleted
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=1)
+    
+    class Meta:
+        db_table = 'shop_order_items'
+
+    def __str__(self):
+        return f"{self.quantity} x {self.product_name}"
+

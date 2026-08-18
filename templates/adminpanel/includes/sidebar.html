@@ -20,8 +20,11 @@
       <span class="nav-icon">CT</span> Categories
       {% if category_count %}<span class="nav-badge">{{ category_count }}</span>{% endif %}
     </a>
-    <a href="#" class="nav-item">
+    <a href="{% url 'admin_orders' %}" class="nav-item{% if active_nav == 'orders' %} active{% endif %}">
       <span class="nav-icon">OR</span> Orders
+    </a>
+    <a href="{% url 'admin_delivery' %}" class="nav-item{% if active_nav == 'delivery' %} active{% endif %}">
+      <span class="nav-icon">DL</span> Delivery
     </a>
     <a href="{% url 'admin_customers' %}" class="nav-item{% if active_nav == 'customers' %} active{% endif %}">
       <span class="nav-icon">CU</span> Customers
