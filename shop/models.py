@@ -159,10 +159,6 @@ class CarouselItem(models.Model):
         PROFILE = '/#profile', 'Profile'
 
     image = models.ImageField(upload_to='carousel/%Y/%m/', help_text='Desktop / PC carousel image.')
-    mobile_image = models.ImageField(
-        upload_to='carousel/%Y/%m/', blank=True, null=True,
-        help_text='Optional mobile carousel image. Falls back to desktop image when empty.',
-    )
     title = models.CharField(max_length=150, blank=True, default='')
     description = models.TextField(max_length=500, blank=True, default='')
     button_text = models.CharField(max_length=50, blank=True, default='')
@@ -191,10 +187,6 @@ class CarouselItem(models.Model):
     @property
     def has_overlay_content(self):
         return bool(self.title or self.description or self.button_text)
-
-    @property
-    def mobile_display_image(self):
-        return self.mobile_image or self.image
 
     def clean(self):
         if not self.redirect_type:

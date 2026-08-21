@@ -178,7 +178,6 @@
                 const slide = document.createElement('article');
                 slide.className = `hero-slide${index === 0 ? ' active' : ''}${hasCopy ? '' : ' hero-slide--image-only'}`;
                 slide.style.setProperty('--hero-image', `url('${safeUrl(item.image_url, '')}')`);
-                slide.style.setProperty('--hero-image-mobile', `url('${safeUrl(item.mobile_display_image_url || item.image_url, '')}')`);
                 slide.innerHTML = `
                     <div class="hero-shade"></div>
                     ${hasCopy ? `

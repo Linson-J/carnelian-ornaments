@@ -13,11 +13,6 @@
         <tr>
           <td>
             <img src="{{ item.image.url }}" class="carousel-admin-thumb" alt="{{ item.title|default:'Desktop image' }}">
-            {% if item.mobile_image %}
-            <img src="{{ item.mobile_image.url }}" class="carousel-admin-thumb" alt="{{ item.title|default:'Mobile image' }}" style="margin-left:8px">
-            {% else %}
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Mobile: uses desktop image</div>
-            {% endif %}
           </td>
           <td><strong>{{ item.title|default:"Image only" }}</strong><div style="color:var(--muted);font-size:12px;margin-top:4px">{% if item.description %}{{ item.description|truncatechars:80 }}{% else %}—{% endif %}</div>{% if item.button_text %}<div style="color:var(--accent);font-size:11px;margin-top:4px">Button: {{ item.button_text }}</div>{% endif %}</td>
           <td>{% if item.redirect_type %}<span class="badge {% if item.redirect_type == 'product' %}warning{% else %}success{% endif %}">{{ item.get_redirect_type_display }}</span><div style="font-size:12px;color:var(--muted);margin-top:5px">{% if item.redirect_type == 'product' %}{{ item.product.name|default:"Product unavailable" }}{% else %}{{ item.get_customer_page_display }}{% endif %}</div>{% else %}<span style="color:var(--muted);font-size:12px">No redirect</span>{% endif %}</td>

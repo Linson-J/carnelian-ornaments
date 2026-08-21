@@ -36,8 +36,6 @@
         <div class="card-body">
           {% if item and item.image %}<img src="{{ item.image.url }}" class="carousel-form-preview" id="image-preview" alt="{{ item.title|default:'Desktop preview' }}">{% else %}<img class="carousel-form-preview" id="image-preview" alt="" style="display:none">{% endif %}
           <div class="field"><label for="{{ form.image.id_for_label }}">Desktop image (PC view) {% if not item %}<span class="req">*</span>{% endif %}</label>{{ form.image }}<div style="font-size:11px;color:var(--muted);margin-top:7px">Landscape image recommended for desktop. Maximum 8MB.</div><div class="field-err">{{ form.image.errors|striptags }}</div></div>
-          {% if item and item.mobile_image %}<img src="{{ item.mobile_image.url }}" class="carousel-form-preview" id="mobile-image-preview" alt="{{ item.title|default:'Mobile preview' }}">{% else %}<img class="carousel-form-preview" id="mobile-image-preview" alt="" style="display:none">{% endif %}
-          <div class="field"><label for="{{ form.mobile_image.id_for_label }}">Mobile image</label>{{ form.mobile_image }}<div style="font-size:11px;color:var(--muted);margin-top:7px">Optional. Portrait image recommended for phones. If empty, the desktop image is used on mobile.</div><div class="field-err">{{ form.mobile_image.errors|striptags }}</div></div>
         </div>
       </div>
       <div class="card">
@@ -58,9 +56,7 @@
   const pageField = document.getElementById('page-field');
   const productField = document.getElementById('product-field');
   const imageInput = document.getElementById('{{ form.image.id_for_label }}');
-  const mobileImageInput = document.getElementById('{{ form.mobile_image.id_for_label }}');
   const preview = document.getElementById('image-preview');
-  const mobilePreview = document.getElementById('mobile-image-preview');
   const form = document.getElementById('carousel-form');
   const errorBanner = document.getElementById('api-error');
   const itemId = {% if item %}{{ item.id }}{% else %}null{% endif %};
@@ -79,7 +75,6 @@
   }
   redirectType.addEventListener('change', updateRedirectFields);
   bindImagePreview(imageInput, preview);
-  bindImagePreview(mobileImageInput, mobilePreview);
   updateRedirectFields();
 
   function clearApiErrors() {
@@ -102,16 +97,13 @@
 
   function validateCarouselForm() {
     const desktop = imageInput.files[0];
-    const mobile = mobileImageInput.files[0];
     if (!itemId && !desktop) {
       showFieldError('image', 'Desktop carousel image is required.');
       return false;
     }
-    for (const file of [desktop, mobile].filter(Boolean)) {
-      if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
-        showFieldError(file === desktop ? 'image' : 'mobile_image', `${file.name} must be an image no larger than 8MB.`);
-        return false;
-      }
+    if (desktop && (!desktop.type.startsWith('image/') || desktop.size > 8 * 1024 * 1024)) {
+      showFieldError('image', `${desktop.name} must be an image no larger than 8MB.`);
+      return false;
     }
     if (redirectType.value === 'page' && !form.elements.customer_page.value) {
       showFieldError('customer_page', 'Select a customer page.');
@@ -134,7 +126,6 @@
     const fd = new FormData(form);
     fd.delete('csrfmiddlewaretoken');
     if (!imageInput.files.length) fd.delete('image');
-    if (!mobileImageInput.files.length) fd.delete('mobile_image');
     fd.set('is_active', form.elements.is_active.checked ? 'true' : 'false');
 
     submit.disabled = true;

@@ -356,14 +356,11 @@ def add_carousel_item(request):
 def edit_carousel_item(request, pk):
     item = get_object_or_404(CarouselItem, pk=pk)
     old_image = item.image
-    old_mobile_image = item.mobile_image
     form = CarouselItemForm(request.POST or None, request.FILES or None, instance=item)
     if request.method == 'POST' and form.is_valid():
         updated = form.save()
         if request.FILES.get('image') and old_image and old_image.name != updated.image.name:
             old_image.delete(save=False)
-        if request.FILES.get('mobile_image') and old_mobile_image and old_mobile_image.name != getattr(updated.mobile_image, 'name', None):
-            old_mobile_image.delete(save=False)
         messages.success(request, 'Carousel item updated.')
         return redirect('admin_carousel')
     return render(request, 'adminpanel/carousel_form.html', {
@@ -382,8 +379,6 @@ def delete_carousel_item(request, pk):
     item = get_object_or_404(CarouselItem, pk=pk)
     if item.image:
         item.image.delete(save=False)
-    if item.mobile_image:
-        item.mobile_image.delete(save=False)
     item.delete()
     messages.success(request, 'Carousel item deleted.')
     return redirect('admin_carousel')

@@ -299,21 +299,17 @@ MAX_CAROUSEL_IMAGE_SIZE = 8 * 1024 * 1024
 
 class CarouselItemSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField(read_only=True)
-    mobile_image_url = serializers.SerializerMethodField(read_only=True)
-    mobile_display_image_url = serializers.SerializerMethodField(read_only=True)
     redirect_url = serializers.CharField(read_only=True)
 
     class Meta:
         model = CarouselItem
         fields = [
-            'id', 'image', 'image_url', 'mobile_image', 'mobile_image_url',
-            'mobile_display_image_url', 'title', 'description', 'button_text',
+            'id', 'image', 'image_url', 'title', 'description', 'button_text',
             'redirect_type', 'customer_page', 'product', 'redirect_url',
             'order', 'is_active', 'created_at', 'updated_at',
         ]
         extra_kwargs = {
             'image': {'required': False},
-            'mobile_image': {'required': False, 'allow_null': True},
             'title': {'required': False, 'allow_blank': True},
             'description': {'required': False, 'allow_blank': True},
             'button_text': {'required': False, 'allow_blank': True},
@@ -332,12 +328,6 @@ class CarouselItemSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return self._build_image_url(obj.image)
-
-    def get_mobile_image_url(self, obj):
-        return self._build_image_url(obj.mobile_image)
-
-    def get_mobile_display_image_url(self, obj):
-        return self._build_image_url(obj.mobile_display_image)
 
     def validate(self, data):
         redirect_type = data.get(
@@ -379,9 +369,6 @@ class CarouselItemSerializer(serializers.ModelSerializer):
         return data
 
     def validate_image(self, image):
-        return self._validate_carousel_image(image)
-
-    def validate_mobile_image(self, image):
         return self._validate_carousel_image(image)
 
     def _validate_carousel_image(self, image):

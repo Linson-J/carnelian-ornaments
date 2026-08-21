@@ -22,25 +22,23 @@ class CarouselItemForm(forms.ModelForm):
     class Meta:
         model = CarouselItem
         fields = [
-            'image', 'mobile_image', 'title', 'description', 'button_text', 'redirect_type',
+            'image', 'title', 'description', 'button_text', 'redirect_type',
             'customer_page', 'product', 'order', 'is_active',
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'image': forms.FileInput(attrs={'accept': 'image/*'}),
-            'mobile_image': forms.FileInput(attrs={'accept': 'image/*'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         optional_fields = (
-            'mobile_image', 'title', 'description', 'button_text', 'redirect_type',
+            'title', 'description', 'button_text', 'redirect_type',
             'customer_page', 'product',
         )
         for name in optional_fields:
             self.fields[name].required = False
         self.fields['image'].label = 'Desktop image (PC view)'
-        self.fields['mobile_image'].label = 'Mobile image'
         self.fields['redirect_type'].choices = [
             ('', 'No redirect'),
             *CarouselItem.RedirectType.choices,
@@ -56,9 +54,6 @@ class CarouselItemForm(forms.ModelForm):
 
     def clean_image(self):
         return self._clean_carousel_image('image')
-
-    def clean_mobile_image(self):
-        return self._clean_carousel_image('mobile_image')
 
     def _clean_carousel_image(self, field_name):
         image = self.cleaned_data.get(field_name)

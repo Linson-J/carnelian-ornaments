@@ -448,7 +448,6 @@ class CarouselDetailView(APIView):
     def _update(self, request, pk):
         item = get_object_or_404(CarouselItem, pk=pk)
         old_image = item.image
-        old_mobile_image = item.mobile_image
         s = CarouselItemSerializer(
             item, data=request.data, partial=True, context={'request': request},
         )
@@ -456,12 +455,6 @@ class CarouselDetailView(APIView):
             updated = s.save()
             if request.FILES.get('image') and old_image and old_image.name != updated.image.name:
                 old_image.delete(save=False)
-            if (
-                request.FILES.get('mobile_image')
-                and old_mobile_image
-                and old_mobile_image.name != getattr(updated.mobile_image, 'name', None)
-            ):
-                old_mobile_image.delete(save=False)
             read = CarouselItemSerializer(updated, context={'request': request})
             return success(read.data, 'Carousel item updated')
         return error('Validation failed', s.errors)
@@ -470,8 +463,6 @@ class CarouselDetailView(APIView):
         item = get_object_or_404(CarouselItem, pk=pk)
         if item.image:
             item.image.delete(save=False)
-        if item.mobile_image:
-            item.mobile_image.delete(save=False)
         item.delete()
         return success(msg='Carousel item deleted')
 

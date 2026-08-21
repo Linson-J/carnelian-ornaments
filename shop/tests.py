@@ -203,16 +203,7 @@ class CarouselManagementTests(APITestCase):
         self.assertEqual(home.status_code, 200)
         self.assertContains(home, 'hero-slide--image-only')
 
-    def test_mobile_image_falls_back_to_desktop_image(self):
-        item = CarouselItem.objects.create(
-            image=test_image('desktop-only.gif'),
-            is_active=True,
-        )
-        self.assertEqual(item.mobile_display_image, item.image)
 
-        item.mobile_image = test_image('mobile-only.gif')
-        item.save()
-        self.assertEqual(item.mobile_display_image, item.mobile_image)
 
 
 class CarouselAPITests(APITestCase):
@@ -290,30 +281,4 @@ class CarouselAPITests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('image', response.data['errors'])
 
-    def test_api_returns_mobile_display_image_url(self):
-        create = self.client.post(
-            '/api/carousel/',
-            self.carousel_payload(title='Desktop only'),
-            format='multipart',
-        )
-        self.assertEqual(create.status_code, 201, create.data)
-        data = create.data['data']
-        self.assertEqual(data['mobile_image_url'], None)
-        self.assertEqual(data['mobile_display_image_url'], data['image_url'])
 
-        with_mobile = self.client.post(
-            '/api/carousel/',
-            self.carousel_payload(
-                image=test_image('desktop-2.gif'),
-                mobile_image=test_image('mobile-2.gif'),
-                title='Both images',
-            ),
-            format='multipart',
-        )
-        self.assertEqual(with_mobile.status_code, 201, with_mobile.data)
-        mobile_data = with_mobile.data['data']
-        self.assertIsNotNone(mobile_data['mobile_image_url'])
-        self.assertEqual(
-            mobile_data['mobile_display_image_url'],
-            mobile_data['mobile_image_url'],
-        )
