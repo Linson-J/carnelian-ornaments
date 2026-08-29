@@ -1050,3 +1050,120 @@ def save_profile_address(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
+
+@require_POST
+@login_required_ajax
+def cancel_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Main rule: customer cancel button allowed only ONE TIME
+    if order.cancel_requested or order.status == Order.Status.CANCELLED:
+        return JsonResponse({
+            'success': False,
+            'already_attempted': True,
+            'message': 'Contact customer care! You have already submitted or attempted a cancellation for this order.'
+        }, status=400)
+
+    # Order must be before Shipped status (Pending or Processing)
+    if order.status not in [Order.Status.PENDING, Order.Status.PROCESSING]:
+        return JsonResponse({
+            'success': False,
+            'message': 'Contact customer care! Order cannot be cancelled as it has already been shipped or processed.'
+        }, status=400)
+
+    try:
+        data = json.loads(request.body)
+        reason = data.get('reason', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        return JsonResponse({
+            'success': False,
+            'message': 'Please provide a reason for cancelling your order.'
+        }, status=400)
+
+    order.status = Order.Status.CANCELLED
+    order.cancellation_reason = reason
+    order.cancelled_at = timezone.now()
+    order.cancel_requested = True
+    order.save()
+
+    # Restore stock for cancelled items
+    for item in order.items.all():
+        if item.product:
+            item.product.stock += item.quantity
+            if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
+                item.product.status = Product.Status.AVAILABLE
+            item.product.save()
+
+    # Refund message for Online / Card payment
+    is_online_payment = order.payment_method.lower() in ['card', 'online', 'upi', 'netbanking', 'credit_card', 'debit_card']
+    if is_online_payment:
+        refund_notice = f"Your order #{order.id} has been cancelled. Since you paid via {order.payment_method}, your refund of ₹{order.total} will be processed within 2 to 5 working days."
+    else:
+        refund_notice = f"Your order #{order.id} has been cancelled successfully."
+
+    return JsonResponse({
+        'success': True,
+        'message': refund_notice,
+        'status': order.status,
+        'status_display': order.get_status_display()
+    })
+
+
+@require_POST
+@login_required_ajax
+def return_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Main rule: customer return/replacement button allowed only ONE TIME
+    if order.return_requested or order.status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
+        return JsonResponse({
+            'success': False,
+            'already_attempted': True,
+            'message': 'Contact customer care! You have already submitted a replacement request for this order.'
+        }, status=400)
+
+    # Replacement only allowed after order delivery
+    if order.status != Order.Status.DELIVERED:
+        return JsonResponse({
+            'success': False,
+            'message': 'Contact customer care! Replacement is only available after order delivery.'
+        }, status=400)
+
+    # Replacement button allowed only within 7 days after delivery
+    if not order.is_within_7_days:
+        return JsonResponse({
+            'success': False,
+            'message': 'Contact customer care! The 7-day replacement window for this order has expired.'
+        }, status=400)
+
+    try:
+        data = json.loads(request.body)
+        reason = data.get('reason', '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        reason = request.POST.get('reason', '').strip()
+
+    if not reason:
+        return JsonResponse({
+            'success': False,
+            'message': 'Please provide a reason for replacement.'
+        }, status=400)
+
+    order.status = Order.Status.RETURN_REQUESTED
+    order.return_reason = reason
+    order.returned_at = timezone.now()
+    order.return_requested = True
+    order.save()
+
+    refund_notice = f"Replacement request submitted for Order #{order.id}. Your refund/replacement will be processed within 2 to 5 working days."
+
+    return JsonResponse({
+        'success': True,
+        'message': refund_notice,
+        'status': order.status,
+        'status_display': order.get_status_display()
+    })
+
+

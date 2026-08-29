@@ -282,3 +282,187 @@ class CarouselAPITests(APITestCase):
         self.assertIn('image', response.data['errors'])
 
 
+from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
+from .models import Order, OrderItem
+
+class OrderCancellationAndReturnTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser@example.com', email='testuser@example.com', password='password123')
+        self.client.force_login(self.user)
+        
+        self.category = Category.objects.create(name='Electronics', slug='electronics')
+        self.product = Product.objects.create(
+            name='Smartphone',
+            price=500.00,
+            stock=10,
+            status=Product.Status.AVAILABLE,
+            category=self.category
+        )
+        
+        self.order = Order.objects.create(
+            user=self.user,
+            full_name='Test User',
+            phone='1234567890',
+            country='India',
+            state='Tamil Nadu',
+            city='Chennai',
+            street_address='123 Main St',
+            postal_code='600001',
+            subtotal=500.00,
+            delivery_fee=20.00,
+            total=520.00,
+            status=Order.Status.PROCESSING,
+            payment_method='Card'
+        )
+        
+        OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            product_name=self.product.name,
+            price=500.00,
+            quantity=1
+        )
+        self.product.stock = 9  # simulated stock deduction upon order
+        self.product.save()
+
+    def test_cancel_order_success_before_shipped(self):
+        response = self.client.post(
+            f'/order/{self.order.id}/cancel/',
+            {'reason': 'Ordered by mistake'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertIn('refund of ₹520.00 will be processed within 2 to 5 working days', data['message'])
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.CANCELLED)
+        self.assertEqual(self.order.cancellation_reason, 'Ordered by mistake')
+        self.assertTrue(self.order.cancel_requested)
+
+        # Verify stock was restored
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 10)
+
+    def test_cancel_order_single_use_restriction(self):
+        # First cancellation attempt
+        self.client.post(f'/order/{self.order.id}/cancel/', {'reason': 'Reason 1'}, format='json')
+
+        # Second cancellation attempt
+        response = self.client.post(f'/order/{self.order.id}/cancel/', {'reason': 'Reason 2'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertTrue(data['already_attempted'])
+        self.assertIn('Contact customer care!', data['message'])
+
+    def test_cannot_cancel_shipped_order(self):
+        self.order.status = Order.Status.SHIPPED
+        self.order.save()
+
+        response = self.client.post(f'/order/{self.order.id}/cancel/', {'reason': 'Late delivery'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertIn('Order cannot be cancelled as it has already been shipped', data['message'])
+
+    def test_return_order_success_within_7_days(self):
+        self.order.status = Order.Status.DELIVERED
+        self.order.delivered_at = timezone.now() - timedelta(days=2)
+        self.order.save()
+
+        response = self.client.post(
+            f'/order/{self.order.id}/return/',
+            {'reason': 'Defective item'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertIn('refund/replacement will be processed within 2 to 5 working days', data['message'])
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.RETURN_REQUESTED)
+        self.assertEqual(self.order.return_reason, 'Defective item')
+        self.assertTrue(self.order.return_requested)
+
+    def test_cannot_return_order_after_7_days(self):
+        self.order.status = Order.Status.DELIVERED
+        self.order.delivered_at = timezone.now() - timedelta(days=8)
+        self.order.save()
+
+        response = self.client.post(f'/order/{self.order.id}/return/', {'reason': 'Item no longer needed'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertIn('7-day replacement window for this order has expired', data['message'])
+
+    def test_return_order_single_use_restriction(self):
+        self.order.status = Order.Status.DELIVERED
+        self.order.delivered_at = timezone.now() - timedelta(days=1)
+        self.order.save()
+
+        # First return attempt
+        self.client.post(f'/order/{self.order.id}/return/', {'reason': 'Damaged product'}, format='json')
+
+        # Second return attempt
+        response = self.client.post(f'/order/{self.order.id}/return/', {'reason': 'Try again'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data['success'])
+        self.assertTrue(data['already_attempted'])
+        self.assertIn('Contact customer care!', data['message'])
+
+    def test_admin_orders_view_displays_cancellation_and_return_reasons(self):
+        session = self.client.session
+        session['admin_authenticated'] = True
+        session.save()
+
+        self.order.status = Order.Status.CANCELLED
+        self.order.cancellation_reason = 'Wrong address entered'
+        self.order.cancelled_at = timezone.now()
+        self.order.cancel_requested = True
+        self.order.save()
+
+        admin_resp = self.client.get('/admin-panel/orders/')
+        self.assertEqual(admin_resp.status_code, 200)
+        self.assertContains(admin_resp, 'Order Cancelled by Customer')
+        self.assertContains(admin_resp, 'Wrong address entered')
+        self.assertContains(admin_resp, 'Refund of ₹520.00 to be credited within 2 to 5 working days')
+        self.assertContains(admin_resp, 'Cancelled (Locked)')
+
+    def test_admin_can_change_status_of_returned_order(self):
+        session = self.client.session
+        session['admin_authenticated'] = True
+        session.save()
+
+        # Test cancelled lock
+        self.order.status = Order.Status.CANCELLED
+        self.order.save()
+        resp_cancel = self.client.post(
+            f'/admin-panel/orders/{self.order.id}/status/',
+            {'status': 'delivered'},
+            follow=True
+        )
+        self.assertEqual(resp_cancel.status_code, 200)
+        self.assertContains(resp_cancel, 'already cancelled and cannot be changed')
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.CANCELLED)
+
+        # Test return/replacement is NOT locked
+        self.order.status = Order.Status.RETURN_REQUESTED
+        self.order.save()
+        resp_return = self.client.post(
+            f'/admin-panel/orders/{self.order.id}/status/',
+            {'status': 'returned'},
+            follow=True
+        )
+        self.assertEqual(resp_return.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.RETURNED)
+
+
+

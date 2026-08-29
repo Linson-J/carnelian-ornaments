@@ -612,6 +612,8 @@ class Order(models.Model):
         SHIPPED = 'shipped', 'Shipped'
         DELIVERED = 'delivered', 'Delivered'
         CANCELLED = 'cancelled', 'Cancelled'
+        RETURN_REQUESTED = 'return_requested', 'Replacement Requested'
+        RETURNED = 'returned', 'Replaced Successfully'
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     full_name = models.CharField(max_length=150)
@@ -638,6 +640,16 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     payment_method = models.CharField(max_length=50, default='Card')
     payment_id = models.CharField(max_length=100, blank=True, default='')
+
+    # Cancellation & Return details
+    cancellation_reason = models.TextField(blank=True, default='')
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancel_requested = models.BooleanField(default=False)
+
+    return_reason = models.TextField(blank=True, default='')
+    returned_at = models.DateTimeField(null=True, blank=True)
+    return_requested = models.BooleanField(default=False)
+    delivered_at = models.DateTimeField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -648,6 +660,24 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.id} by {self.user.email}"
+
+    @property
+    def is_within_7_days(self):
+        if self.status != self.Status.DELIVERED:
+            return False
+        deliv_date = self.delivered_at or self.updated_at
+        if not deliv_date:
+            return False
+        from datetime import timedelta
+        return (timezone.now() - deliv_date) <= timedelta(days=7)
+
+    @property
+    def can_cancel(self):
+        return self.status in [self.Status.PENDING, self.Status.PROCESSING] and not self.cancel_requested
+
+    @property
+    def can_return(self):
+        return self.status == self.Status.DELIVERED and not self.return_requested and self.is_within_7_days
 
 
 class OrderItem(models.Model):

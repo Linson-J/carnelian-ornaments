@@ -681,8 +681,30 @@ def update_order_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
     new_status = request.POST.get('status', '').strip()
     
+    # Once an order is cancelled, disallow status updates
+    if order.status == Order.Status.CANCELLED:
+        messages.warning(request, f"Order #{order.id} is already cancelled and cannot be changed.")
+        return redirect('admin_orders')
+
     if new_status in dict(Order.Status.choices):
         order.status = new_status
+        if new_status == Order.Status.DELIVERED and not order.delivered_at:
+            order.delivered_at = timezone.now()
+        elif new_status == Order.Status.CANCELLED:
+            if not order.cancelled_at:
+                order.cancelled_at = timezone.now()
+            order.cancel_requested = True
+            # Restore stock if cancelled by admin
+            for item in order.items.all():
+                if item.product:
+                    item.product.stock += item.quantity
+                    if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
+                        item.product.status = Product.Status.AVAILABLE
+                    item.product.save()
+        elif new_status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
+            if not order.returned_at:
+                order.returned_at = timezone.now()
+            order.return_requested = True
         order.save()
         messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
     else:

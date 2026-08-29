@@ -161,6 +161,18 @@
     color: #f87171;
     border-color: rgba(220, 38, 38, 0.3);
   }
+  .status-select.status-return-requested,
+  .filter-select.status-return-requested {
+    background: rgba(234, 88, 12, 0.15);
+    color: #fb923c;
+    border-color: rgba(234, 88, 12, 0.3);
+  }
+  .status-select.status-returned,
+  .filter-select.status-returned {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.3);
+  }
   .status-select option,
   .filter-select option {
     background: #1e1e24;
@@ -236,60 +248,75 @@
             <span style="font-size:0.8rem; color:var(--muted); text-transform:uppercase;">{{ order.payment_method }}</span>
           </td>
           <td>
-            <form method="POST" action="{% url 'update_order_status' order.id %}">
-              {% csrf_token %}
-              <select name="status" onchange="this.form.submit()" class="status-select status-{{ order.status|slugify }}">
-                {% for status_val, status_lbl in choices %}
-                  <option value="{{ status_val }}" {% if order.status == status_val %}selected{% endif %}>{{ status_lbl }}</option>
-                {% endfor %}
-              </select>
-            </form>
+            {% if order.status == 'cancelled' %}
+              <span class="status-select status-cancelled" style="display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:8px; font-weight:600; font-size:0.85rem; background:rgba(239, 68, 68, 0.15); color:#fca5a5; border:1px solid rgba(239, 68, 68, 0.3);">
+                🚫 Cancelled (Locked)
+              </span>
+            {% else %}
+              <form method="POST" action="{% url 'update_order_status' order.id %}">
+                {% csrf_token %}
+                <select name="status" onchange="this.form.submit()" class="status-select status-{{ order.status|slugify }}">
+                  {% for status_val, status_lbl in choices %}
+                    <option value="{{ status_val }}" {% if order.status == status_val %}selected{% endif %}>{{ status_lbl }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            {% endif %}
           </td>
           <td>
             <button class="btn-view-details" onclick="toggleOrderDetails({{ order.id }})">👁 View Details</button>
           </td>
         </tr>
 
-        <!-- Expanded details row -->
-        <tr id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
+        <!-- Expanded Details Row -->
+        <tr class="order-details-row" id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
           <td colspan="6" style="padding: 15px 30px;">
-            <div class="detail-card">
+            <div class="order-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
               <div>
-                <div class="detail-title">Purchased Items</div>
-                <div class="items-list">
-                  {% for item in order.items.all %}
-                  <div class="item-row">
-                    <div class="item-info">
-                      {% if item.product.images.first %}
-                        <img src="{{ item.product.images.first.image.url }}" class="item-img" alt="{{ item.product_name }}">
-                      {% else %}
-                        <div class="item-img" style="display:flex; align-items:center; justify-content:center; font-size:9px; background:#ddd;">No Image</div>
-                      {% endif %}
-                      <div>
-                        <strong>{{ item.product_name }}</strong><br>
-                        <span style="color:var(--muted); font-size:0.8rem;">Qty: {{ item.quantity }} × ₹{{ item.price }}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <strong>₹{% widthratio item.price 1 item.quantity %}</strong>
-                    </div>
+                <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Shipping Address & Action Details</div>
+                <p style="margin: 0 0 5px 0;"><strong>Name:</strong> {{ order.full_name }}</p>
+                <p style="margin: 0 0 5px 0;"><strong>Phone:</strong> {{ order.phone }}</p>
+                <p style="margin: 0 0 5px 0;"><strong>Address:</strong> {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }} - {{ order.postal_code }}</p>
+                <p style="margin: 0 0 5px 0;"><strong>Payment Method:</strong> {{ order.payment_method }}</p>
+                
+                {% if order.cancellation_reason %}
+                <div class="cancel-alert-box" style="margin-top: 15px; padding: 12px 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                  <div style="color: #fca5a5; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <span>🚫 Order Cancelled by Customer</span>
+                    {% if order.cancelled_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.cancelled_at|date:"Y-m-d H:i" }})</span>{% endif %}
                   </div>
-                  {% endfor %}
+                  <div style="color: #e2e8f0; font-size: 0.85rem;">
+                    <strong>Reason:</strong> "{{ order.cancellation_reason }}"
+                  </div>
+                  <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                    💳 <strong>Refund Info:</strong> 
+                    {% if order.payment_method|lower in 'card,online,upi,netbanking,credit_card,debit_card' %}
+                      Paid via {{ order.payment_method }}. Refund of ₹{{ order.total }} to be credited within 2 to 5 working days.
+                    {% else %}
+                      Paid via {{ order.payment_method }} (Cash on Delivery). No online refund required.
+                    {% endif %}
+                  </div>
                 </div>
+                {% endif %}
 
-                <div class="detail-title" style="margin-top:20px;">Shipping & Contact Details</div>
-                <p style="font-size:0.9rem; line-height:1.5; margin:0;">
-                  <strong>Recipient:</strong> {{ order.full_name }}<br>
-                  <strong>Contact Phone:</strong> {{ order.phone }}<br>
-                  <strong>Delivery Address:</strong><br>
-                  {{ order.street_address }}<br>
-                  {{ order.city }}, {{ order.state }}, {{ order.country }} - {{ order.postal_code }}<br>
-                  {% if order.county %}<em>County/District: {{ order.county }}</em>{% endif %}
-                </p>
+                {% if order.return_reason %}
+                <div class="return-alert-box" style="margin-top: 15px; padding: 12px 15px; background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 8px;">
+                  <div style="color: #fb923c; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <span>🔄 Replacement Requested by Customer</span>
+                    {% if order.returned_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.returned_at|date:"Y-m-d H:i" }})</span>{% endif %}
+                  </div>
+                  <div style="color: #e2e8f0; font-size: 0.85rem;">
+                    <strong>Reason:</strong> "{{ order.return_reason }}"
+                  </div>
+                  <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                    💳 <strong>Refund/Replacement Info:</strong> Refund/replacement of ₹{{ order.total }} will be processed within 2 to 5 working days.
+                  </div>
+                </div>
+                {% endif %}
               </div>
 
               <div>
-                <div class="detail-title">Order Pricing Summary</div>
+                <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Order Pricing Summary</div>
                 <div class="order-summary-box">
                   <div class="summary-line">
                     <span>Subtotal</span>

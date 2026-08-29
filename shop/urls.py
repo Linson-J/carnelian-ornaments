@@ -53,6 +53,10 @@ urlpatterns = [
     # User Profile & Saved Address
     path('profile/', views.profile_page, name='profile_page'),
     path('profile/address/save/', views.save_profile_address, name='save_profile_address'),
+
+    # Order Cancellation & Return
+    path('order/<int:order_id>/cancel/', views.cancel_order, name='cancel_order'),
+    path('order/<int:order_id>/return/', views.return_order, name='return_order'),
 ]
 
 # Expose Swagger API Docs ONLY in Development (DEBUG=True)
