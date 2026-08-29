@@ -1,0 +1,922 @@
+<!-- Customer Search Modal Overlay -->
+<div class="search-modal-overlay" id="searchModalOverlay" aria-hidden="true">
+    <div class="search-modal-container" role="dialog" aria-modal="true" aria-label="Search Catalog">
+        <!-- Top Search Bar Header -->
+        <div class="search-modal-header">
+            <div class="search-input-wrapper">
+                <i class="ri-search-line search-input-icon"></i>
+                <input type="text" id="customerSearchInput" placeholder="Search products, collections, categories..." autocomplete="off" spellcheck="false">
+                <button type="button" class="search-clear-btn" id="searchClearBtn" title="Clear input" style="display: none;">
+                    <i class="ri-close-circle-fill"></i>
+                </button>
+            </div>
+            <button type="button" class="search-modal-close" id="closeSearchModalBtn" title="Close (Esc)">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+
+        <!-- Main Search Content Scroll Container -->
+        <div class="search-modal-body">
+            <!-- Loading Spinner -->
+            <div class="search-loading-state" id="searchLoadingState" style="display: none;">
+                <div class="search-spinner"></div>
+                <span>Searching collection...</span>
+            </div>
+
+            <!-- Default View: Popular Searches & Categories (shown when search box is empty) -->
+            <div class="search-default-section" id="searchDefaultSection">
+                <div class="search-section-block">
+                    <div class="search-section-title">
+                        <i class="ri-fire-line"></i> Popular Searches
+                    </div>
+                    <div class="search-tags-row">
+                        <button type="button" class="search-tag-chip" data-suggested-query="Rings">Rings</button>
+                        <button type="button" class="search-tag-chip" data-suggested-query="Necklaces">Necklaces</button>
+                        <button type="button" class="search-tag-chip" data-suggested-query="Earrings">Earrings</button>
+                        <button type="button" class="search-tag-chip" data-suggested-query="Gold">Gold</button>
+                        <button type="button" class="search-tag-chip" data-suggested-query="Diamond">Diamond</button>
+                        <button type="button" class="search-tag-chip" data-suggested-query="Bracelet">Bracelet</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Search Results -->
+            <div class="search-results-container" id="searchResultsContainer" style="display: none;">
+                <!-- Matching Categories List -->
+                <div class="search-section-block" id="searchCategoriesBlock" style="display: none;">
+                    <div class="search-section-title">
+                        <i class="ri-folder-line"></i> Matching Categories
+                    </div>
+                    <div class="search-category-chips-list" id="searchCategoryChips"></div>
+                </div>
+
+                <!-- Matching Products List -->
+                <div class="search-section-block" id="searchProductsBlock" style="display: none;">
+                    <div class="search-section-title">
+                        <i class="ri-shopping-bag-3-line"></i> Product Results
+                    </div>
+                    <div class="search-products-grid" id="searchProductsGrid"></div>
+                </div>
+
+                <!-- View All Link Button -->
+                <div class="search-view-all-wrapper" id="searchViewAllWrapper" style="display: none;">
+                    <a href="#" id="searchViewAllLink" class="search-view-all-btn">
+                        View all <span id="searchViewAllCount">0</span> results for "<span id="searchViewAllQuery"></span>"
+                        <i class="ri-arrow-right-line"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- No Results Found State -->
+            <div class="search-no-results" id="searchNoResults" style="display: none;">
+                <i class="ri-search-line no-results-icon"></i>
+                <h3>No products found</h3>
+                <p>We couldn't find anything matching "<span id="noResultsQuery"></span>"</p>
+                <small>Try searching for broader terms like <strong>Rings</strong>, <strong>Necklaces</strong>, or <strong>Gold</strong>.</small>
+            </div>
+
+            <!-- Persistent Recent Searches / Search History (Shown below live results or when browsing) -->
+            <div class="search-section-block search-history-block" id="searchHistoryBlock" style="display: none;">
+                <div class="search-section-header">
+                    <span class="search-section-title">
+                        <i class="ri-history-line"></i> Previous Searches
+                    </span>
+                    <button type="button" class="search-clear-history-btn" id="searchClearHistoryBtn">Clear History</button>
+                </div>
+                <div class="search-history-list" id="searchHistoryList">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ================= CUSTOMER SEARCH MODAL STYLES ================= */
+.search-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(10, 10, 10, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 60px 20px 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.search-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.search-modal-container {
+    width: 100%;
+    max-width: 680px;
+    background: #ffffff;
+    border-radius: 24px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    transform: translateY(-20px) scale(0.97);
+    transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+    border: 1px solid rgba(124, 83, 87, 0.15);
+}
+
+.search-modal-overlay.active .search-modal-container {
+    transform: translateY(0) scale(1);
+}
+
+/* Modal Header Bar */
+.search-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: #faf8f6;
+}
+
+.search-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    border: 1.5px solid rgba(124, 83, 87, 0.25);
+    border-radius: 99px;
+    padding: 10px 18px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input-wrapper:focus-within {
+    border-color: var(--primary, #7c5357);
+    box-shadow: 0 0 0 4px rgba(124, 83, 87, 0.12);
+}
+
+.search-input-icon {
+    font-size: 20px;
+    color: var(--primary, #7c5357);
+}
+
+.search-input-wrapper input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1a1c1a;
+    font-family: 'Inter', sans-serif;
+}
+
+.search-input-wrapper input::placeholder {
+    color: #988e8b;
+}
+
+.search-clear-btn {
+    background: none;
+    border: none;
+    color: #a09794;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.search-clear-btn:hover {
+    color: var(--primary, #7c5357);
+}
+
+.search-modal-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #eae5e1;
+    color: #4a4240;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.search-modal-close:hover {
+    background: var(--primary, #7c5357);
+    color: #ffffff;
+    transform: rotate(90deg);
+}
+
+/* Modal Body */
+.search-modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+/* Section Blocks */
+.search-section-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.search-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.search-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--primary, #7c5357);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.search-clear-history-btn {
+    background: none;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a09794;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+
+.search-clear-history-btn:hover {
+    color: #d93838;
+    text-decoration: underline;
+}
+
+/* Chips / Popular Searches */
+.search-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.search-tag-chip {
+    background: #f4efeb;
+    border: 1px solid #e6ded8;
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #524745;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.search-tag-chip:hover {
+    background: var(--primary, #7c5357);
+    border-color: var(--primary, #7c5357);
+    color: #ffffff;
+}
+
+/* Category Chips */
+.search-category-chips-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.search-category-chip-item {
+    background: rgba(124, 83, 87, 0.08);
+    border: 1px solid rgba(124, 83, 87, 0.2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #7c5357);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.search-category-chip-item:hover {
+    background: var(--primary, #7c5357);
+    color: #ffffff;
+}
+
+/* Product Results Grid */
+.search-products-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.search-product-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: #faf8f6;
+    border: 1px solid #efeae6;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-product-card:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(124, 83, 87, 0.12);
+}
+
+.search-product-img {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #e8e2dd;
+    flex-shrink: 0;
+}
+
+.search-product-img-placeholder {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    background: #e8e2dd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a09794;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.search-product-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.search-product-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1c1a;
+}
+
+.search-product-category {
+    font-size: 12px;
+    color: #827774;
+}
+
+.search-product-pricing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.search-product-price {
+    color: var(--primary, #7c5357);
+}
+
+.search-product-original-price {
+    text-decoration: line-through;
+    color: #a89f9c;
+    font-weight: 400;
+    font-size: 12px;
+}
+
+/* View All Link */
+.search-view-all-wrapper {
+    margin-top: 6px;
+    text-align: center;
+}
+
+.search-view-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary, #7c5357);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 99px;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.search-view-all-btn:hover {
+    background: #633f43;
+    transform: translateY(-2px);
+}
+
+/* Previous Search History Items */
+.search-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.search-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f7f4f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.search-history-item:hover {
+    background: #ede6df;
+}
+
+.search-history-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #423a38;
+    font-weight: 500;
+}
+
+.search-history-left i {
+    color: #a09794;
+    font-size: 16px;
+}
+
+.search-history-remove-btn {
+    background: none;
+    border: none;
+    color: #a09794;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.search-history-remove-btn:hover {
+    color: #d93838;
+    background: rgba(217, 56, 56, 0.1);
+}
+
+/* Loading & Empty States */
+.search-loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 0;
+    color: #7a6e6b;
+    font-size: 14px;
+}
+
+.search-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(124, 83, 87, 0.2);
+    border-top-color: var(--primary, #7c5357);
+    border-radius: 50%;
+    animation: searchSpin 0.7s linear infinite;
+}
+
+@keyframes searchSpin {
+    to { transform: rotate(360deg); }
+}
+
+.search-no-results {
+    text-align: center;
+    padding: 30px 20px;
+    color: #635754;
+}
+
+.no-results-icon {
+    font-size: 42px;
+    color: #c4b9b4;
+    margin-bottom: 10px;
+}
+
+.search-no-results h3 {
+    font-family: 'Noto Serif', serif;
+    font-size: 18px;
+    margin-bottom: 6px;
+    color: #1a1c1a;
+}
+
+.search-no-results p {
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.search-no-results small {
+    display: block;
+    font-size: 12px;
+    color: #8c807d;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+    .search-modal-overlay {
+        padding: 16px 12px;
+    }
+    .search-modal-container {
+        border-radius: 16px;
+        max-height: calc(100vh - 32px);
+    }
+    .search-modal-header {
+        padding: 12px 14px;
+    }
+    .search-modal-body {
+        padding: 16px 14px;
+        gap: 16px;
+    }
+}
+</style>
+
+<script>
+(function() {
+    // Search Modal Controller
+    const RECENT_SEARCHES_KEY = 'carmelian_recent_searches_history';
+    const MAX_RECENT_SEARCHES = 8;
+
+    const overlay = document.getElementById('searchModalOverlay');
+    const container = document.querySelector('.search-modal-container');
+    const searchInput = document.getElementById('customerSearchInput');
+    const clearBtn = document.getElementById('searchClearBtn');
+    const closeBtn = document.getElementById('closeSearchModalBtn');
+    const loadingState = document.getElementById('searchLoadingState');
+    const defaultSection = document.getElementById('searchDefaultSection');
+    const resultsContainer = document.getElementById('searchResultsContainer');
+    const categoriesBlock = document.getElementById('searchCategoriesBlock');
+    const categoryChips = document.getElementById('searchCategoryChips');
+    const productsBlock = document.getElementById('searchProductsBlock');
+    const productsGrid = document.getElementById('searchProductsGrid');
+    const viewAllWrapper = document.getElementById('searchViewAllWrapper');
+    const viewAllLink = document.getElementById('searchViewAllLink');
+    const viewAllCount = document.getElementById('searchViewAllCount');
+    const viewAllQuery = document.getElementById('searchViewAllQuery');
+    const noResults = document.getElementById('searchNoResults');
+    const noResultsQuery = document.getElementById('noResultsQuery');
+    const historyBlock = document.getElementById('searchHistoryBlock');
+    const historyList = document.getElementById('searchHistoryList');
+    const clearHistoryBtn = document.getElementById('searchClearHistoryBtn');
+
+    let debounceTimer = null;
+
+    // Helper: LocalStorage Recent Searches
+    function getRecentSearches() {
+        try {
+            const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveRecentSearch(query) {
+        if (!query || !query.trim()) return;
+        const trimmed = query.trim();
+        let history = getRecentSearches();
+        // Remove existing case-insensitive duplicate
+        history = history.filter(item => item.toLowerCase() !== trimmed.toLowerCase());
+        // Unshift newest to front
+        history.unshift(trimmed);
+        if (history.length > MAX_RECENT_SEARCHES) {
+            history = history.slice(0, MAX_RECENT_SEARCHES);
+        }
+        try {
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(history));
+        } catch (e) {}
+        renderRecentSearches();
+    }
+
+    function removeRecentSearch(query) {
+        let history = getRecentSearches();
+        history = history.filter(item => item !== query);
+        try {
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(history));
+        } catch (e) {}
+        renderRecentSearches();
+    }
+
+    function clearAllRecentSearches() {
+        try {
+            localStorage.removeItem(RECENT_SEARCHES_KEY);
+        } catch (e) {}
+        renderRecentSearches();
+    }
+
+    function renderRecentSearches(filterTerm = '') {
+        const history = getRecentSearches();
+        let filtered = history;
+        if (filterTerm && filterTerm.trim()) {
+            const term = filterTerm.trim().toLowerCase();
+            filtered = history.filter(item => item.toLowerCase().includes(term));
+        }
+
+        if (!filtered || filtered.length === 0) {
+            historyBlock.style.display = 'none';
+            return;
+        }
+
+        historyBlock.style.display = 'flex';
+        historyList.innerHTML = filtered.map(item => `
+            <div class="search-history-item" data-history-query="${escapeHtml(item)}">
+                <div class="search-history-left">
+                    <i class="ri-history-line"></i>
+                    <span>${escapeHtml(item)}</span>
+                </div>
+                <button type="button" class="search-history-remove-btn" title="Remove search term" data-remove-query="${escapeHtml(item)}">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[char]));
+    }
+
+    function formatMoney(amount) {
+        return '$' + Number(amount || 0).toFixed(2);
+    }
+
+    // Modal Control Functions
+    function openSearchModal(initialQuery = '') {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        renderRecentSearches();
+
+        if (initialQuery) {
+            searchInput.value = initialQuery;
+            clearBtn.style.display = 'flex';
+            performSearch(initialQuery);
+        } else {
+            searchInput.value = '';
+            clearBtn.style.display = 'none';
+            resetSearchView();
+        }
+
+        setTimeout(() => searchInput.focus(), 150);
+    }
+
+    function closeSearchModal() {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function resetSearchView() {
+        loadingState.style.display = 'none';
+        searchResultsContainer.style.display = 'none';
+        noResults.style.display = 'none';
+        defaultSection.style.display = 'block';
+        renderRecentSearches();
+    }
+
+    // Perform Live AJAX Search
+    async function performSearch(query) {
+        const trimmed = query.trim();
+        if (!trimmed) {
+            resetSearchView();
+            return;
+        }
+
+        loadingState.style.display = 'flex';
+        defaultSection.style.display = 'none';
+        searchResultsContainer.style.display = 'none';
+        noResults.style.display = 'none';
+
+        // Filter and show matching recent searches below live results
+        renderRecentSearches(trimmed);
+
+        try {
+            const response = await fetch(`/api/search/?q=${encodeURIComponent(trimmed)}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            loadingState.style.display = 'none';
+
+            if (!data.success || !data.data) {
+                showNoResults(trimmed);
+                return;
+            }
+
+            const { products, categories, total_count } = data.data;
+
+            if ((!products || products.length === 0) && (!categories || categories.length === 0)) {
+                showNoResults(trimmed);
+                return;
+            }
+
+            // Display Results
+            searchResultsContainer.style.display = 'flex';
+            searchResultsContainer.style.flexDirection = 'column';
+            searchResultsContainer.style.gap = '18px';
+
+            // 1. Categories
+            if (categories && categories.length > 0) {
+                categoriesBlock.style.display = 'flex';
+                categoryChips.innerHTML = categories.map(cat => `
+                    <a href="/shop/?category=${encodeURIComponent(cat.slug)}" class="search-category-chip-item" onclick="window.saveRecentSearch('${escapeHtml(trimmed)}')">
+                        <i class="ri-price-tag-3-line"></i> ${escapeHtml(cat.name)}
+                    </a>
+                `).join('');
+            } else {
+                categoriesBlock.style.display = 'none';
+            }
+
+            // 2. Products
+            if (products && products.length > 0) {
+                productsBlock.style.display = 'flex';
+                productsGrid.innerHTML = products.map(prod => {
+                    const priceHtml = prod.discount_price 
+                        ? `<span class="search-product-price">${formatMoney(prod.discount_price)}</span> <span class="search-product-original-price">${formatMoney(prod.price)}</span>`
+                        : `<span class="search-product-price">${formatMoney(prod.price)}</span>`;
+                    
+                    const imgHtml = prod.image_url
+                        ? `<img src="${prod.image_url}" alt="${escapeHtml(prod.name)}" class="search-product-img">`
+                        : `<div class="search-product-img-placeholder"><i class="ri-image-line"></i></div>`;
+
+                    return `
+                        <a href="/products/${encodeURIComponent(prod.slug)}/" class="search-product-card" onclick="window.saveRecentSearch('${escapeHtml(trimmed)}')">
+                            ${imgHtml}
+                            <div class="search-product-info">
+                                <span class="search-product-title">${escapeHtml(prod.name)}</span>
+                                <span class="search-product-category">${escapeHtml(prod.category_name)}</span>
+                            </div>
+                            <div class="search-product-pricing">
+                                ${priceHtml}
+                            </div>
+                        </a>
+                    `;
+                }).join('');
+            } else {
+                productsBlock.style.display = 'none';
+            }
+
+            // 3. View All Button
+            viewAllWrapper.style.display = 'block';
+            viewAllCount.textContent = total_count || products.length;
+            viewAllQuery.textContent = trimmed;
+            viewAllLink.href = `/shop/?search=${encodeURIComponent(trimmed)}`;
+
+        } catch (error) {
+            loadingState.style.display = 'none';
+            showNoResults(trimmed);
+        }
+    }
+
+    function showNoResults(query) {
+        searchResultsContainer.style.display = 'none';
+        noResults.style.display = 'block';
+        noResultsQuery.textContent = query;
+        renderRecentSearches(query);
+    }
+
+    // Expose global helper for clicks on search links
+    window.saveRecentSearch = saveRecentSearch;
+
+    // Event Listeners
+    // Open triggers
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('[data-search-trigger]');
+        if (trigger) {
+            e.preventDefault();
+            openSearchModal();
+        }
+    });
+
+    // Close triggers
+    if (closeBtn) closeBtn.addEventListener('click', closeSearchModal);
+    
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            closeSearchModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('active')) {
+            closeSearchModal();
+        }
+    });
+
+    // Search Input Typing (Debounced)
+    searchInput.addEventListener('input', function() {
+        const query = searchInput.value;
+        if (query.trim().length > 0) {
+            clearBtn.style.display = 'flex';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            performSearch(query);
+        }, 200);
+    });
+
+    // Submit on Enter
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                saveRecentSearch(query);
+                closeSearchModal();
+                window.location.href = `/shop/?search=${encodeURIComponent(query)}`;
+            }
+        }
+    });
+
+    // View All Link Click
+    if (viewAllLink) {
+        viewAllLink.addEventListener('click', function(e) {
+            const query = searchInput.value.trim();
+            if (query) {
+                saveRecentSearch(query);
+            }
+        });
+    }
+
+    // Clear Search Input Button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            clearBtn.style.display = 'none';
+            searchInput.focus();
+            resetSearchView();
+        });
+    }
+
+    // Popular Tag Chips Click
+    document.addEventListener('click', function(e) {
+        const chip = e.target.closest('[data-suggested-query]');
+        if (chip) {
+            const query = chip.dataset.suggestedQuery;
+            searchInput.value = query;
+            clearBtn.style.display = 'flex';
+            searchInput.focus();
+            performSearch(query);
+        }
+    });
+
+    // History Item Click & Delete
+    historyList.addEventListener('click', function(e) {
+        // Delete button
+        const removeBtn = e.target.closest('[data-remove-query]');
+        if (removeBtn) {
+            e.stopPropagation();
+            const queryToRemove = removeBtn.dataset.removeQuery;
+            removeRecentSearch(queryToRemove);
+            return;
+        }
+
+        // History row item
+        const historyRow = e.target.closest('[data-history-query]');
+        if (historyRow) {
+            const query = historyRow.dataset.historyQuery;
+            searchInput.value = query;
+            clearBtn.style.display = 'flex';
+            searchInput.focus();
+            performSearch(query);
+        }
+    });
+
+    // Clear All History Button
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', function() {
+            clearAllRecentSearches();
+        });
+    }
+
+})();
+</script>

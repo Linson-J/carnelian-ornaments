@@ -1266,36 +1266,21 @@
                 window.showToast(data.message || 'Added to wishlist!');
                 
                 const isFav = data.is_favorited;
-                const wishlistButtons = document.querySelectorAll(`.catalog-wishlist[data-product-id="${productId}"]`);
+                const wishlistButtons = document.querySelectorAll(
+                    `.catalog-wishlist[data-product-id="${productId}"], .product-image-wishlist-btn, .detail-wishlist-btn, .wishlist-btn`
+                );
                 wishlistButtons.forEach(btn => {
-                    if (isFav) {
-                        btn.classList.add('favorited');
-                        const icon = btn.querySelector('i');
-                        if (icon) {
-                            icon.className = 'ri-heart-fill';
-                        }
-                    } else {
-                        btn.classList.remove('favorited');
-                        const icon = btn.querySelector('i');
-                        if (icon) {
-                            icon.className = 'ri-heart-line';
-                        }
-                    }
-                });
-
-                const detailWishlistBtn = document.querySelector(`.wishlist-btn`);
-                if (detailWishlistBtn) {
-                    const icon = detailWishlistBtn.querySelector('i');
+                    const icon = btn.querySelector('i');
                     if (icon) {
                         if (isFav) {
-                            icon.className = 'ri-heart-fill';
+                            icon.className = 'ri-heart-fill favorited';
                             icon.style.color = 'var(--primary, #7c5357)';
                         } else {
                             icon.className = 'ri-heart-line';
                             icon.style.color = '';
                         }
                     }
-                }
+                });
 
                 if (callback) callback(data);
             } else {

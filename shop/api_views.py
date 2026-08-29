@@ -702,3 +702,76 @@ class OfferToggleStatusView(APIView):
             )
         offer.save(update_fields=['status', 'updated_at'])
         return success(OfferSerializer(offer, context={'request': request}).data, 'Offer status updated')
+
+
+class CustomerSearchAPIView(APIView):
+    """
+    Public live autocomplete & instant search endpoint for customer-side.
+    GET /api/search/?q=<query>
+    """
+    def get(self, request):
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return success({
+                'products': [],
+                'categories': [],
+                'total_count': 0,
+            })
+
+        products_qs = (
+            Product.objects.filter(status=Product.Status.AVAILABLE)
+            .filter(
+                Q(name__icontains=query)
+                | Q(category__name__icontains=query)
+                | Q(description__icontains=query)
+            )
+            .select_related('category')
+            .prefetch_related('images')
+            .distinct()[:8]
+        )
+
+        categories_qs = Category.objects.filter(
+            status=Category.Status.ACTIVE,
+            name__icontains=query,
+        )[:4]
+
+        products_data = []
+        for p in products_qs:
+            primary_img = p.images.filter(is_primary=True).first() or p.images.first()
+            img_url = ''
+            if primary_img and primary_img.image:
+                img_url = request.build_absolute_uri(primary_img.image.url)
+
+            products_data.append({
+                'id': p.id,
+                'name': p.name,
+                'slug': p.slug,
+                'price': float(p.price),
+                'discount_price': float(p.discount_price) if p.discount_price else None,
+                'category_name': p.category.name if p.category else '',
+                'category_slug': p.category.slug if p.category else '',
+                'image_url': img_url,
+            })
+
+        categories_data = [
+            {'id': c.id, 'name': c.name, 'slug': c.slug}
+            for c in categories_qs
+        ]
+
+        total_count = (
+            Product.objects.filter(status=Product.Status.AVAILABLE)
+            .filter(
+                Q(name__icontains=query)
+                | Q(category__name__icontains=query)
+                | Q(description__icontains=query)
+            )
+            .distinct()
+            .count()
+        )
+
+        return success({
+            'products': products_data,
+            'categories': categories_data,
+            'total_count': total_count,
+        })
+

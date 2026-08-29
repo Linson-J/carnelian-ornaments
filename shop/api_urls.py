@@ -11,6 +11,7 @@ from .api_views import (
     HomeSectionDetailView,
     HomeSectionListCreateView,
     HomeThemeView,
+    CustomerSearchAPIView,
     OfferDetailView,
     OfferListCreateView,
     OfferToggleStatusView,
@@ -21,7 +22,9 @@ from .api_views import (
 )
 
 urlpatterns = [
+    path('search/', CustomerSearchAPIView.as_view(), name='customer_search_api'),
     path('categories/', CategoryListCreateView.as_view()),
+
     path('categories/<int:pk>/', CategoryDetailView.as_view()),
     path('category-tags/', CategoryTagListCreateView.as_view()),
     path('category-tags/<int:pk>/', CategoryTagDetailView.as_view()),

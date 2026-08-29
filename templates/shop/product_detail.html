@@ -3,79 +3,141 @@
 {% block title %}{{ product.name }} - Carmelian{% endblock %}
 
 {% block content %}
-  <main class="product-detail">
-    <div class="product-detail-image">
-      {% with image=product.images.all|first %}
-        {% if image %}
-          <img src="{{ image.image.url }}" alt="{{ product.name }}">
-        {% endif %}
-      {% endwith %}
-    </div>
-    <div class="product-detail-copy">
-      <p>{{ product.category.name|default:"Collection" }}</p>
-      <h1>{{ product.name }}</h1>
-      {% if product.review_count > 0 %}
-      <div class="product-rating-summary" style="display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 1rem 0;">
-        <div class="rating-stars" style="color: #ffb800; display: inline-flex; gap: 2px;">
-          {% for i in "12345" %}
-            {% if forloop.counter <= product.average_rating %}
-              <i class="ri-star-fill" style="font-size: 1.1rem;"></i>
-            {% elif forloop.counter|add:"-0.5" <= product.average_rating %}
-              <i class="ri-star-half-fill" style="font-size: 1.1rem;"></i>
+  <main class="product-detail-wrapper">
+    <div class="product-detail">
+      
+      <!-- Product Image Gallery Section -->
+      <div class="product-detail-gallery">
+        <div class="product-main-image-container">
+          {% with primary_image=product.images.all|first %}
+            {% if primary_image %}
+              <img id="mainProductImage" src="{{ primary_image.image.url }}" alt="{{ product.name }}">
             {% else %}
-              <i class="ri-star-line" style="font-size: 1.1rem; color: #ddd;"></i>
+              <div class="product-no-image-placeholder">
+                <i class="ri-image-line"></i>
+                <span>No image available</span>
+              </div>
             {% endif %}
+          {% endwith %}
+
+          {% if product.discount_price %}
+            <span class="product-discount-badge">-{{ product.discount_percent }}% OFF</span>
+          {% endif %}
+
+          <!-- Floating Favorite Button at Top Right of Product Photo -->
+          <button class="product-image-wishlist-btn" onclick="window.addToWishlist({{ product.id }})" aria-label="Add to Wishlist" title="Wishlist">
+            {% if is_favorited %}
+              <i class="ri-heart-fill favorited" style="color: var(--primary, #7c5357);"></i>
+            {% else %}
+              <i class="ri-heart-line"></i>
+            {% endif %}
+          </button>
+        </div>
+
+        <!-- Thumbnail Gallery Strip -->
+        {% if product.images.all|length > 1 %}
+        <div class="product-thumbnails-scroll">
+          {% for img in product.images.all %}
+            <div class="product-thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchMainImage('{{ img.image.url }}', this)">
+              <img src="{{ img.image.url }}" alt="{{ product.name }} thumbnail {{ forloop.counter }}">
+            </div>
           {% endfor %}
         </div>
-        <span style="font-size: 0.9rem; color: var(--muted-text-color, #504444);">
-          {{ product.average_rating }} ({{ product.review_count }} review{{ product.review_count|pluralize }})
-        </span>
+        {% endif %}
       </div>
-      {% endif %}
-      <div class="product-detail-price">Rs. {{ product.discount_price|default:product.price }}</div>
-      <p>{{ product.description }}</p>
-      <div class="product-detail-actions" style="margin: 2rem 0; display: flex; gap: 1rem; align-items: center; min-height: 52px;">
-          <!-- Add to Cart Button -->
-          <button id="detailAddToCartBtn" class="hero-btn primary" onclick="addDetailToCart()" style="flex: 1; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; height: 50px; {% if cart_qty > 0 %}display: none;{% endif %}">Add to Cart</button>
-          
-          <!-- Quantity Control Pill -->
-          <div id="cartQuantitySelector" class="quantity-control" style="{% if cart_qty == 0 %}display: none;{% else %}display: flex;{% endif %} align-items: center; justify-content: space-between; border: 1.5px solid var(--primary, #7c5357); border-radius: 30px; padding: 6px 12px; background: rgba(124, 83, 87, 0.05); flex: 1; box-sizing: border-box; height: 50px;">
-              <button class="qty-btn" onclick="updateDetailQty(-1)" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary, #7c5357); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='rgba(124, 83, 87, 0.1)'" onmouseout="this.style.background='none'" aria-label="Decrease quantity">
-                  <i class="ri-subtract-line"></i>
-              </button>
-              <span id="detailQtyVal" style="font-size: 1.2rem; font-weight: 700; color: var(--text-dark, #1a1c1a); text-align: center;">{{ cart_qty }}</span>
-              <button class="qty-btn" onclick="updateDetailQty(1)" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--primary, #7c5357); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s;" onmouseover="this.style.background='rgba(124, 83, 87, 0.1)'" onmouseout="this.style.background='none'" aria-label="Increase quantity">
-                  <i class="ri-add-line"></i>
-              </button>
-          </div>
 
-          <button class="hero-btn" onclick="window.buyNow({{ product.id }})" style="flex: 1; background: var(--text-dark, #1a1c1a); color: var(--background, #fffdfa); border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; height: 50px; display: flex; align-items: center; justify-content: center;">Buy Now</button>
-          <button class="wishlist-btn" onclick="window.addToWishlist({{ product.id }})" style="background: none; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark, #1a1c1a); flex-shrink: 0;">
-              {% if is_favorited %}
-                  <i class="ri-heart-fill" style="font-size: 1.3rem; color: var(--primary, #7c5357);"></i>
+      <!-- Product Metadata & Copy -->
+      <div class="product-detail-copy">
+        <div class="product-category-tag">
+          <a href="/shop/?category={{ product.category.slug }}">{{ product.category.name|default:"Collection" }}</a>
+        </div>
+        <h1 class="product-title">{{ product.name }}</h1>
+        
+        {% if product.review_count > 0 %}
+        <div class="product-rating-summary">
+          <div class="rating-stars">
+            {% for i in "12345" %}
+              {% if forloop.counter <= product.average_rating %}
+                <i class="ri-star-fill"></i>
+              {% elif forloop.counter|add:"-0.5" <= product.average_rating %}
+                <i class="ri-star-half-fill"></i>
               {% else %}
-                  <i class="ri-heart-line" style="font-size: 1.3rem;"></i>
+                <i class="ri-star-line"></i>
               {% endif %}
-          </button>
+            {% endfor %}
+          </div>
+          <span class="rating-count-text">
+            {{ product.average_rating }} ({{ product.review_count }} review{{ product.review_count|pluralize }})
+          </span>
+        </div>
+        {% endif %}
+
+        <div class="product-detail-price-wrap">
+          {% if product.discount_price %}
+            <span class="product-price-current">Rs. {{ product.discount_price }}</span>
+            <span class="product-price-original">Rs. {{ product.price }}</span>
+          {% else %}
+            <span class="product-price-current">Rs. {{ product.price }}</span>
+          {% endif %}
+          
+          {% if product.stock > 0 %}
+            <span class="stock-badge in-stock"><i class="ri-checkbox-circle-fill"></i> In Stock</span>
+          {% else %}
+            <span class="stock-badge out-of-stock"><i class="ri-close-circle-fill"></i> Out of Stock</span>
+          {% endif %}
+        </div>
+
+        <p class="product-description-text">{{ product.description }}</p>
+
+        <!-- Product Actions -->
+        <div class="product-detail-actions">
+            <!-- Add to Cart Button -->
+            <button id="detailAddToCartBtn" class="detail-action-btn add-cart-btn" onclick="addDetailToCart()" {% if cart_qty > 0 %}style="display: none;"{% endif %}>
+              <i class="ri-shopping-bag-line"></i> Add to Cart
+            </button>
+            
+            <!-- Quantity Control Pill -->
+            <div id="cartQuantitySelector" class="detail-qty-control" {% if cart_qty == 0 %}style="display: none;"{% endif %}>
+                <button class="qty-btn" onclick="updateDetailQty(-1)" aria-label="Decrease quantity">
+                    <i class="ri-subtract-line"></i>
+                </button>
+                <span id="detailQtyVal">{{ cart_qty }}</span>
+                <button class="qty-btn" onclick="updateDetailQty(1)" aria-label="Increase quantity">
+                    <i class="ri-add-line"></i>
+                </button>
+            </div>
+
+            <!-- Buy Now Button -->
+            <button class="detail-action-btn buy-now-btn" onclick="window.buyNow({{ product.id }})">
+              Buy Now
+            </button>
+        </div>
+
+        <!-- Trust Badges -->
+        <div class="product-trust-features">
+          <div class="trust-item"><i class="ri-truck-line"></i> <span>Express Delivery</span></div>
+          <div class="trust-item"><i class="ri-shield-check-line"></i> <span>100% Certified Quality</span></div>
+          <div class="trust-item"><i class="ri-arrow-go-back-line"></i> <span>10 Days Return</span></div>
+        </div>
+
       </div>
-      <a href="/" class="hero-btn primary">Continue shopping</a>
     </div>
   </main>
 
   <!-- Reviews Section -->
-  <section class="reviews-section" style="max-width: 1200px; margin: 4rem auto; padding: 0 1.5rem; box-sizing: border-box;">
-    <h2 style="font-family: inherit; font-size: 1.75rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 1rem; color: var(--text-dark, #1a1c1a);">Customer Reviews</h2>
+  <section class="reviews-section" style="max-width: 1200px; margin: 3rem auto; padding: 0 1.25rem; box-sizing: border-box;">
+    <h2 style="font-family: 'Noto Serif', serif; font-size: 1.6rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 0.8rem; color: #1a1c1a;">Customer Reviews</h2>
     
-    <div class="reviews-container" style="display: flex; gap: 3rem; flex-wrap: wrap;">
+    <div class="reviews-container" style="display: flex; gap: 2rem; flex-wrap: wrap;">
       <!-- Left Column: Add/Edit Review Form -->
-      <div class="review-form-container" style="flex: 1; min-width: 300px;">
+      <div class="review-form-container" style="flex: 1; min-width: 280px;">
         {% if request.user.is_authenticated %}
-          <h3 style="font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--text-dark, #1a1c1a);">Write a Review</h3>
-          <form id="reviewForm" onsubmit="submitReview(event)" style="display: flex; flex-direction: column; gap: 1.2rem; background: rgba(124, 83, 87, 0.02); padding: 2rem; border-radius: 12px; border: 1.5px solid rgba(124, 83, 87, 0.08);">
+          <h3 style="font-size: 1.15rem; margin-bottom: 1rem; color: #1a1c1a;">Write a Review</h3>
+          <form id="reviewForm" onsubmit="submitReview(event)" style="display: flex; flex-direction: column; gap: 1rem; background: #faf8f6; padding: 1.5rem; border-radius: 16px; border: 1px solid #efeae6;">
             {% csrf_token %}
             <div>
-              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">Your Rating</label>
-              <div class="star-rating-input" style="display: flex; gap: 8px; font-size: 1.6rem; color: #ffb800; cursor: pointer;">
+              <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; color: #1a1c1a;">Your Rating</label>
+              <div class="star-rating-input" style="display: flex; gap: 6px; font-size: 1.5rem; color: #ffb800; cursor: pointer;">
                 <input type="hidden" name="rating" id="reviewRatingInput" value="5">
                 <i class="ri-star-fill star-input" data-value="1" onclick="setRating(1)"></i>
                 <i class="ri-star-fill star-input" data-value="2" onclick="setRating(2)"></i>
@@ -85,45 +147,45 @@
               </div>
             </div>
             <div>
-              <label for="reviewComment" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">Review Comment</label>
-              <textarea id="reviewComment" name="comment" rows="4" placeholder="Share your experience with this product..." required style="width: 100%; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; font-family: inherit; font-size: 0.95rem; resize: vertical; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary, #7c5357)'" onblur="this.style.borderColor='rgba(0,0,0,0.1)'"></textarea>
+              <label for="reviewComment" style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; color: #1a1c1a;">Review Comment</label>
+              <textarea id="reviewComment" name="comment" rows="4" placeholder="Share your experience with this product..." required style="width: 100%; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 0.9rem; resize: vertical; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary, #7c5357)'" onblur="this.style.borderColor='rgba(0,0,0,0.1)'"></textarea>
             </div>
-            <button type="submit" class="hero-btn primary" style="border: none; padding: 0.8rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; border-radius: 4px; font-weight: 600; width: 100%;">Submit Review</button>
+            <button type="submit" class="detail-action-btn add-cart-btn" style="border: none; padding: 0.8rem; font-size: 0.95rem; cursor: pointer; text-align: center; border-radius: 99px; font-weight: 600; width: 100%;">Submit Review</button>
           </form>
         {% else %}
-          <div style="background: rgba(124, 83, 87, 0.03); border: 1px dashed rgba(124, 83, 87, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
-            <p style="margin-bottom: 1rem; color: var(--muted-text-color, #504444);">Please log in to write a review for this product.</p>
-            <button class="hero-btn primary" onclick="window.openAuthModal ? window.openAuthModal('login') : alert('Please log in using the header option.')" style="border: none; padding: 0.8rem 1.5rem; font-family: inherit; font-size: 0.95rem; cursor: pointer; font-weight: 600;">Log In</button>
+          <div style="background: #faf8f6; border: 1px dashed rgba(124, 83, 87, 0.3); border-radius: 16px; padding: 1.5rem; text-align: center;">
+            <p style="margin-bottom: 1rem; color: #6e6462; font-size: 0.9rem;">Please log in to write a review for this product.</p>
+            <button class="detail-action-btn add-cart-btn" onclick="window.openAuthModal ? window.openAuthModal('login') : alert('Please log in using the header option.')" style="border: none; padding: 0.7rem 1.4rem; font-size: 0.9rem; cursor: pointer; font-weight: 600; display: inline-flex;">Log In</button>
           </div>
         {% endif %}
       </div>
 
       <!-- Right Column: Reviews List -->
-      <div class="reviews-list-container" style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 1.5rem;">
-        <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-dark, #1a1c1a);">User Reviews ({{ reviews|length }})</h3>
+      <div class="reviews-list-container" style="flex: 2; min-width: 280px; display: flex; flex-direction: column; gap: 1.2rem;">
+        <h3 style="font-size: 1.15rem; margin-bottom: 0.4rem; color: #1a1c1a;">User Reviews ({{ reviews|length }})</h3>
         
-        <div class="reviews-scroll-list" style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 500px; overflow-y: auto; padding-right: 8px;">
+        <div class="reviews-scroll-list" style="display: flex; flex-direction: column; gap: 1.2rem; max-height: 450px; overflow-y: auto; padding-right: 6px;">
           {% for r in reviews %}
-            <div class="review-card" style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 1.5rem;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 8px;">
+            <div class="review-card" style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 1.2rem;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 6px;">
                 <div>
-                  <strong style="font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">{{ r.user.email }}</strong>
-                  <div class="rating-stars" style="color: #ffb800; display: flex; gap: 2px; margin-top: 4px;">
+                  <strong style="font-size: 0.9rem; color: #1a1c1a;">{{ r.user.email }}</strong>
+                  <div class="rating-stars" style="color: #ffb800; display: flex; gap: 2px; margin-top: 3px;">
                     {% for i in "12345" %}
                       {% if forloop.counter <= r.rating %}
-                        <i class="ri-star-fill" style="font-size: 0.9rem;"></i>
+                        <i class="ri-star-fill" style="font-size: 0.85rem;"></i>
                       {% else %}
-                        <i class="ri-star-line" style="font-size: 0.9rem; color: #ddd;"></i>
+                        <i class="ri-star-line" style="font-size: 0.85rem; color: #ddd;"></i>
                       {% endif %}
                     {% endfor %}
                   </div>
                 </div>
-                <span style="font-size: 0.8rem; color: var(--muted-text-color, #504444);">{{ r.created_at|date:"M d, Y" }}</span>
+                <span style="font-size: 0.78rem; color: #827774;">{{ r.created_at|date:"M d, Y" }}</span>
               </div>
-              <p style="color: var(--text-dark, #1a1c1a); font-size: 0.95rem; line-height: 1.5; margin: 0; white-space: pre-line;">{{ r.comment }}</p>
+              <p style="color: #4a4240; font-size: 0.9rem; line-height: 1.5; margin: 0; white-space: pre-line;">{{ r.comment }}</p>
             </div>
           {% empty %}
-            <p style="color: var(--muted-text-color, #504444); font-style: italic;">Be the first to share your thoughts!</p>
+            <p style="color: #827774; font-style: italic; font-size: 0.9rem;">Be the first to share your thoughts!</p>
           {% endfor %}
         </div>
       </div>
@@ -132,14 +194,14 @@
 
   <!-- Suggested Products Section (Random Recommendations) -->
   {% if suggested_products %}
-  <section class="suggested-products-section" style="max-width: 1200px; margin: 4rem auto 5rem; padding: 0 1.5rem; box-sizing: border-box;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 1rem; flex-wrap: wrap; gap: 12px;">
+  <section class="suggested-products-section" style="max-width: 1200px; margin: 3rem auto 4rem; padding: 0 1.25rem; box-sizing: border-box;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 0.8rem; flex-wrap: wrap; gap: 10px;">
       <div>
-        <p style="color: var(--primary, #7c5357); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px;">Recommended For You</p>
-        <h2 style="font-family: 'Noto Serif', serif, inherit; font-size: 1.75rem; margin: 0; color: var(--text-dark, #1a1c1a); font-weight: 500;">You May Also Like</h2>
+        <p style="color: var(--primary, #7c5357); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px;">Recommended For You</p>
+        <h2 style="font-family: 'Noto Serif', serif, inherit; font-size: 1.5rem; margin: 0; color: #1a1c1a; font-weight: 500;">You May Also Like</h2>
       </div>
-      <a href="/shop/" style="color: var(--primary, #7c5357); font-weight: 600; font-size: 0.95rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-        Explore All Products <i class="ri-arrow-right-line"></i>
+      <a href="/shop/" style="color: var(--primary, #7c5357); font-weight: 600; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+        Explore All <i class="ri-arrow-right-line"></i>
       </a>
     </div>
 
@@ -204,6 +266,353 @@
   {% endif %}
 
   <style>
+    /* ================= PRODUCT DETAIL STYLES ================= */
+    .product-detail-wrapper {
+      max-width: 1200px;
+      margin: 40px auto 70px;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+
+    .product-detail {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 50px;
+      align-items: start;
+    }
+
+    /* Gallery & Images */
+    .product-detail-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .product-main-image-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1.1;
+      background: #f8f5f2;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    }
+
+    .product-main-image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .product-no-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #a09794;
+      font-size: 28px;
+    }
+
+    .product-no-image-placeholder span {
+      font-size: 14px;
+    }
+
+    .product-discount-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: var(--primary, #7c5357);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 99px;
+      box-shadow: 0 4px 12px rgba(124, 83, 87, 0.25);
+      z-index: 5;
+    }
+
+    .product-image-wishlist-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 10;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      color: #1a1c1a;
+      transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+    }
+
+    .product-image-wishlist-btn:hover {
+      background: #ffffff;
+      transform: scale(1.1);
+    }
+
+    /* Thumbnails Strip */
+    .product-thumbnails-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+    }
+
+    .product-thumbnail-item {
+      width: 76px;
+      height: 76px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      background: #f4efeb;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .product-thumbnail-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .product-thumbnail-item.active,
+    .product-thumbnail-item:hover {
+      border-color: var(--primary, #7c5357);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(124, 83, 87, 0.15);
+    }
+
+    /* Product Info */
+    .product-category-tag a {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary, #7c5357);
+      text-decoration: none;
+    }
+
+    .product-title {
+      font-family: 'Noto Serif', serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: #1a1c1a;
+      margin: 8px 0 12px;
+      line-height: 1.2;
+    }
+
+    .product-rating-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .product-rating-summary .rating-stars {
+      color: #ffb800;
+      display: flex;
+      gap: 2px;
+      font-size: 16px;
+    }
+
+    .rating-count-text {
+      font-size: 13px;
+      color: #6e6462;
+      font-weight: 500;
+    }
+
+    .product-detail-price-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .product-price-current {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--primary, #7c5357);
+    }
+
+    .product-price-original {
+      font-size: 18px;
+      color: #a09794;
+      text-decoration: line-through;
+    }
+
+    .stock-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 99px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stock-badge.in-stock {
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+    }
+
+    .stock-badge.out-of-stock {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .product-description-text {
+      font-size: 15px;
+      line-height: 1.65;
+      color: #4a4240;
+      margin-bottom: 28px;
+    }
+
+    /* Action Buttons */
+    .product-detail-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .detail-action-btn {
+      flex: 1;
+      height: 50px;
+      border-radius: 99px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .add-cart-btn {
+      background: var(--primary, #7c5357);
+      color: #ffffff;
+    }
+
+    .add-cart-btn:hover {
+      background: #633f43;
+      transform: translateY(-2px);
+    }
+
+    .buy-now-btn {
+      background: #1a1c1a;
+      color: #ffffff;
+    }
+
+    .buy-now-btn:hover {
+      background: #333333;
+      transform: translateY(-2px);
+    }
+
+    .detail-qty-control {
+      flex: 1;
+      height: 50px;
+      border-radius: 99px;
+      border: 1.5px solid var(--primary, #7c5357);
+      background: rgba(124, 83, 87, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      box-sizing: border-box;
+    }
+
+    .detail-qty-control .qty-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--primary, #7c5357);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .detail-qty-control .qty-btn:hover {
+      background: rgba(124, 83, 87, 0.12);
+    }
+
+    .detail-qty-control span {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1c1a;
+    }
+
+    .detail-wishlist-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 1.5px solid #e0d8d6;
+      background: #ffffff;
+      color: #1a1c1a;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .detail-wishlist-btn:hover {
+      border-color: var(--primary, #7c5357);
+      color: var(--primary, #7c5357);
+      transform: scale(1.05);
+    }
+
+    .detail-wishlist-btn .favorited {
+      color: var(--primary, #7c5357);
+    }
+
+    /* Trust Badges */
+    .product-trust-features {
+      display: flex;
+      gap: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6e6462;
+      font-weight: 500;
+    }
+
+    .trust-item i {
+      font-size: 18px;
+      color: var(--primary, #7c5357);
+    }
+
+    /* Suggested Grid Styles */
     .suggested-products-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -390,8 +799,43 @@
       transform: scale(1.08);
     }
 
-    /* Responsive Mobile & Tablet styles */
+    /* Responsive Mobile & Tablet Media Queries */
     @media (max-width: 992px) {
+      .product-detail-wrapper {
+        margin: 20px auto 50px;
+        padding: 0 16px;
+      }
+
+      .product-detail {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .product-main-image-container {
+        aspect-ratio: 1 / 1;
+        max-height: 420px;
+        border-radius: 20px;
+      }
+
+      .product-title {
+        font-size: 24px;
+      }
+
+      .product-price-current {
+        font-size: 22px;
+      }
+
+      .product-thumbnail-item {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+      }
+
+      .product-trust-features {
+        flex-wrap: wrap;
+        gap: 10px 18px;
+      }
+
       .suggested-products-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 1.2rem;
@@ -399,6 +843,29 @@
     }
 
     @media (max-width: 640px) {
+      .product-main-image-container {
+        max-height: 360px;
+        border-radius: 16px;
+      }
+
+      .product-detail-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .detail-action-btn,
+      .detail-qty-control {
+        flex: 1 1 calc(50% - 5px);
+        font-size: 14px;
+        height: 46px;
+      }
+
+      .detail-wishlist-btn {
+        width: 46px;
+        height: 46px;
+        font-size: 18px;
+      }
+
       .suggested-products-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.9rem;
@@ -428,6 +895,22 @@
 
 {% block extra_js %}
 <script>
+    // Image Switcher Logic
+    function switchMainImage(imageUrl, thumbnailEl) {
+        const mainImg = document.getElementById('mainProductImage');
+        if (mainImg) {
+            mainImg.style.opacity = '0.3';
+            setTimeout(() => {
+                mainImg.src = imageUrl;
+                mainImg.style.opacity = '1';
+            }, 150);
+        }
+        document.querySelectorAll('.product-thumbnail-item').forEach(el => el.classList.remove('active'));
+        if (thumbnailEl) {
+            thumbnailEl.classList.add('active');
+        }
+    }
+
     // Helper to get cookies (like CSRF token)
     function getCookie(name) {
         let cookieValue = null;
@@ -477,7 +960,7 @@
                 
                 if (response.ok && data.success) {
                     // Show Add to Cart button, hide selector
-                    document.getElementById('detailAddToCartBtn').style.display = 'block';
+                    document.getElementById('detailAddToCartBtn').style.display = 'flex';
                     document.getElementById('cartQuantitySelector').style.display = 'none';
                     
                     // Update badge cart count globally

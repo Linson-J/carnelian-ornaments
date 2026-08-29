@@ -306,6 +306,19 @@
                 priceRange.value = String(highestPrice);
                 priceLabel.textContent = `${money.format(highestPrice)}+`;
                 state.visible = currentVisibleStart();
+
+                // Check URL query parameters for search & category filters
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchParam = urlParams.get('search') || urlParams.get('q');
+                if (searchParam) {
+                    state.search = searchParam.trim();
+                    if (searchInput) searchInput.value = state.search;
+                }
+                const catParam = urlParams.get('category');
+                if (catParam) {
+                    state.category = catParam.trim();
+                }
+
                 buildFilters();
                 renderProducts();
             } catch (error) {

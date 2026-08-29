@@ -655,31 +655,29 @@ a{
     font-weight:500;
 }
 
-.product-detail{
+.product-detail-wrapper{
     width:min(1200px, calc(100% - 40px));
-    margin:60px auto 130px;
+    margin:40px auto 80px;
+}
+
+.product-detail{
     display:grid;
-    grid-template-columns:1.1fr .9fr;
-    gap:60px;
-    align-items:center;
+    grid-template-columns:1fr 1fr;
+    gap:50px;
+    align-items:start;
 }
-.product-detail-image{
-    aspect-ratio:4 / 5;
-    overflow:hidden;
-    border-radius:28px;
-    background:#eee5df;
+
+@media (max-width:992px){
+    .product-detail-wrapper{
+        width:calc(100% - 32px);
+        margin:20px auto 50px;
+    }
+
+    .product-detail{
+        grid-template-columns:1fr;
+        gap:24px;
+    }
 }
-.product-detail-image img{width:100%;height:100%;object-fit:cover}
-.product-detail-copy h1{
-    margin:12px 0 20px;
-    font-family:'Noto Serif',serif;
-    font-size:clamp(44px, 6vw, 78px);
-    font-weight:500;
-    color:var(--primary);
-}
-.product-detail-copy p{line-height:1.7;color:var(--text-light)}
-.product-detail-price{margin-bottom:24px;font-size:24px;font-weight:600}
-.product-detail-copy .hero-btn{display:inline-block;margin-top:30px}
 
 /* ================= HOME PAGE SECTIONS ================= */
 
