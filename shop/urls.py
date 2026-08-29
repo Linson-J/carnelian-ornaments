@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
@@ -18,7 +19,8 @@ urlpatterns = [
     path('products/<slug:slug>/review/', views.add_product_review, name='add_product_review'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     
-    # Standard Django login routes commented out & redirected to auth modal:
+    # Standard Django full-page login/signup routes commented out for production:
+    # (Default Django full-page login disabled in favor of frontend AJAX Auth Modal)
     # path('login/', auth_views.LoginView.as_view(), name='django_standard_login'),
     path('login/', views.login_redirect_view, name='login'),
     path('accounts/login/', views.login_redirect_view),
@@ -49,6 +51,9 @@ urlpatterns = [
     # User Profile & Saved Address
     path('profile/', views.profile_page, name='profile_page'),
     path('profile/address/save/', views.save_profile_address, name='save_profile_address'),
-    
-    path('swagger/', schema_view.with_ui('swagger'), name='swagger'),
 ]
+
+# Expose Swagger API Docs ONLY in Development (DEBUG=True)
+if settings.DEBUG:
+    urlpatterns.append(path('swagger/', schema_view.with_ui('swagger'), name='swagger'))
+
