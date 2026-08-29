@@ -738,7 +738,7 @@
                     </div>
 
                     <!-- Checkout Actions -->
-                    <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout</button>
+                    <button class="checkout-btn" onclick="proceedToCheckout(this)">Proceed to Checkout</button>
                     <a href="/shop/" class="continue-btn">Continue Shopping</a>
 
                     <!-- Guarantee badges -->
@@ -796,7 +796,7 @@
 
             <div class="mobile-drawer-actions">
                 <a href="/shop/" class="continue-btn">Shop More</a>
-                <button class="checkout-btn" onclick="proceedToCheckout()">Checkout</button>
+                <button class="checkout-btn" onclick="proceedToCheckout(this)">Checkout</button>
             </div>
         </div>
     {% endif %}
@@ -1013,12 +1013,19 @@
         window.showToast(`Promo code "${input}" applied successfully!`);
     }
 
-    // Trigger mock checkout proceeding
-    function proceedToCheckout() {
+    // Trigger checkout proceeding with shimmer loader
+    function proceedToCheckout(btnEl) {
+        if (btnEl) {
+            btnEl.classList.add('btn-loading-shimmer');
+            btnEl.disabled = true;
+        }
+        if (window.showGlobalLoader) {
+            window.showGlobalLoader('Loading checkout page...');
+        }
         window.showToast('Proceeding to checkout...');
         setTimeout(() => {
             window.location.href = '/checkout/';
-        }, 1200);
+        }, 700);
     }
 </script>
 {% endblock %}

@@ -443,6 +443,59 @@
     
     <!-- STEP 1 FORM: Delivery details -->
     <div class="form-sec active" id="addressStepSec">
+
+      {% if profile.street_address or last_order %}
+      <div class="saved-addresses-wrapper" style="margin-bottom: 24px;">
+        <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--primary, #7c5357); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <i class="ri-bookmark-3-line" style="font-size: 1.1rem;"></i> Choose Saved or Previous Address
+        </div>
+        
+        <div class="saved-address-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+          
+          {% if profile and profile.street_address %}
+          <div class="quick-addr-card active" id="cardQuickProfile" onclick="selectQuickAddress('profile')" style="background: rgba(124, 83, 87, 0.05); border: 2px solid var(--primary, #7c5357); border-radius: 14px; padding: 14px 16px; cursor: pointer; transition: all 0.25s ease; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--primary, #7c5357); background: rgba(124, 83, 87, 0.12); padding: 2px 8px; border-radius: 10px;">
+                <i class="ri-user-3-line"></i> Saved Profile Address
+              </span>
+              <i class="ri-checkbox-circle-fill quick-check" id="checkProfile" style="color: var(--primary, #7c5357); font-size: 1.2rem;"></i>
+            </div>
+            <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-dark, #1a1c1a);">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted, #504444); margin-top: 4px; line-height: 1.4;">
+              {{ profile.street_address }}<br>
+              {{ profile.city }}{% if profile.county %}, {{ profile.county }}{% endif %}, {{ profile.state }}{% if profile.postal_code %} - {{ profile.postal_code }}{% endif %}<br>
+              {{ profile.country }} • 📞 {{ profile.phone }}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if last_order %}
+          <div class="quick-addr-card {% if not profile or not profile.street_address %}active{% endif %}" id="cardQuickLastOrder" onclick="selectQuickAddress('last_order')" style="background: rgba(255, 255, 255, 0.75); border: 1.5px solid rgba(124, 83, 87, 0.15); border-radius: 14px; padding: 14px 16px; cursor: pointer; transition: all 0.25s ease; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #1e3a8a; background: rgba(30, 58, 138, 0.1); padding: 2px 8px; border-radius: 10px;">
+                <i class="ri-history-line"></i> Previous Order (#{{ last_order.id }})
+              </span>
+              <i class="ri-checkbox-circle-fill quick-check" id="checkLastOrder" style="color: #1e3a8a; font-size: 1.2rem; display: {% if not profile or not profile.street_address %}block{% else %}none{% endif %};"></i>
+            </div>
+            <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-dark, #1a1c1a);">{{ last_order.full_name }}</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted, #504444); margin-top: 4px; line-height: 1.4;">
+              {{ last_order.street_address }}<br>
+              {{ last_order.city }}{% if last_order.county %}, {{ last_order.county }}{% endif %}, {{ last_order.state }}{% if last_order.postal_code %} - {{ last_order.postal_code }}{% endif %}<br>
+              {{ last_order.country }} • 📞 {{ last_order.phone }}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="quick-addr-card" id="cardQuickNew" onclick="selectQuickAddress('new')" style="background: rgba(255, 255, 255, 0.75); border: 1.5px solid rgba(124, 83, 87, 0.15); border-radius: 14px; padding: 14px 16px; cursor: pointer; transition: all 0.25s ease; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; min-height: 100px;">
+            <i class="ri-add-circle-line" style="font-size: 1.6rem; color: var(--primary, #7c5357); margin-bottom: 4px;"></i>
+            <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-dark, #1a1c1a);">+ Use New Address</span>
+            <span style="font-size: 0.76rem; color: var(--text-muted, #504444);">Type new details below</span>
+          </div>
+
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Autocomplete input search -->
       <div class="form-group" style="position: relative; margin-bottom: 24px;">
         <label for="addressSearch">Search / Autocomplete Address</label>
@@ -795,6 +848,15 @@
       }
     }
     
+    const btnOrder = document.getElementById('btnPlaceOrder');
+    if (btnOrder) {
+      btnOrder.classList.add('btn-loading-shimmer');
+      btnOrder.disabled = true;
+      btnOrder.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Placing Order...';
+    }
+    if (window.showGlobalLoader) {
+      window.showGlobalLoader('Verifying payment & placing your order...');
+    }
     showStatus("Processing checkout and placing order...", "loading");
     
     try {
@@ -823,11 +885,23 @@
         showStatus("Order placed successfully! Redirecting...", "success");
         setTimeout(() => {
           window.location.href = `/checkout/order-success/${data.order_id}/`;
-        }, 1500);
+        }, 1200);
       } else {
+        if (window.hideGlobalLoader) window.hideGlobalLoader();
+        if (btnOrder) {
+          btnOrder.classList.remove('btn-loading-shimmer');
+          btnOrder.disabled = false;
+          btnOrder.innerHTML = 'Place Order';
+        }
         showStatus(data.message || "Failed to submit checkout.", "error");
       }
     } catch (e) {
+      if (window.hideGlobalLoader) window.hideGlobalLoader();
+      if (btnOrder) {
+        btnOrder.classList.remove('btn-loading-shimmer');
+        btnOrder.disabled = false;
+        btnOrder.innerHTML = 'Place Order';
+      }
       showStatus("Connection error while submitting order.", "error");
     }
   }
@@ -905,6 +979,93 @@
     }
   }
 
+  // Quick Address Selection Data & Handler
+  const quickAddressData = {
+    profile: {
+      fullName: "{{ profile.user.get_full_name|default:profile.user.username|escapejs }}",
+      phone: "{{ profile.phone|escapejs }}",
+      streetAddress: "{{ profile.street_address|escapejs }}",
+      city: "{{ profile.city|escapejs }}",
+      county: "{{ profile.county|escapejs }}",
+      state: "{{ profile.state|escapejs }}",
+      country: "{{ profile.country|default:'India'|escapejs }}",
+      postalCode: "{{ profile.postal_code|escapejs }}"
+    },
+    last_order: {
+      fullName: "{{ last_order.full_name|escapejs }}",
+      phone: "{{ last_order.phone|escapejs }}",
+      streetAddress: "{{ last_order.street_address|escapejs }}",
+      city: "{{ last_order.city|escapejs }}",
+      county: "{{ last_order.county|escapejs }}",
+      state: "{{ last_order.state|escapejs }}",
+      country: "{{ last_order.country|escapejs }}",
+      postalCode: "{{ last_order.postal_code|escapejs }}"
+    }
+  };
+
+  function selectQuickAddress(type) {
+    const cardProf = document.getElementById('cardQuickProfile');
+    const cardLast = document.getElementById('cardQuickLastOrder');
+    const cardNew = document.getElementById('cardQuickNew');
+    const checkProf = document.getElementById('checkProfile');
+    const checkLast = document.getElementById('checkLastOrder');
+
+    if (cardProf) {
+      cardProf.style.background = 'rgba(255, 255, 255, 0.75)';
+      cardProf.style.border = '1.5px solid rgba(124, 83, 87, 0.15)';
+      if (checkProf) checkProf.style.display = 'none';
+    }
+    if (cardLast) {
+      cardLast.style.background = 'rgba(255, 255, 255, 0.75)';
+      cardLast.style.border = '1.5px solid rgba(124, 83, 87, 0.15)';
+      if (checkLast) checkLast.style.display = 'none';
+    }
+    if (cardNew) {
+      cardNew.style.background = 'rgba(255, 255, 255, 0.75)';
+      cardNew.style.border = '1.5px solid rgba(124, 83, 87, 0.15)';
+    }
+
+    if (type === 'profile' && cardProf) {
+      cardProf.style.background = 'rgba(124, 83, 87, 0.05)';
+      cardProf.style.border = '2px solid var(--primary, #7c5357)';
+      if (checkProf) checkProf.style.display = 'block';
+    } else if (type === 'last_order' && cardLast) {
+      cardLast.style.background = 'rgba(30, 58, 138, 0.05)';
+      cardLast.style.border = '2px solid #1e3a8a';
+      if (checkLast) checkLast.style.display = 'block';
+    } else if (type === 'new' && cardNew) {
+      cardNew.style.background = 'rgba(124, 83, 87, 0.05)';
+      cardNew.style.border = '2px solid var(--primary, #7c5357)';
+    }
+
+    if (type === 'profile' || type === 'last_order') {
+      const data = quickAddressData[type];
+      if (data && data.streetAddress) {
+        document.getElementById('fullName').value = data.fullName || '';
+        document.getElementById('phone').value = data.phone || '';
+        document.getElementById('streetAddress').value = data.streetAddress || '';
+        document.getElementById('city').value = data.city || '';
+        document.getElementById('county').value = data.county || '';
+        document.getElementById('state').value = data.state || '';
+        document.getElementById('country').value = data.country || 'India';
+        document.getElementById('postalCode').value = data.postalCode || '';
+        
+        // Auto verify delivery availability
+        verifyAddress(true);
+      }
+    } else if (type === 'new') {
+      document.getElementById('fullName').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('streetAddress').value = '';
+      document.getElementById('city').value = '';
+      document.getElementById('county').value = '';
+      document.getElementById('state').value = '';
+      document.getElementById('country').value = 'India';
+      document.getElementById('postalCode').value = '';
+      document.getElementById('fullName').focus();
+    }
+  }
+
   // Retrieve CSRF token helper
   function getCookie(name) {
     let cookieValue = null;
@@ -920,5 +1081,14 @@
     }
     return cookieValue;
   }
+
+  // Auto pre-fill default address on load
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if profile and profile.street_address %}
+      selectQuickAddress('profile');
+    {% elif last_order %}
+      selectQuickAddress('last_order');
+    {% endif %}
+  });
 </script>
 {% endblock %}

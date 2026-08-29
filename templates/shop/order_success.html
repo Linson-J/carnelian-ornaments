@@ -193,7 +193,7 @@
       <p style="font-size: 0.92rem; line-height: 1.5; color: var(--text-dark, #1a1c1a); margin-bottom: 20px;">
         <strong>{{ order.full_name }}</strong><br>
         {{ order.street_address }}<br>
-        {{ order.city }}, {{ order.state }} {{ order.postal_code }}<br>
+        {{ order.city }}, {{ order.state }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}<br>
         {{ order.country }}<br>
         Phone: {{ order.phone }}
       </p>

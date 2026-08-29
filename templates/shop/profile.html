@@ -873,8 +873,7 @@
               <!-- Shipping Info -->
               <div class="order-delivery-address">
                 <strong>Ship To:</strong> {{ order.full_name }} ({{ order.phone }})<br>
-                {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }} - {{
-                order.postal_code }}
+                {{ order.street_address }}, {{ order.city }}{% if order.county %}, {{ order.county }}{% endif %}, {{ order.state }}, {{ order.country }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}
               </div>
             </div>
 
@@ -919,8 +918,7 @@
                   <i class="ri-close-circle-fill" style="font-size: 1.1rem;"></i> Order Cancelled
                 </div>
                 {% if order.cancellation_reason %}
-                <span style="font-size: 0.8rem; color: #7f1d1d;"><strong>Reason:</strong> {{ order.cancellation_reason
-                  }}</span>
+                <span style="font-size: 0.8rem; color: #7f1d1d;"><strong>Reason:</strong> {{ order.cancellation_reason }}</span>
                 {% endif %}
               </div>
               {% endif %}
@@ -941,8 +939,7 @@
                 </div>
                 {% if order.return_reason %}
                 <span
-                  style="font-size: 0.8rem; color: {% if order.status == 'returned' %}#14532d{% else %}#7c2d12{% endif %};"><strong>Reason:</strong>
-                  {{ order.return_reason }}</span>
+                  style="font-size: 0.8rem; color: {% if order.status == 'returned' %}#14532d{% else %}#7c2d12{% endif %};"><strong>Reason:</strong> {{ order.return_reason }}</span>
                 {% endif %}
               </div>
               {% endif %}

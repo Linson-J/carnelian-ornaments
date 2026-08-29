@@ -465,4 +465,82 @@ class OrderCancellationAndReturnTests(APITestCase):
         self.assertEqual(self.order.status, Order.Status.RETURNED)
 
 
+from django.core import mail
+from shop.email_utils import send_order_status_email
+
+class OrderStatusEmailTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='customer@example.com', email='customer@example.com', password='password123')
+        self.category = Category.objects.create(name='Gadgets', slug='gadgets')
+        self.product = Product.objects.create(
+            name='Smartwatch',
+            price=2500.00,
+            stock=5,
+            status=Product.Status.AVAILABLE,
+            category=self.category
+        )
+        self.order = Order.objects.create(
+            user=self.user,
+            full_name='Customer Name',
+            phone='9876543210',
+            country='India',
+            state='Kerala',
+            city='Kochi',
+            street_address='456 Marine Drive',
+            postal_code='682001',
+            subtotal=2500.00,
+            delivery_fee=0.00,
+            total=2500.00,
+            status=Order.Status.PROCESSING,
+            payment_method='Card'
+        )
+        OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            product_name=self.product.name,
+            price=2500.00,
+            quantity=1
+        )
+
+    def test_send_order_placed_email(self):
+        result = send_order_status_email(self.order, 'placed')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Your Order Has Been Placed!', mail.outbox[0].subject)
+        self.assertIn('customer@example.com', mail.outbox[0].to)
+
+    def test_send_order_shipped_email(self):
+        result = send_order_status_email(self.order, 'shipped')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Your Order Has Been Shipped!', mail.outbox[0].subject)
+
+    def test_send_order_delivered_email(self):
+        result = send_order_status_email(self.order, 'delivered')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Your Order Has Been Delivered!', mail.outbox[0].subject)
+
+    def test_send_order_cancelled_email(self):
+        self.order.cancellation_reason = 'Changed mind'
+        result = send_order_status_email(self.order, 'cancelled')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Your Order Has Been Cancelled', mail.outbox[0].subject)
+
+    def test_send_replacement_requested_email(self):
+        self.order.return_reason = 'Defective screen'
+        result = send_order_status_email(self.order, 'replacement_requested')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Replacement Request Received', mail.outbox[0].subject)
+
+    def test_send_replacement_completed_email(self):
+        result = send_order_status_email(self.order, 'replacement_completed')
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Replacement Completed Successfully!', mail.outbox[0].subject)
+
+
+
 

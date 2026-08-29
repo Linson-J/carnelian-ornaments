@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ company_name }} - Order #{{ order.id }} Notification</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #faf7f2;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1c1a;
+      -webkit-font-smoothing: antialiased;
+    }
+    .email-wrapper {
+      width: 100%;
+      background-color: #faf7f2;
+      padding: 30px 15px;
+      box-sizing: border-box;
+    }
+    .email-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(124, 83, 87, 0.08);
+    }
+    .email-header {
+      background: #ffffff;
+      padding: 32px 24px 20px 24px;
+      text-align: center;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .company-logo {
+      font-family: 'Georgia', 'Noto Serif', serif;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: #7c5357;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .header-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 16px;
+      background: {{ event_config.badge_bg }};
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: {{ event_config.badge_color }};
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .email-body {
+      padding: 28px 28px 32px 28px;
+    }
+    .title {
+      font-family: 'Georgia', 'Noto Serif', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: #1a1c1a;
+      margin: 0 0 8px 0;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #504444;
+      margin: 0 0 24px 0;
+      text-align: center;
+    }
+    .order-info-box {
+      background: #faf7f2;
+      border: 1px solid rgba(124, 83, 87, 0.15);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .order-info-grid {
+      display: table;
+      width: 100%;
+    }
+    .order-info-col {
+      display: table-cell;
+      vertical-align: top;
+      width: 50%;
+    }
+    .info-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7c5357;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1c1a;
+    }
+    .reason-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(124, 83, 87, 0.2);
+    }
+    .reason-text {
+      font-size: 13px;
+      color: #504444;
+      font-style: italic;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1c1a;
+      margin: 20px 0 12px 0;
+      letter-spacing: -0.01em;
+    }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .items-table th {
+      background: #f7ebeb;
+      color: #7c5357;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 700;
+    }
+    .items-table td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      font-size: 13px;
+      color: #1a1c1a;
+    }
+    .item-name {
+      font-weight: 600;
+    }
+    .items-table td.text-right, .items-table th.text-right {
+      text-align: right;
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .summary-row {
+      display: table;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .summary-row.total-row {
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      padding-top: 10px;
+      margin-top: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #7c5357;
+    }
+    .summary-label {
+      display: table-cell;
+      font-size: 13px;
+      color: #6e6666;
+    }
+    .summary-val {
+      display: table-cell;
+      text-align: right;
+      font-size: 13px;
+      color: #1a1c1a;
+      font-weight: 600;
+    }
+    .summary-row.total-row .summary-label,
+    .summary-row.total-row .summary-val {
+      font-size: 16px;
+      color: #7c5357;
+      font-weight: 700;
+    }
+    .address-card {
+      background: #faf7f2;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #504444;
+    }
+    .email-footer {
+      background-color: #faf7f2;
+      padding: 20px 24px;
+      text-align: center;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      font-size: 12px;
+      color: #6e6666;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-card">
+      <div class="email-header">
+        <h1 class="company-logo">{{ company_name }}</h1>
+        <div class="header-badge">{{ event_config.badge_text }}</div>
+      </div>
+      
+      <div class="email-body">
+        <h2 class="title">{{ event_config.headline }}</h2>
+        <p class="subtitle">{{ event_config.subtitle }}</p>
+
+        <div class="order-info-box">
+          <div class="order-info-grid">
+            <div class="order-info-col">
+              <div class="info-label">Order Number</div>
+              <div class="info-value">#{{ order.id }}</div>
+            </div>
+            <div class="order-info-col">
+              <div class="info-label">Date</div>
+              <div class="info-value">{{ order.created_at|date:"M d, Y" }}</div>
+            </div>
+          </div>
+          {% if event_type == 'cancelled' and order.cancellation_reason %}
+            <div class="reason-box">
+              <div class="info-label">Cancellation Reason</div>
+              <div class="reason-text">{{ order.cancellation_reason }}</div>
+            </div>
+          {% endif %}
+          {% if event_type == 'replacement_requested' and order.return_reason %}
+            <div class="reason-box">
+              <div class="info-label">Replacement Reason</div>
+              <div class="reason-text">{{ order.return_reason }}</div>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="section-title">Order Items</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td class="item-name">{{ item.product_name }}</td>
+              <td class="text-right">{{ item.quantity }}</td>
+              <td class="text-right">₹{{ item.price }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3">Order items details</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="summary-card">
+          <div class="summary-row">
+            <div class="summary-label">Subtotal</div>
+            <div class="summary-val">₹{{ order.subtotal }}</div>
+          </div>
+          <div class="summary-row">
+            <div class="summary-label">Delivery Fee</div>
+            <div class="summary-val">
+              {% if order.delivery_fee > 0 %}
+                ₹{{ order.delivery_fee }}
+              {% else %}
+                Free
+              {% endif %}
+            </div>
+          </div>
+          <div class="summary-row total-row">
+            <div class="summary-label">Total Amount</div>
+            <div class="summary-val">₹{{ order.total }}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Delivery Address</div>
+        <div class="address-card">
+          <strong>{{ order.full_name }}</strong><br>
+          {{ order.street_address }}<br>
+          {{ order.city }}{% if order.county %}, {{ order.county }}{% endif %}, {{ order.state }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}<br>
+          {{ order.country }}<br>
+          📞 {{ order.phone }}
+        </div>
+      </div>
+
+      <div class="email-footer">
+        Thank you for choosing <strong>{{ company_name }}</strong>.<br>
+        &copy; {{ company_name }} • All rights reserved
+      </div>
+    </div>
+  </div>
+</body>
+</html>

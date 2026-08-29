@@ -14,6 +14,8 @@ import string
 from .forms import NewsletterSubscriptionForm
 from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile, Review, OTPSettings, ContactMessage
 from .decorators import login_required_ajax
+from .email_utils import send_order_status_email
+
 
 
 def home(request):
@@ -792,8 +794,10 @@ def checkout_page(request):
     grand_total = subtotal + default_shipping
     
     profile = None
+    last_order = None
     if request.user.is_authenticated:
         profile = UserProfile.objects.filter(user=request.user).first()
+        last_order = Order.objects.filter(user=request.user).order_by('-created_at').first()
         
     return render(request, 'shop/checkout.html', {
         'cart_items': cart_items,
@@ -803,6 +807,7 @@ def checkout_page(request):
         'grand_total': grand_total,
         'config': config,
         'profile': profile,
+        'last_order': last_order,
     })
 
 
@@ -988,7 +993,10 @@ def place_order(request):
         
     # Clear the cart session
     request.session['cart'] = {}
-    
+
+    # Send Order Placed Email to customer
+    send_order_status_email(order, 'placed')
+
     return JsonResponse({
         'success': True,
         'message': 'Order placed successfully!',
@@ -1097,6 +1105,9 @@ def cancel_order(request, order_id):
                 item.product.status = Product.Status.AVAILABLE
             item.product.save()
 
+    # Send Order Cancelled Email to customer
+    send_order_status_email(order, 'cancelled')
+
     # Refund message for Online / Card payment
     is_online_payment = order.payment_method.lower() in ['card', 'online', 'upi', 'netbanking', 'credit_card', 'debit_card']
     if is_online_payment:
@@ -1156,6 +1167,9 @@ def return_order(request, order_id):
     order.returned_at = timezone.now()
     order.return_requested = True
     order.save()
+
+    # Send Replacement Requested Email to customer
+    send_order_status_email(order, 'replacement_requested')
 
     refund_notice = f"Replacement request submitted for Order #{order.id}. Your refund/replacement will be processed within 2 to 5 working days."
 

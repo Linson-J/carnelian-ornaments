@@ -32,6 +32,7 @@ from .models import (
     OTPSettings,
     ContactMessage,
 )
+from .email_utils import send_order_status_email
 
 
 MAX_ATTEMPTS = 5
@@ -680,6 +681,7 @@ def admin_orders(request):
 def update_order_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
     new_status = request.POST.get('status', '').strip()
+    old_status = order.status
     
     # Once an order is cancelled, disallow status updates
     if order.status == Order.Status.CANCELLED:
@@ -687,26 +689,42 @@ def update_order_status(request, pk):
         return redirect('admin_orders')
 
     if new_status in dict(Order.Status.choices):
-        order.status = new_status
-        if new_status == Order.Status.DELIVERED and not order.delivered_at:
-            order.delivered_at = timezone.now()
-        elif new_status == Order.Status.CANCELLED:
-            if not order.cancelled_at:
-                order.cancelled_at = timezone.now()
-            order.cancel_requested = True
-            # Restore stock if cancelled by admin
-            for item in order.items.all():
-                if item.product:
-                    item.product.stock += item.quantity
-                    if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
-                        item.product.status = Product.Status.AVAILABLE
-                    item.product.save()
-        elif new_status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
-            if not order.returned_at:
-                order.returned_at = timezone.now()
-            order.return_requested = True
-        order.save()
-        messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
+        if new_status != old_status:
+            order.status = new_status
+            if new_status == Order.Status.DELIVERED and not order.delivered_at:
+                order.delivered_at = timezone.now()
+            elif new_status == Order.Status.CANCELLED:
+                if not order.cancelled_at:
+                    order.cancelled_at = timezone.now()
+                order.cancel_requested = True
+                # Restore stock if cancelled by admin
+                for item in order.items.all():
+                    if item.product:
+                        item.product.stock += item.quantity
+                        if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
+                            item.product.status = Product.Status.AVAILABLE
+                        item.product.save()
+            elif new_status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
+                if not order.returned_at:
+                    order.returned_at = timezone.now()
+                order.return_requested = True
+            order.save()
+
+            # Trigger transactional status email notification
+            status_event_map = {
+                Order.Status.SHIPPED: 'shipped',
+                Order.Status.DELIVERED: 'delivered',
+                Order.Status.CANCELLED: 'cancelled',
+                Order.Status.RETURN_REQUESTED: 'replacement_requested',
+                Order.Status.RETURNED: 'replacement_completed',
+            }
+            event_type = status_event_map.get(new_status)
+            if event_type:
+                send_order_status_email(order, event_type)
+
+            messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
+        else:
+            messages.info(request, f"Order #{order.id} status is already '{order.get_status_display()}'.")
     else:
         messages.error(request, "Invalid status transition selected.")
         

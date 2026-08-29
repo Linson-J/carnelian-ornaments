@@ -276,7 +276,7 @@
                 <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Shipping Address & Action Details</div>
                 <p style="margin: 0 0 5px 0;"><strong>Name:</strong> {{ order.full_name }}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Phone:</strong> {{ order.phone }}</p>
-                <p style="margin: 0 0 5px 0;"><strong>Address:</strong> {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }} - {{ order.postal_code }}</p>
+                <p style="margin: 0 0 5px 0;"><strong>Address:</strong> {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Payment Method:</strong> {{ order.payment_method }}</p>
                 
                 {% if order.cancellation_reason %}
@@ -286,7 +286,7 @@
                     {% if order.cancelled_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.cancelled_at|date:"Y-m-d H:i" }})</span>{% endif %}
                   </div>
                   <div style="color: #e2e8f0; font-size: 0.85rem;">
-                    <strong>Reason:</strong> "{{ order.cancellation_reason }}"
+                    <strong>Reason:</strong> {{ order.cancellation_reason }}
                   </div>
                   <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
                     💳 <strong>Refund Info:</strong> 
@@ -306,7 +306,7 @@
                     {% if order.returned_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.returned_at|date:"Y-m-d H:i" }})</span>{% endif %}
                   </div>
                   <div style="color: #e2e8f0; font-size: 0.85rem;">
-                    <strong>Reason:</strong> "{{ order.return_reason }}"
+                    <strong>Reason:</strong> {{ order.return_reason }}
                   </div>
                   <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
                     💳 <strong>Refund/Replacement Info:</strong> Refund/replacement of ₹{{ order.total }} will be processed within 2 to 5 working days.
