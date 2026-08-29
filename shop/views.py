@@ -12,7 +12,7 @@ import re
 import string
 
 from .forms import NewsletterSubscriptionForm
-from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile, Review, OTPSettings
+from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile, Review, OTPSettings, ContactMessage
 from .decorators import login_required_ajax
 
 
@@ -38,6 +38,33 @@ def categories_all(request):
     })
 
 
+def about_page(request):
+    return render(request, 'shop/about.html')
+
+
+@require_POST
+def send_contact_message(request):
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        subject = data.get('subject', '').strip()
+        message = data.get('message', '').strip()
+
+        if not name or not email or not message:
+            return JsonResponse({'success': False, 'message': 'Please fill in all required fields.'}, status=400)
+
+        ContactMessage.objects.create(
+            name=name,
+            email=email,
+            subject=subject or 'General Inquiry',
+            message=message
+        )
+        return JsonResponse({'success': True, 'message': 'Thank you! Your message has been received and recorded.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': 'An error occurred while saving your message.'}, status=500)
+
+
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.select_related('category').prefetch_related('images'),
@@ -55,12 +82,33 @@ def product_detail(request, slug):
         is_favorited = Favorite.objects.filter(user=request.user, product=product).exists()
 
     reviews = product.reviews.select_related('user').order_by('-created_at')
-                
+
+    # Fetch random suggested products excluding current product
+    suggested_products = list(
+        Product.objects.filter(status=Product.Status.AVAILABLE)
+        .exclude(id=product.id)
+        .select_related('category')
+        .prefetch_related('images', 'reviews')
+        .order_by('?')[:4]
+    )
+
+    if request.user.is_authenticated:
+        fav_ids = set(
+            Favorite.objects.filter(user=request.user, product__in=suggested_products)
+            .values_list('product_id', flat=True)
+        )
+        for p in suggested_products:
+            p.is_user_favorited = p.id in fav_ids
+    else:
+        for p in suggested_products:
+            p.is_user_favorited = False
+
     return render(request, 'shop/product_detail.html', {
         'product': product,
         'cart_qty': cart_qty,
         'is_favorited': is_favorited,
         'reviews': reviews,
+        'suggested_products': suggested_products,
     })
 
 

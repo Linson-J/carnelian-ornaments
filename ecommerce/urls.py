@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path('django-admin/', admin.site.urls),
+    # path('django-admin/', admin.site.urls),  # Commented out in favor of custom /admin-panel/
     path('api/', include('shop.api_urls')),
     path('', include('shop.urls')),
     path('admin-panel/', include('shop.admin_urls')),

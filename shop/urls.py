@@ -17,6 +17,8 @@ urlpatterns = [
     path('categories/', views.categories_all, name='categories_all'),
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
     path('products/<slug:slug>/review/', views.add_product_review, name='add_product_review'),
+    path('about/', views.about_page, name='about_page'),
+    path('contact/send/', views.send_contact_message, name='send_contact_message'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     
     # Standard Django full-page login/signup routes commented out for production:

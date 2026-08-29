@@ -30,4 +30,7 @@ urlpatterns = [
     path('delivery/zones/<int:pk>/delete/', admin_views.delete_delivery_zone, name='delete_delivery_zone'),
     path('reviews/', admin_views.admin_reviews, name='admin_reviews'),
     path('reviews/<int:pk>/delete/', admin_views.delete_review, name='delete_review'),
+    path('messages/', admin_views.admin_messages, name='admin_messages'),
+    path('messages/<int:pk>/delete/', admin_views.delete_message, name='delete_message'),
+    path('messages/<int:pk>/toggle-read/', admin_views.toggle_message_read, name='toggle_message_read'),
 ]

@@ -22,6 +22,7 @@ from .models import (
     Order,
     OrderItem,
     UserProfile,
+    ContactMessage,
 )
 
 
@@ -164,4 +165,14 @@ class OrderAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'phone', 'city', 'state', 'country', 'postal_code')
     search_fields = ('user__email', 'phone', 'city', 'state', 'postal_code')
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'subject', 'is_read', 'created_at')
+    list_filter = ('is_read', 'created_at')
+    search_fields = ('name', 'email', 'subject', 'message')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+
 

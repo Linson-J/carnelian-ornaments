@@ -30,6 +30,7 @@ from .models import (
     Order,
     OrderItem,
     OTPSettings,
+    ContactMessage,
 )
 
 
@@ -721,4 +722,53 @@ def delete_review(request, pk):
     review.delete()
     messages.success(request, f'Review by {user_email} on {product_name} deleted successfully.')
     return redirect('admin_reviews')
+
+
+# ─── Contact Messages Views ───────────────────────────────────
+
+@admin_login_required
+def admin_messages(request):
+    search = request.GET.get('search', '').strip()
+    contact_messages = ContactMessage.objects.all().order_by('-created_at')
+
+    if search:
+        contact_messages = contact_messages.filter(
+            Q(name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(subject__icontains=search) |
+            Q(message__icontains=search)
+        )
+
+    unread_count = ContactMessage.objects.filter(is_read=False).count()
+
+    return render(request, 'adminpanel/messages.html', {
+        'contact_messages': contact_messages,
+        'unread_count': unread_count,
+        'message_count': ContactMessage.objects.count(),
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'messages',
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_message(request, pk):
+    msg = get_object_or_404(ContactMessage, pk=pk)
+    sender_name = msg.name
+    msg.delete()
+    messages.success(request, f'Message from {sender_name} deleted successfully.')
+    return redirect('admin_messages')
+
+
+@admin_login_required
+@require_POST
+def toggle_message_read(request, pk):
+    msg = get_object_or_404(ContactMessage, pk=pk)
+    msg.is_read = not msg.is_read
+    msg.save(update_fields=['is_read'])
+    status_str = "marked as read" if msg.is_read else "marked as unread"
+    messages.success(request, f'Message from {msg.name} {status_str}.')
+    return redirect('admin_messages')
+
 
