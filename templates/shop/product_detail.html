@@ -14,6 +14,32 @@
     <div class="product-detail-copy">
       <p>{{ product.category.name|default:"Collection" }}</p>
       <h1>{{ product.name }}</h1>
+      <div class="product-rating-summary" style="display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 1rem 0;">
+        <div class="rating-stars" style="color: #ffb800; display: inline-flex; gap: 2px;">
+          {% if product.average_rating > 0 %}
+            {% for i in "12345" %}
+              {% if forloop.counter <= product.average_rating %}
+                <i class="ri-star-fill" style="font-size: 1.1rem;"></i>
+              {% elif forloop.counter|add:"-0.5" <= product.average_rating %}
+                <i class="ri-star-half-fill" style="font-size: 1.1rem;"></i>
+              {% else %}
+                <i class="ri-star-line" style="font-size: 1.1rem; color: #ddd;"></i>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for i in "12345" %}
+              <i class="ri-star-line" style="font-size: 1.1rem; color: #ddd;"></i>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <span style="font-size: 0.9rem; color: var(--muted-text-color, #504444);">
+          {% if product.average_rating > 0 %}
+            {{ product.average_rating }} ({{ product.review_count }} review{{ product.review_count|pluralize }})
+          {% else %}
+            No reviews yet
+          {% endif %}
+        </span>
+      </div>
       <div class="product-detail-price">Rs. {{ product.discount_price|default:product.price }}</div>
       <p>{{ product.description }}</p>
       <div class="product-detail-actions" style="margin: 2rem 0; display: flex; gap: 1rem; align-items: center; min-height: 52px;">
@@ -33,12 +59,84 @@
 
           <button class="hero-btn" onclick="window.buyNow({{ product.id }})" style="flex: 1; background: var(--text-dark, #1a1c1a); color: var(--background, #fffdfa); border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; height: 50px; display: flex; align-items: center; justify-content: center;">Buy Now</button>
           <button class="wishlist-btn" onclick="window.addToWishlist({{ product.id }})" style="background: none; border: 1px solid rgba(0,0,0,0.1); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dark, #1a1c1a); flex-shrink: 0;">
-              <i class="ri-heart-line" style="font-size: 1.3rem;"></i>
+              {% if is_favorited %}
+                  <i class="ri-heart-fill" style="font-size: 1.3rem; color: var(--primary, #7c5357);"></i>
+              {% else %}
+                  <i class="ri-heart-line" style="font-size: 1.3rem;"></i>
+              {% endif %}
           </button>
       </div>
       <a href="/" class="hero-btn primary">Continue shopping</a>
     </div>
   </main>
+
+  <!-- Reviews Section -->
+  <section class="reviews-section" style="max-width: 1200px; margin: 4rem auto; padding: 0 1.5rem; box-sizing: border-box;">
+    <h2 style="font-family: inherit; font-size: 1.75rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 1rem; color: var(--text-dark, #1a1c1a);">Customer Reviews</h2>
+    
+    <div class="reviews-container" style="display: flex; gap: 3rem; flex-wrap: wrap;">
+      <!-- Left Column: Add/Edit Review Form -->
+      <div class="review-form-container" style="flex: 1; min-width: 300px;">
+        {% if request.user.is_authenticated %}
+          <h3 style="font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--text-dark, #1a1c1a);">Write a Review</h3>
+          <form id="reviewForm" onsubmit="submitReview(event)" style="display: flex; flex-direction: column; gap: 1.2rem; background: rgba(124, 83, 87, 0.02); padding: 2rem; border-radius: 12px; border: 1.5px solid rgba(124, 83, 87, 0.08);">
+            {% csrf_token %}
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">Your Rating</label>
+              <div class="star-rating-input" style="display: flex; gap: 8px; font-size: 1.6rem; color: #ffb800; cursor: pointer;">
+                <input type="hidden" name="rating" id="reviewRatingInput" value="5">
+                <i class="ri-star-fill star-input" data-value="1" onclick="setRating(1)"></i>
+                <i class="ri-star-fill star-input" data-value="2" onclick="setRating(2)"></i>
+                <i class="ri-star-fill star-input" data-value="3" onclick="setRating(3)"></i>
+                <i class="ri-star-fill star-input" data-value="4" onclick="setRating(4)"></i>
+                <i class="ri-star-fill star-input" data-value="5" onclick="setRating(5)"></i>
+              </div>
+            </div>
+            <div>
+              <label for="reviewComment" style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">Review Comment</label>
+              <textarea id="reviewComment" name="comment" rows="4" placeholder="Share your experience with this product..." required style="width: 100%; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; font-family: inherit; font-size: 0.95rem; resize: vertical; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary, #7c5357)'" onblur="this.style.borderColor='rgba(0,0,0,0.1)'"></textarea>
+            </div>
+            <button type="submit" class="hero-btn primary" style="border: none; padding: 0.8rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; border-radius: 4px; font-weight: 600; width: 100%;">Submit Review</button>
+          </form>
+        {% else %}
+          <div style="background: rgba(124, 83, 87, 0.03); border: 1px dashed rgba(124, 83, 87, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
+            <p style="margin-bottom: 1rem; color: var(--muted-text-color, #504444);">Please log in to write a review for this product.</p>
+            <button class="hero-btn primary" onclick="window.openAuthModal ? window.openAuthModal('login') : alert('Please log in using the header option.')" style="border: none; padding: 0.8rem 1.5rem; font-family: inherit; font-size: 0.95rem; cursor: pointer; font-weight: 600;">Log In</button>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Right Column: Reviews List -->
+      <div class="reviews-list-container" style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 1.5rem;">
+        <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-dark, #1a1c1a);">User Reviews ({{ reviews|length }})</h3>
+        
+        <div class="reviews-scroll-list" style="display: flex; flex-direction: column; gap: 1.5rem; max-height: 500px; overflow-y: auto; padding-right: 8px;">
+          {% for r in reviews %}
+            <div class="review-card" style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <strong style="font-size: 0.95rem; color: var(--text-dark, #1a1c1a);">{{ r.user.email }}</strong>
+                  <div class="rating-stars" style="color: #ffb800; display: flex; gap: 2px; margin-top: 4px;">
+                    {% for i in "12345" %}
+                      {% if forloop.counter <= r.rating %}
+                        <i class="ri-star-fill" style="font-size: 0.9rem;"></i>
+                      {% else %}
+                        <i class="ri-star-line" style="font-size: 0.9rem; color: #ddd;"></i>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+                <span style="font-size: 0.8rem; color: var(--muted-text-color, #504444);">{{ r.created_at|date:"M d, Y" }}</span>
+              </div>
+              <p style="color: var(--text-dark, #1a1c1a); font-size: 0.95rem; line-height: 1.5; margin: 0; white-space: pre-line;">{{ r.comment }}</p>
+            </div>
+          {% empty %}
+            <p style="color: var(--muted-text-color, #504444); font-style: italic;">No reviews yet. Be the first to share your thoughts!</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
 {% endblock %}
 
 {% block extra_js %}
@@ -133,6 +231,49 @@
             } catch (e) {
                 window.showToast('Connection error.', true);
             }
+        }
+    }
+
+    function setRating(val) {
+        document.getElementById('reviewRatingInput').value = val;
+        const stars = document.querySelectorAll('.star-input');
+        stars.forEach(star => {
+            const starValue = parseInt(star.getAttribute('data-value'));
+            if (starValue <= val) {
+                star.className = 'ri-star-fill star-input';
+            } else {
+                star.className = 'ri-star-line star-input';
+            }
+        });
+    }
+
+    async function submitReview(event) {
+        event.preventDefault();
+        const form = event.target;
+        const rating = form.querySelector('[name="rating"]').value;
+        const comment = form.querySelector('[name="comment"]').value;
+        
+        try {
+            const response = await fetch('review/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ rating: rating, comment: comment })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                window.showToast(data.message || 'Review submitted successfully!');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                window.showToast(data.message || 'Failed to submit review.', true);
+            }
+        } catch (e) {
+            window.showToast('Connection error.', true);
         }
     }
 </script>

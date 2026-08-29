@@ -1,85 +1,334 @@
 {% extends 'adminpanel/base.html' %}
 
 {% block title %}Settings{% endblock %}
-{% block page_title %}Settings{% endblock %}
+{% block page_title %}Settings & Security{% endblock %}
 
 {% block content %}
-<div class="settings-grid">
-  <form class="card" id="themeForm">
-    {% csrf_token %}
-    <div class="card-hd">
-      <h3>Home Page Theme</h3>
-      <button class="btn-primary" type="submit">Save theme</button>
-    </div>
-    <div class="card-body">
-      <p class="settings-help">These colors are served by the API and applied on the customer home page.</p>
+<div class="settings-grid" style="display: flex; flex-direction: column; gap: 24px;">
 
-      <div class="theme-field-grid">
-        <label class="color-field">
-          <span>Primary color</span>
-          <input type="color" name="primary_color" value="{{ theme.primary_color }}">
-          <input type="text" data-color-text="primary_color" value="{{ theme.primary_color }}">
-        </label>
-        <label class="color-field">
-          <span>Page background</span>
-          <input type="color" name="background_color" value="{{ theme.background_color }}">
-          <input type="text" data-color-text="background_color" value="{{ theme.background_color }}">
-        </label>
-        <label class="color-field">
-          <span>Dark sections</span>
-          <input type="color" name="dark_background_color" value="{{ theme.dark_background_color }}">
-          <input type="text" data-color-text="dark_background_color" value="{{ theme.dark_background_color }}">
-        </label>
-        <label class="color-field">
-          <span>Sale section</span>
-          <input type="color" name="sale_background_color" value="{{ theme.sale_background_color }}">
-          <input type="text" data-color-text="sale_background_color" value="{{ theme.sale_background_color }}">
-        </label>
-        <label class="color-field">
-          <span>Main text</span>
-          <input type="color" name="text_color" value="{{ theme.text_color }}">
-          <input type="text" data-color-text="text_color" value="{{ theme.text_color }}">
-        </label>
-        <label class="color-field">
-          <span>Muted text</span>
-          <input type="color" name="muted_text_color" value="{{ theme.muted_text_color }}">
-          <input type="text" data-color-text="muted_text_color" value="{{ theme.muted_text_color }}">
-        </label>
-        <label class="color-field">
-          <span>Surface color</span>
-          <input type="color" name="surface_color" value="{{ theme.surface_color }}">
-          <input type="text" data-color-text="surface_color" value="{{ theme.surface_color }}">
-        </label>
+  <!-- OTP & SECURITY CONFIGURATION CARD -->
+  <form class="card" id="otpSettingsForm" method="POST" action="{% url 'admin_settings' %}">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="otp_settings">
+    <div class="card-hd" style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="hd-icon" style="background: rgba(124, 92, 252, 0.12); color: var(--accent2);">
+          <i class="ri-shield-keyhole-line"></i>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-size: 15px; font-weight: 600;">Password Reset OTP Configuration</h3>
+          <p class="muted-small" style="margin-top: 2px;">Configure sender email, OTP code length, expiry duration, and resend cooldown rules.</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="badge popular" id="otpSummaryPill" style="padding: 6px 12px; font-size: 11.5px;">
+          <i class="ri-lock-password-line"></i> {{ otp_settings.otp_length }}-Digit OTP • {{ otp_settings.otp_expiry_minutes }}m Expiry • {{ otp_settings.resend_cooldown_seconds }}s Cooldown
+        </span>
+        <button class="btn-primary" type="submit" id="btnSaveOtpSettings">
+          <i class="ri-save-3-line"></i> Save OTP Settings
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+        
+        <!-- COMPANY NAME -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="company_name">
+            Company / Store Name <span class="req">*</span>
+          </label>
+          <div class="inp-prefix">
+            <span class="prefix"><i class="ri-store-2-line"></i></span>
+            <input 
+              type="text" 
+              id="company_name" 
+              name="company_name" 
+              value="{{ otp_settings.company_name }}" 
+              placeholder="Carmelian"
+              required
+              style="padding-left: 36px;"
+            >
+          </div>
+          <div class="muted-small">Store name displayed in email template header and sender name.</div>
+        </div>
+
+        <!-- SENDER EMAIL -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="sender_email">
+            Sender Email Address <span class="req">*</span>
+          </label>
+          <div class="inp-prefix">
+            <span class="prefix"><i class="ri-mail-send-line"></i></span>
+            <input 
+              type="email" 
+              id="sender_email" 
+              name="sender_email" 
+              value="{{ otp_settings.sender_email }}" 
+              placeholder="noreply@yourdomain.com"
+              required
+              style="padding-left: 36px;"
+            >
+          </div>
+          <div class="muted-small">Email address displayed in customer's inbox as the OTP sender.</div>
+        </div>
+
+        <!-- SMTP HOST USER (GMAIL USER) -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="smtp_host_user">
+            SMTP Username / Gmail Address <span class="req">*</span>
+          </label>
+          <div class="inp-prefix">
+            <span class="prefix"><i class="ri-user-shared-line"></i></span>
+            <input 
+              type="email" 
+              id="smtp_host_user" 
+              name="smtp_host_user" 
+              value="{{ otp_settings.smtp_host_user }}" 
+              placeholder="yourname@gmail.com"
+              style="padding-left: 36px;"
+            >
+          </div>
+          <div class="muted-small">Authenticating email address for real SMTP server transmission.</div>
+        </div>
+
+        <!-- SMTP HOST PASSWORD (APP PASSWORD) WITH EYE TOGGLE -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="smtp_host_password">
+            SMTP App Password <span class="req">*</span>
+          </label>
+          <div class="inp-prefix" style="position: relative;">
+            <span class="prefix"><i class="ri-key-2-line"></i></span>
+            <input 
+              type="password" 
+              id="smtp_host_password" 
+              name="smtp_host_password" 
+              value="{{ otp_settings.smtp_host_password }}" 
+              placeholder="16-character App Password"
+              style="padding-left: 36px; padding-right: 40px;"
+            >
+            <button type="button" id="toggleSmtpPassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #888; cursor: pointer; font-size: 18px; padding: 4px; display: flex; align-items: center; justify-content: center;" title="Show/Hide Password">
+              <i class="ri-eye-off-line" id="toggleSmtpIcon"></i>
+            </button>
+          </div>
+          <div class="muted-small">16-character Google App Password (spaces will be stripped).</div>
+        </div>
+
+        <!-- OTP LENGTH -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="otp_length">
+            OTP Code Length <span class="req">*</span>
+          </label>
+          <select id="otp_length" name="otp_length" required>
+            <option value="4" {% if otp_settings.otp_length == 4 %}selected{% endif %}>4 Digits (Standard)</option>
+            <option value="6" {% if otp_settings.otp_length == 6 %}selected{% endif %}>6 Digits (Recommended)</option>
+            <option value="8" {% if otp_settings.otp_length == 8 %}selected{% endif %}>8 Digits (High Security)</option>
+          </select>
+          <div class="muted-small">Number of numeric digits generated for password verification.</div>
+        </div>
+
+        <!-- OTP EXPIRY MINUTES -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="otp_expiry_minutes">
+            OTP Expiry Time (Minutes) <span class="req">*</span>
+          </label>
+          <div class="inp-prefix">
+            <span class="prefix"><i class="ri-time-line"></i></span>
+            <input 
+              type="number" 
+              id="otp_expiry_minutes" 
+              name="otp_expiry_minutes" 
+              value="{{ otp_settings.otp_expiry_minutes }}" 
+              min="1" 
+              max="60" 
+              required
+              style="padding-left: 36px;"
+            >
+          </div>
+          <div class="muted-small">Minutes before an unverified OTP code expires automatically.</div>
+        </div>
+
+        <!-- RESEND COOLDOWN SECONDS -->
+        <div class="field" style="margin-bottom: 0;">
+          <label for="resend_cooldown_seconds">
+            Resend Cooldown (Seconds) <span class="req">*</span>
+          </label>
+          <div class="inp-prefix">
+            <span class="prefix"><i class="ri-timer-flash-line"></i></span>
+            <input 
+              type="number" 
+              id="resend_cooldown_seconds" 
+              name="resend_cooldown_seconds" 
+              value="{{ otp_settings.resend_cooldown_seconds }}" 
+              min="10" 
+              max="600" 
+              required
+              style="padding-left: 36px;"
+            >
+          </div>
+          <div class="muted-small">Seconds customer must wait before requesting another OTP.</div>
+        </div>
+
+      </div>
+
+      <!-- HOW TO GET APP PASSWORD GUIDE -->
+      <div style="margin-top: 20px; padding: 14px 18px; background: rgba(124, 92, 252, 0.06); border: 1px dashed rgba(124, 92, 252, 0.25); border-radius: 8px; font-size: 13px; color: #d0c8ff;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #a78bfa; margin-bottom: 6px;">
+          <i class="ri-information-line" style="font-size: 16px;"></i> How to get a Google App Password for Live Mail Sending:
+        </div>
+        <ol style="margin: 0; padding-left: 20px; line-height: 1.6; color: #b0b5d0;">
+          <li>Log into your Google Account at <a href="https://myaccount.google.com/security" target="_blank" style="color: #a78bfa; text-decoration: underline;">myaccount.google.com/security</a>.</li>
+          <li>Ensure <strong>2-Step Verification</strong> is enabled.</li>
+          <li>Search for <strong>"App Passwords"</strong> in the top search bar.</li>
+          <li>Enter an App Name (e.g. <em>Ecommerce App</em>) and click <strong>Create</strong>.</li>
+          <li>Copy the generated 16-character code and paste it into the <strong>SMTP App Password</strong> field above!</li>
+        </ol>
       </div>
     </div>
   </form>
 
-  <div class="card theme-preview-card">
-    <div class="card-hd"><h3>Preview</h3></div>
-    <div class="theme-preview" id="themePreview">
-      <div class="preview-nav">
-        <span>Carmelian</span>
-        <button type="button">Shop</button>
+  <!-- HOME PAGE THEME & PREVIEW ROW -->
+  <div class="settings-grid">
+    <form class="card" id="themeForm">
+      {% csrf_token %}
+      <div class="card-hd">
+        <h3>Home Page Theme</h3>
+        <button class="btn-primary" type="submit">Save theme</button>
       </div>
-      <div class="preview-hero">
-        <h2>Elevate Your Everyday</h2>
-        <p>Curated lifestyle pieces designed for the modern wardrobe.</p>
+      <div class="card-body">
+        <p class="settings-help">These colors are served by the API and applied on the customer home page.</p>
+
+        <div class="theme-field-grid">
+          <label class="color-field">
+            <span>Primary color</span>
+            <input type="color" name="primary_color" value="{{ theme.primary_color }}">
+            <input type="text" data-color-text="primary_color" value="{{ theme.primary_color }}">
+          </label>
+          <label class="color-field">
+            <span>Page background</span>
+            <input type="color" name="background_color" value="{{ theme.background_color }}">
+            <input type="text" data-color-text="background_color" value="{{ theme.background_color }}">
+          </label>
+          <label class="color-field">
+            <span>Dark sections</span>
+            <input type="color" name="dark_background_color" value="{{ theme.dark_background_color }}">
+            <input type="text" data-color-text="dark_background_color" value="{{ theme.dark_background_color }}">
+          </label>
+          <label class="color-field">
+            <span>Sale section</span>
+            <input type="color" name="sale_background_color" value="{{ theme.sale_background_color }}">
+            <input type="text" data-color-text="sale_background_color" value="{{ theme.sale_background_color }}">
+          </label>
+          <label class="color-field">
+            <span>Main text</span>
+            <input type="color" name="text_color" value="{{ theme.text_color }}">
+            <input type="text" data-color-text="text_color" value="{{ theme.text_color }}">
+          </label>
+          <label class="color-field">
+            <span>Muted text</span>
+            <input type="color" name="muted_text_color" value="{{ theme.muted_text_color }}">
+            <input type="text" data-color-text="muted_text_color" value="{{ theme.muted_text_color }}">
+          </label>
+          <label class="color-field">
+            <span>Surface color</span>
+            <input type="color" name="surface_color" value="{{ theme.surface_color }}">
+            <input type="text" data-color-text="surface_color" value="{{ theme.surface_color }}">
+          </label>
+        </div>
       </div>
-      <div class="preview-sale">
-        <span>Limited Time Only</span>
-        <strong>Midnight Flash Sale</strong>
-      </div>
-      <div class="preview-card-row">
-        <span></span>
-        <span></span>
+    </form>
+
+    <div class="card theme-preview-card">
+      <div class="card-hd"><h3>Preview</h3></div>
+      <div class="theme-preview" id="themePreview">
+        <div class="preview-nav">
+          <span>Carmelian</span>
+          <button type="button">Shop</button>
+        </div>
+        <div class="preview-hero">
+          <h2>Elevate Your Everyday</h2>
+          <p>Curated lifestyle pieces designed for the modern wardrobe.</p>
+        </div>
+        <div class="preview-sale">
+          <span>Limited Time Only</span>
+          <strong>Midnight Flash Sale</strong>
+        </div>
+        <div class="preview-card-row">
+          <span></span>
+          <span></span>
+        </div>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  // --- Toggle Password Visibility ---
+  const toggleBtn = document.getElementById('toggleSmtpPassword');
+  const pwInput = document.getElementById('smtp_host_password');
+  const toggleIcon = document.getElementById('toggleSmtpIcon');
+
+  toggleBtn?.addEventListener('click', () => {
+    const isPw = pwInput.type === 'password';
+    pwInput.type = isPw ? 'text' : 'password';
+    toggleIcon.className = isPw ? 'ri-eye-line' : 'ri-eye-off-line';
+  });
+
+  // --- OTP Settings AJAX Handler ---
+  const otpForm = document.getElementById('otpSettingsForm');
+  const otpPill = document.getElementById('otpSummaryPill');
+
+  otpForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const btn = document.getElementById('btnSaveOtpSettings');
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving...';
+
+    const payload = {
+      company_name: document.getElementById('company_name').value.trim(),
+      sender_email: document.getElementById('sender_email').value.trim(),
+      smtp_host_user: document.getElementById('smtp_host_user').value.trim(),
+      smtp_host_password: document.getElementById('smtp_host_password').value.replace(/\s+/g, ''),
+      otp_length: parseInt(document.getElementById('otp_length').value, 10),
+      otp_expiry_minutes: parseInt(document.getElementById('otp_expiry_minutes').value, 10),
+      resend_cooldown_seconds: parseInt(document.getElementById('resend_cooldown_seconds').value, 10),
+    };
+
+    try {
+      const response = await fetch("{% url 'admin_settings' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showToast(data.message || 'OTP settings saved successfully', 'success');
+        hideToast();
+        if (data.otp_settings) {
+          otpPill.innerHTML = `<i class="ri-lock-password-line"></i> ${data.otp_settings.otp_length}-Digit OTP • ${data.otp_settings.otp_expiry_minutes}m Expiry • ${data.otp_settings.resend_cooldown_seconds}s Cooldown`;
+        }
+      } else {
+        showToast(data.message || 'Could not save OTP settings', 'danger');
+        hideToast();
+      }
+    } catch (error) {
+      showToast(error.message || 'Network error updating OTP settings', 'danger');
+      hideToast();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  });
+
+  // --- Home Theme Handler ---
   const form = document.getElementById('themeForm');
   const preview = document.getElementById('themePreview');
   const colorInputs = [...form.querySelectorAll('input[type=color]')];

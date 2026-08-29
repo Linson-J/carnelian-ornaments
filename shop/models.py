@@ -118,6 +118,17 @@ class Product(models.Model):
             return round((1 - float(self.discount_price) / float(self.price)) * 100)
         return 0
 
+    @property
+    def average_rating(self):
+        reviews = self.reviews.all()
+        if reviews.exists():
+            return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+        return 0.0
+
+    @property
+    def review_count(self):
+        return self.reviews.count()
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = unique_slug(self, self.name, Product.objects)
@@ -450,7 +461,7 @@ class HomeSectionProduct(models.Model):
 
 class PasswordResetOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_otps')
-    otp_code = models.CharField(max_length=4)
+    otp_code = models.CharField(max_length=16)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -462,6 +473,55 @@ class PasswordResetOTP(models.Model):
 
     def __str__(self):
         return f"OTP for {self.user.email} - {self.otp_code}"
+
+
+class OTPSettings(models.Model):
+    class OTPDigits(models.IntegerChoices):
+        FOUR = 4, '4 Digits'
+        SIX = 6, '6 Digits'
+        EIGHT = 8, '8 Digits'
+
+    company_name = models.CharField(max_length=255, default='Carmelian', help_text='Company / Store name displayed in email template header and sender name')
+    sender_email = models.EmailField(default='noreply@carmelian.com', help_text='Sender email address used for sending OTPs')
+    smtp_host_user = models.CharField(max_length=255, blank=True, default='', help_text='SMTP Username / Email address (e.g. joellinson00@gmail.com)')
+    smtp_host_password = models.CharField(max_length=255, blank=True, default='', help_text='SMTP App Password (16-digit code from Google)')
+    otp_length = models.IntegerField(choices=OTPDigits.choices, default=6, help_text='OTP length (4, 6, or 8 digits)')
+    otp_expiry_minutes = models.PositiveIntegerField(default=5, help_text='OTP validity in minutes')
+    resend_cooldown_seconds = models.PositiveIntegerField(default=60, help_text='Resend cooldown in seconds')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_otp_settings'
+        verbose_name = 'OTP settings'
+        verbose_name_plural = 'OTP settings'
+
+    def __str__(self):
+        return f"OTP Settings ({self.otp_length} digits, {self.otp_expiry_minutes}m expiry)"
+
+    @classmethod
+    def current(cls):
+        from django.conf import settings
+        default_user = getattr(settings, 'EMAIL_HOST_USER', 'joellinson00@gmail.com')
+        default_pass = getattr(settings, 'EMAIL_HOST_PASSWORD', 'nazdbvhforfacxzl')
+
+        config, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'sender_email': default_user or 'joellinson00@gmail.com',
+                'smtp_host_user': default_user or '',
+                'smtp_host_password': default_pass or '',
+                'otp_length': 6,
+                'otp_expiry_minutes': 5,
+                'resend_cooldown_seconds': 60,
+            }
+        )
+        if not config.smtp_host_user and default_user:
+            config.smtp_host_user = default_user
+            config.save(update_fields=['smtp_host_user'])
+        if not config.smtp_host_password and default_pass:
+            config.smtp_host_password = default_pass
+            config.save(update_fields=['smtp_host_password'])
+        return config
 
 
 class Favorite(models.Model):
@@ -602,4 +662,24 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product_name}"
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField(
+        choices=[(1, '1 Star'), (2, '2 Stars'), (3, '3 Stars'), (4, '4 Stars'), (5, '5 Stars')],
+        default=5
+    )
+    comment = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_reviews'
+        unique_together = ('user', 'product')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.product.name} ({self.rating} Stars)"
 

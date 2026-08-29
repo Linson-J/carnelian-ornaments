@@ -2,12 +2,13 @@ from datetime import timedelta
 
 import bcrypt
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.models import User
-from django.db.models import Sum
+from django.db.models import Sum, Q
 
 from .forms import CarouselItemForm
 from .decorators import admin_login_required
@@ -28,6 +29,7 @@ from .models import (
     DeliveryConfig,
     Order,
     OrderItem,
+    OTPSettings,
 )
 
 
@@ -395,9 +397,105 @@ def admin_login_logs(request):
 
 
 @admin_login_required
+@require_http_methods(['GET', 'POST'])
 def admin_settings(request):
+    otp_settings = OTPSettings.current()
+    theme = HomeTheme.current()
+
+    if request.method == 'POST':
+        # Check if JSON request
+        if 'application/json' in (request.content_type or ''):
+            import json
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'message': 'Invalid JSON data.'}, status=400)
+            
+            company_name = data.get('company_name', '').strip() or 'Carmelian'
+            sender_email = data.get('sender_email', '').strip()
+            smtp_host_user = data.get('smtp_host_user', '').strip()
+            smtp_host_password = data.get('smtp_host_password', '').strip()
+            try:
+                otp_length = int(data.get('otp_length', 6))
+                otp_expiry_minutes = int(data.get('otp_expiry_minutes', 5))
+                resend_cooldown_seconds = int(data.get('resend_cooldown_seconds', 60))
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'Invalid numbers for OTP configuration.'}, status=400)
+
+            if not sender_email or '@' not in sender_email:
+                return JsonResponse({'success': False, 'message': 'Please enter a valid sender email address.'}, status=400)
+
+            if otp_length not in [4, 6, 8]:
+                return JsonResponse({'success': False, 'message': 'OTP length must be 4, 6, or 8 digits.'}, status=400)
+
+            if otp_expiry_minutes < 1 or otp_expiry_minutes > 60:
+                return JsonResponse({'success': False, 'message': 'OTP expiry must be between 1 and 60 minutes.'}, status=400)
+
+            if resend_cooldown_seconds < 10 or resend_cooldown_seconds > 600:
+                return JsonResponse({'success': False, 'message': 'Resend cooldown must be between 10 and 600 seconds.'}, status=400)
+
+            otp_settings.company_name = company_name
+            otp_settings.sender_email = sender_email
+            if smtp_host_user:
+                otp_settings.smtp_host_user = smtp_host_user
+            if smtp_host_password:
+                otp_settings.smtp_host_password = smtp_host_password
+            otp_settings.otp_length = otp_length
+            otp_settings.otp_expiry_minutes = otp_expiry_minutes
+            otp_settings.resend_cooldown_seconds = resend_cooldown_seconds
+            otp_settings.save()
+
+            return JsonResponse({
+                'success': True,
+                'message': 'OTP & SMTP settings updated successfully!',
+                'otp_settings': {
+                    'company_name': otp_settings.company_name,
+                    'sender_email': otp_settings.sender_email,
+                    'smtp_host_user': otp_settings.smtp_host_user,
+                    'smtp_host_password': otp_settings.smtp_host_password,
+                    'otp_length': otp_settings.otp_length,
+                    'otp_expiry_minutes': otp_settings.otp_expiry_minutes,
+                    'resend_cooldown_seconds': otp_settings.resend_cooldown_seconds,
+                }
+            })
+        else:
+            company_name = request.POST.get('company_name', '').strip() or 'Carmelian'
+            sender_email = request.POST.get('sender_email', '').strip()
+            smtp_host_user = request.POST.get('smtp_host_user', '').strip()
+            smtp_host_password = request.POST.get('smtp_host_password', '').strip()
+            try:
+                otp_length = int(request.POST.get('otp_length', 6))
+                otp_expiry_minutes = int(request.POST.get('otp_expiry_minutes', 5))
+                resend_cooldown_seconds = int(request.POST.get('resend_cooldown_seconds', 60))
+            except (ValueError, TypeError):
+                messages.error(request, 'Please enter valid numeric values for OTP settings.')
+                return redirect('admin_settings')
+
+            if not sender_email or '@' not in sender_email:
+                messages.error(request, 'Please enter a valid sender email address.')
+                return redirect('admin_settings')
+
+            if otp_length not in [4, 6, 8]:
+                messages.error(request, 'OTP length must be 4, 6, or 8 digits.')
+                return redirect('admin_settings')
+
+            otp_settings.company_name = company_name
+            otp_settings.sender_email = sender_email
+            if smtp_host_user:
+                otp_settings.smtp_host_user = smtp_host_user
+            if smtp_host_password:
+                otp_settings.smtp_host_password = smtp_host_password
+            otp_settings.otp_length = otp_length
+            otp_settings.otp_expiry_minutes = otp_expiry_minutes
+            otp_settings.resend_cooldown_seconds = resend_cooldown_seconds
+            otp_settings.save()
+
+            messages.success(request, 'OTP & Security Settings updated successfully.')
+            return redirect('admin_settings')
+
     return render(request, 'adminpanel/settings.html', {
-        'theme': HomeTheme.current(),
+        'theme': theme,
+        'otp_settings': otp_settings,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'settings',
     })
@@ -590,4 +688,37 @@ def update_order_status(request, pk):
         messages.error(request, "Invalid status transition selected.")
         
     return redirect('admin_orders')
+
+
+@admin_login_required
+def admin_reviews(request):
+    from .models import Review
+    search = request.GET.get('search', '').strip()
+    reviews = Review.objects.select_related('user', 'product').order_by('-created_at')
+    
+    if search:
+        reviews = reviews.filter(
+            Q(product__name__icontains=search) | 
+            Q(user__email__icontains=search) |
+            Q(comment__icontains=search)
+        )
+        
+    return render(request, 'adminpanel/reviews.html', {
+        'reviews': reviews,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'reviews',
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_review(request, pk):
+    from .models import Review
+    review = get_object_or_404(Review, pk=pk)
+    product_name = review.product.name
+    user_email = review.user.email
+    review.delete()
+    messages.success(request, f'Review by {user_email} on {product_name} deleted successfully.')
+    return redirect('admin_reviews')
 

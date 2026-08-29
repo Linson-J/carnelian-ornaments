@@ -15,6 +15,7 @@ urlpatterns = [
     path('shop/', views.shop_all, name='shop_all'),
     path('categories/', views.categories_all, name='categories_all'),
     path('products/<slug:slug>/', views.product_detail, name='product_detail'),
+    path('products/<slug:slug>/review/', views.add_product_review, name='add_product_review'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     
     # AJAX Authentication

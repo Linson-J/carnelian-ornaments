@@ -50,6 +50,9 @@
       <span class="nav-icon">SB</span> Subscriptions
       {% if subscription_count %}<span class="nav-badge">{{ subscription_count }}</span>{% endif %}
     </a>
+    <a href="{% url 'admin_reviews' %}" class="nav-item{% if active_nav == 'reviews' %} active{% endif %}">
+      <span class="nav-icon">RV</span> Reviews
+    </a>
   </div>
 
   <div class="nav-section">

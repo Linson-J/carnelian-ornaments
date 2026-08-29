@@ -28,4 +28,6 @@ urlpatterns = [
     path('delivery/', admin_views.admin_delivery, name='admin_delivery'),
     path('delivery/zones/add/', admin_views.add_delivery_zone, name='add_delivery_zone'),
     path('delivery/zones/<int:pk>/delete/', admin_views.delete_delivery_zone, name='delete_delivery_zone'),
+    path('reviews/', admin_views.admin_reviews, name='admin_reviews'),
+    path('reviews/<int:pk>/delete/', admin_views.delete_review, name='delete_review'),
 ]

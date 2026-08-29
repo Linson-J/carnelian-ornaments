@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from .models import (
     Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme,
-    HomeSection, HomeSectionCategory, HomeSectionProduct, Offer,
+    HomeSection, HomeSectionCategory, HomeSectionProduct, Offer, Favorite,
 )
 
 
@@ -121,6 +121,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
     images           = ProductImageSerializer(many=True, read_only=True)
     discount_percent = serializers.IntegerField(read_only=True)
     primary_image    = serializers.SerializerMethodField()
+    is_favorited     = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -130,6 +131,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
             'category', 'stock', 'status',
             'colors', 'offer',
             'primary_image', 'images',
+            'is_favorited',
             'created_at', 'updated_at',
         ]
 
@@ -138,6 +140,16 @@ class ProductReadSerializer(serializers.ModelSerializer):
         if img:
             return ProductImageSerializer(img, context=self.context).data
         return None
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if not hasattr(request, '_user_favorites_set'):
+                request._user_favorites_set = set(
+                    Favorite.objects.filter(user=request.user).values_list('product_id', flat=True)
+                )
+            return obj.id in request._user_favorites_set
+        return False
 
 
 # ─── Product WRITE (create / update) ─────────────────────────
@@ -434,12 +446,14 @@ class HomeSectionProductItemSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     images = ProductImageSerializer(source='product.images', many=True, read_only=True)
     item_order = serializers.IntegerField(read_only=True)
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = HomeSectionProduct
         fields = [
             'id', 'name', 'slug', 'price', 'discount_price', 'discount_percent',
             'status', 'offer', 'category', 'primary_image', 'images', 'item_order',
+            'is_favorited',
         ]
 
     def get_primary_image(self, obj):
@@ -447,6 +461,16 @@ class HomeSectionProductItemSerializer(serializers.ModelSerializer):
         if image:
             return ProductImageSerializer(image, context=self.context).data
         return None
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if not hasattr(request, '_user_favorites_set'):
+                request._user_favorites_set = set(
+                    Favorite.objects.filter(user=request.user).values_list('product_id', flat=True)
+                )
+            return obj.product_id in request._user_favorites_set
+        return False
 
 
 class HomeSectionSerializer(serializers.ModelSerializer):

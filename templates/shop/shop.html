@@ -259,11 +259,14 @@
 
             grid.innerHTML = visibleProducts.map(product => {
                 const image = imageOf(product);
+                const isFav = product.is_favorited;
                 return `
                     <a class="catalog-product" href="/products/${encodeURIComponent(product.slug || '')}/">
                         <span class="catalog-product-image">
                             ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}
-                            <span class="catalog-wishlist" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});"><i class="ri-heart-line"></i></span>
+                            <span class="catalog-wishlist${isFav ? ' favorited' : ''}" data-product-id="${product.id}" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});">
+                                <i class="${isFav ? 'ri-heart-fill' : 'ri-heart-line'}"></i>
+                            </span>
                         </span>
                         <span class="catalog-product-name">${escapeHtml(product.name)}</span>
                         <span class="catalog-product-price">${money.format(priceOf(product))}</span>
