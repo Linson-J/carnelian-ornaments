@@ -125,6 +125,13 @@ def newsletter_subscribe(request):
     }, status=400)
 
 
+def login_redirect_view(request):
+    next_url = request.GET.get('next', '/')
+    if request.user.is_authenticated:
+        return redirect(next_url)
+    return redirect(f'/?login_required=1&next={next_url}')
+
+
 # --- AJAX Authentication Views ---
 
 @require_POST
@@ -951,7 +958,7 @@ def order_success(request, order_id):
 
 def profile_page(request):
     if not request.user.is_authenticated:
-        return render(request, 'shop/profile.html', {'is_auth': False})
+        return redirect('/?login_required=1')
         
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     orders = Order.objects.filter(user=request.user).prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')

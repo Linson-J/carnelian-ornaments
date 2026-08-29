@@ -18,6 +18,12 @@ urlpatterns = [
     path('products/<slug:slug>/review/', views.add_product_review, name='add_product_review'),
     path('newsletter/subscribe/', views.newsletter_subscribe, name='newsletter_subscribe'),
     
+    # Standard Django login routes commented out & redirected to auth modal:
+    # path('login/', auth_views.LoginView.as_view(), name='django_standard_login'),
+    path('login/', views.login_redirect_view, name='login'),
+    path('accounts/login/', views.login_redirect_view),
+    path('accounts/signup/', views.login_redirect_view),
+
     # AJAX Authentication
     path('auth/login/', views.ajax_login, name='ajax_login'),
     path('auth/signup/', views.ajax_signup, name='ajax_signup'),

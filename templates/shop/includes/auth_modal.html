@@ -608,6 +608,13 @@
     }
 
     function switchPanel(activeId) {
+        if (!activeId) activeId = 'panelLogin';
+        if (panels[activeId] && panels[activeId].id) {
+            activeId = panels[activeId].id;
+        } else if (!activeId.startsWith('panel')) {
+            activeId = 'panel' + activeId.charAt(0).toUpperCase() + activeId.slice(1);
+        }
+
         Object.entries(panels).forEach(([key, panel]) => {
             if (panel) {
                 const isActive = panel.id === activeId;
