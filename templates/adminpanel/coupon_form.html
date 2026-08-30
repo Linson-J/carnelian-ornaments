@@ -1,0 +1,220 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}{{ form_title }} - AdminPanel{% endblock %}
+{% block page_title %}{{ form_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* High visibility calendar picker icon for datetime inputs */
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    background-color: rgba(124, 83, 87, 0.25);
+    opacity: 0.9;
+    transition: all 0.2s ease;
+  }
+
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background-color: rgba(124, 83, 87, 0.6);
+    transform: scale(1.12);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <form class="card" method="POST" action="">
+    {% csrf_token %}
+    <div class="card-hd" style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">{{ form_title }}</h3>
+      <a href="{% url 'admin_coupons' %}" class="btn-secondary" style="text-decoration: none; font-size: 0.88rem;">← Back to Coupons</a>
+    </div>
+
+    <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- Coupon Code -->
+      <div class="field">
+        <label for="code" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+          Coupon Code <span style="color: #e74c3c;">*</span>
+        </label>
+        <input type="text" id="code" name="code" value="{{ coupon.code|default:'' }}" placeholder="e.g. SAVE20, WELCOME500, FESTIVE15" required style="text-transform: uppercase; font-family: monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: 1px; padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px;" oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')">
+        <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Users will type or select this promo code at checkout. Automatically converted to uppercase.</p>
+      </div>
+
+      <!-- Discount Type & Value Row -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="field">
+          <label for="discount_type" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Discount Type <span style="color: #e74c3c;">*</span>
+          </label>
+          <select id="discount_type" name="discount_type" required onchange="toggleDiscountTypeLabel()" style="padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+            <option value="percentage" {% if coupon.discount_type == 'percentage' or not coupon %}selected{% endif %}>Percentage Discount (%)</option>
+            <option value="fixed" {% if coupon.discount_type == 'fixed' %}selected{% endif %}>Fixed Amount Discount (Rs.)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="discount_value" id="discountValueLabel" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Discount Value <span style="color: #e74c3c;">*</span>
+          </label>
+          <input type="number" step="0.01" min="0" id="discount_value" name="discount_value" value="{{ coupon.discount_value|default:'' }}" placeholder="e.g. 20 for 20% or 200 for Rs.200" required style="padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+        </div>
+      </div>
+
+      <!-- Min Purchase & Max Discount Row -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="field">
+          <label for="min_purchase" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Minimum Purchase Amount (Rs.)
+          </label>
+          <input type="number" step="0.01" min="0" id="min_purchase" name="min_purchase" value="{{ coupon.min_purchase|default:'0.00' }}" placeholder="e.g. 499 (0 for no minimum)" style="padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+          <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Minimum cart subtotal required to use this coupon.</p>
+        </div>
+
+        <div class="field" id="maxDiscountContainer">
+          <label for="max_discount" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Max Discount Cap (Rs.)
+          </label>
+          <input type="number" step="0.01" min="0" id="max_discount" name="max_discount" value="{{ coupon.max_discount|default:'' }}" placeholder="e.g. 500 (optional limit)" style="padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+          <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Caps the maximum discount amount for percentage coupons.</p>
+        </div>
+      </div>
+
+      <!-- Validity & Schedule Configuration: Start Date & Expiry Date -->
+      <div style="background: rgba(124, 83, 87, 0.04); border: 1px solid rgba(124, 83, 87, 0.12); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+        <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary, #7c5357); display: flex; align-items: center; gap: 8px;">
+          <i class="ri-calendar-event-line" style="font-size: 1.2rem;"></i> Coupon Validity & Schedule Configuration
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="field">
+            <label for="valid_from" style="font-weight: 700; font-size: 0.83rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+              Start Date & Time (Valid From) <span style="color: #e74c3c;">*</span>
+            </label>
+            <input type="datetime-local" id="valid_from" name="valid_from" value="{{ valid_from_formatted }}" required onchange="onDaysChange()" style="padding: 11px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+            <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Coupon will only become visible & active for customers starting on this date.</p>
+          </div>
+
+          <div class="field">
+            <label for="valid_until" style="font-weight: 700; font-size: 0.83rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+              Exact Expiry Date & Time (Valid Until) <span style="color: #e74c3c;">*</span>
+            </label>
+            <input type="datetime-local" id="valid_until" name="valid_until" value="{{ valid_until_formatted }}" required style="padding: 11px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+            <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Exact date and time when this coupon expires.</p>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 4px;">
+          <label for="days_to_expire" style="font-weight: 700; font-size: 0.83rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Quick Duration Preset (From Start Date)
+          </label>
+          <select id="days_to_expire" name="days_to_expire" onchange="onDaysChange()" style="padding: 11px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+            <option value="">Select Days Duration</option>
+            <option value="3">3 Days</option>
+            <option value="7" selected>7 Days (1 Week)</option>
+            <option value="15">15 Days</option>
+            <option value="30">30 Days (1 Month)</option>
+            <option value="60">60 Days (2 Months)</option>
+            <option value="90">90 Days (3 Months)</option>
+            <option value="365">365 Days (1 Year)</option>
+          </select>
+          <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Automatically calculates expiry timestamp relative to Start Date.</p>
+        </div>
+      </div>
+
+      <!-- Usage Limit & Status Row -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="field">
+          <label for="usage_limit" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333);">
+            Max Usage Limit (Optional)
+          </label>
+          <input type="number" min="1" id="usage_limit" name="usage_limit" value="{{ coupon.usage_limit|default:'' }}" placeholder="e.g. 100 (leave blank for unlimited)" style="padding: 12px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 0.95rem; width: 100%;">
+          <p style="font-size: 0.78rem; color: var(--muted, #777); margin-top: 4px;">Total number of times coupon can be redeemed across all orders.</p>
+        </div>
+
+        <div class="field" style="display: flex; flex-direction: column; justify-content: center;">
+          <label style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text, #333); margin-bottom: 8px;">
+            Active Status
+          </label>
+          <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 600;">
+            <input type="checkbox" name="is_active" {% if coupon.is_active or not coupon %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--primary, #7c5357);">
+            Make this coupon code active for checkout
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 15px; margin-top: 15px;">
+        <button type="submit" class="btn-primary" style="flex: 2; padding: 14px; font-size: 1rem; justify-content: center;">
+          {{ submit_text }}
+        </button>
+        <a href="{% url 'admin_coupons' %}" class="btn-secondary" style="flex: 1; padding: 14px; text-align: center; text-decoration: none; justify-content: center;">
+          Cancel
+        </a>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function toggleDiscountTypeLabel() {
+    const type = document.getElementById('discount_type').value;
+    const label = document.getElementById('discountValueLabel');
+    const maxContainer = document.getElementById('maxDiscountContainer');
+
+    if (type === 'percentage') {
+      label.innerHTML = 'Discount Percentage (%) <span style="color: #e74c3c;">*</span>';
+      maxContainer.style.opacity = '1';
+    } else {
+      label.innerHTML = 'Discount Amount (Rs.) <span style="color: #e74c3c;">*</span>';
+      maxContainer.style.opacity = '0.5';
+    }
+  }
+
+  function onDaysChange() {
+    const daysSelect = document.getElementById('days_to_expire');
+    const validFromInput = document.getElementById('valid_from');
+    const dateInput = document.getElementById('valid_until');
+    
+    if (daysSelect.value) {
+      const days = parseInt(daysSelect.value);
+      let startDate = new Date();
+      if (validFromInput && validFromInput.value) {
+        const parsedStart = new Date(validFromInput.value);
+        if (!isNaN(parsedStart.getTime())) {
+          startDate = parsedStart;
+        }
+      }
+      
+      const targetDate = new Date(startDate.getTime());
+      targetDate.setDate(targetDate.getDate() + days);
+      
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const hours = String(targetDate.getHours()).padStart(2, '0');
+      const minutes = String(targetDate.getMinutes()).padStart(2, '0');
+      
+      dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    toggleDiscountTypeLabel();
+    const dateInput = document.getElementById('valid_until');
+    if (!dateInput.value) {
+      onDaysChange(); // set default 7 days if empty
+    }
+  });
+</script>
+{% endblock %}

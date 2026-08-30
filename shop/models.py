@@ -101,7 +101,6 @@ class Product(models.Model):
     stock          = models.PositiveIntegerField(default=0)
     status         = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
     colors         = models.JSONField(default=list, blank=True)   # e.g. ["red","blue","black"]
-    offer          = models.CharField(max_length=255, blank=True) # e.g. "10% off this weekend"
     created_at     = models.DateTimeField(default=timezone.now)
     updated_at     = models.DateTimeField(auto_now=True)
 
@@ -224,102 +223,6 @@ class CarouselItem(models.Model):
         if self.redirect_type == self.RedirectType.PRODUCT and self.product:
             return f'/products/{self.product.slug}/'
         return self.customer_page or '/'
-
-
-class Offer(models.Model):
-    class RedirectType(models.TextChoices):
-        CATEGORY = 'category', 'Category'
-        PRODUCT = 'product', 'Product'
-        EXTERNAL_URL = 'external_url', 'External URL'
-        PAGE = 'page', 'Page'
-
-    class Status(models.TextChoices):
-        ACTIVE = 'active', 'Active'
-        INACTIVE = 'inactive', 'Inactive'
-
-    class PopupDisplayMode(models.TextChoices):
-        ONCE = 'once', 'Display once per user'
-        EVERY_VISIT = 'every_visit', 'Display every visit'
-
-    class CustomerPage(models.TextChoices):
-        HOME = '/', 'Home'
-        SHOP = '/#collection', 'Shop'
-        NEW_ARRIVALS = '/#new-arrivals', 'New Arrivals'
-        COLLECTIONS = '/#collections', 'Collections'
-        CART = '/#cart', 'Cart'
-
-    title = models.CharField(max_length=160)
-    subtitle = models.CharField(max_length=180, blank=True, default='')
-    description = models.TextField()
-    banner_image = models.ImageField(upload_to='offers/%Y/%m/')
-    button_text = models.CharField(max_length=60, default='Shop Now')
-    redirect_type = models.CharField(max_length=20, choices=RedirectType.choices)
-    category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='offers',
-    )
-    product = models.ForeignKey(
-        Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='offers',
-    )
-    customer_page = models.CharField(
-        max_length=60, choices=CustomerPage.choices, blank=True, default='',
-    )
-    external_url = models.URLField(blank=True, default='')
-    display_priority_pc = models.PositiveIntegerField(default=10)
-    display_priority_mobile = models.PositiveIntegerField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
-    start_at = models.DateTimeField(null=True, blank=True)
-    end_at = models.DateTimeField(null=True, blank=True)
-    no_expiry = models.BooleanField(default=False)
-    show_as_popup = models.BooleanField(default=False)
-    display_on_home = models.BooleanField(default=True)
-    display_on_offer_page = models.BooleanField(default=True)
-    popup_title = models.CharField(max_length=160, blank=True, default='')
-    popup_description = models.TextField(blank=True, default='')
-    popup_image = models.ImageField(upload_to='offers/popup/%Y/%m/', null=True, blank=True)
-    popup_button_text = models.CharField(max_length=60, blank=True, default='')
-    popup_display_mode = models.CharField(
-        max_length=20, choices=PopupDisplayMode.choices, default=PopupDisplayMode.ONCE,
-    )
-    show_close_button = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'shop_offers'
-        ordering = ['display_priority_pc', 'id']
-
-    def __str__(self):
-        return self.title
-
-    def save(self, *args, **kwargs):
-        if self.show_as_popup:
-            Offer.objects.filter(show_as_popup=True).exclude(pk=self.pk).update(show_as_popup=False)
-        super().save(*args, **kwargs)
-
-    @property
-    def is_currently_active(self):
-        now = timezone.now()
-        if self.status != self.Status.ACTIVE:
-            return False
-        if self.start_at and self.start_at > now:
-            return False
-        if not self.no_expiry and self.end_at and self.end_at < now:
-            return False
-        if not self.no_expiry and not self.end_at:
-            return False
-        return True
-
-    @property
-    def redirect_url(self):
-        if self.redirect_type == self.RedirectType.CATEGORY and self.category:
-            return f'/categories/{self.category.slug}/'
-        if self.redirect_type == self.RedirectType.PRODUCT and self.product:
-            return f'/products/{self.product.slug}/'
-        if self.redirect_type == self.RedirectType.EXTERNAL_URL:
-            return self.external_url
-        if self.redirect_type == self.RedirectType.PAGE:
-            return self.customer_page or '/'
-        return '/'
 
 
 class AdminUser(models.Model):
@@ -651,6 +554,10 @@ class Order(models.Model):
     return_requested = models.BooleanField(default=False)
     delivered_at = models.DateTimeField(null=True, blank=True)
     
+    # Coupon details
+    coupon = models.ForeignKey('Coupon', on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+    coupon_code = models.CharField(max_length=50, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -730,5 +637,76 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"Message from {self.name} - {self.subject}"
+
+
+class Coupon(models.Model):
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = 'percentage', 'Percentage (%)'
+        FIXED = 'fixed', 'Fixed Amount (Rs.)'
+
+    code = models.CharField(max_length=50, unique=True, help_text="Unique coupon code, e.g. SAVE20")
+    discount_type = models.CharField(max_length=20, choices=DiscountType.choices, default=DiscountType.PERCENTAGE)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, help_text="Percentage value (e.g. 15 for 15%) or Fixed Amount in Rs.")
+    min_purchase = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Minimum subtotal required to use coupon")
+    max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Max discount limit for percentage coupon")
+    valid_from = models.DateTimeField(default=timezone.now)
+    valid_until = models.DateTimeField(help_text="Expiry date and time")
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, help_text="Max times this coupon can be used across all users")
+    used_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_coupons'
+        ordering = ['-created_at']
+        verbose_name = 'Coupon'
+        verbose_name_plural = 'Coupons'
+
+    def __str__(self):
+        if self.discount_type == self.DiscountType.PERCENTAGE:
+            return f"{self.code} ({self.discount_value}% Off)"
+        return f"{self.code} (Rs. {self.discount_value} Off)"
+
+    @property
+    def is_expired(self):
+        return timezone.now() > self.valid_until
+
+    @property
+    def is_started(self):
+        return timezone.now() >= self.valid_from
+
+    @property
+    def days_left(self):
+        if self.is_expired:
+            return 0
+        diff = self.valid_until - timezone.now()
+        return max(0, diff.days)
+
+    def is_valid(self, subtotal=0.0):
+        now = timezone.now()
+        if not self.is_active:
+            return False, "This coupon code is currently inactive."
+        if now < self.valid_from:
+            return False, "This coupon code is not active yet."
+        if now > self.valid_until:
+            return False, "This coupon code has expired."
+        if self.usage_limit and self.used_count >= self.usage_limit:
+            return False, "This coupon code usage limit has been reached."
+        if float(subtotal) < float(self.min_purchase):
+            return False, f"Minimum subtotal of Rs. {float(self.min_purchase):.2f} is required for this coupon."
+        return True, ""
+
+    def calculate_discount(self, subtotal):
+        subtotal = float(subtotal)
+        if self.discount_type == self.DiscountType.PERCENTAGE:
+            disc = (subtotal * float(self.discount_value)) / 100.0
+            if self.max_discount and float(self.max_discount) > 0:
+                disc = min(disc, float(self.max_discount))
+            return round(min(disc, subtotal), 2)
+        else:
+            disc = float(self.discount_value)
+            return round(min(disc, subtotal), 2)
+
 
 

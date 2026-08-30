@@ -731,12 +731,6 @@
                         <span class="summary-total-price" id="summary-total">Rs. {{ grand_total }}</span>
                     </div>
 
-                    <!-- Promo Code Box -->
-                    <div class="promo-code-box">
-                        <input type="text" placeholder="Promo Code" class="promo-input" id="promoInput">
-                        <button class="promo-btn" onclick="applyPromo()">Apply</button>
-                    </div>
-
                     <!-- Checkout Actions -->
                     <button class="checkout-btn" onclick="proceedToCheckout(this)">Proceed to Checkout</button>
                     <a href="/shop/" class="continue-btn">Continue Shopping</a>
@@ -744,7 +738,7 @@
                     <!-- Guarantee badges -->
                     <div class="summary-trust-badges">
                         <span><i class="ri-shield-check-line"></i> Secure Payment</span>
-                        <span><i class="ri-refresh-line"></i> 14-Day Returns</span>
+                        <span><i class="ri-refresh-line"></i> 7-Day Replacement*</span>
                     </div>
                 </div>
             </div>
@@ -1003,14 +997,40 @@
         }
     }
 
-    // Apply promo code (visual effect/toast for this design)
-    function applyPromo() {
-        const input = document.getElementById('promoInput').value.trim();
-        if (!input) {
+    // Apply promo code (connected to dynamic coupon system)
+    async function applyPromo() {
+        const inputEl = document.getElementById('promoInput');
+        if (!inputEl) return;
+        const code = inputEl.value.trim().toUpperCase();
+        if (!code) {
             window.showToast('Please enter a promo code.', true);
             return;
         }
-        window.showToast(`Promo code "${input}" applied successfully!`);
+
+        try {
+            const response = await fetch('/checkout/apply-coupon/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ code })
+            });
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                window.showToast(data.message || `Coupon "${data.coupon_code}" applied successfully!`);
+                inputEl.value = '';
+                // Reload or update totals
+                setTimeout(() => {
+                    window.location.reload();
+                }, 600);
+            } else {
+                window.showToast(data.message || 'Invalid or inapplicable coupon code.', true);
+            }
+        } catch (err) {
+            window.showToast('Network error applying coupon code.', true);
+        }
     }
 
     // Trigger checkout proceeding with shimmer loader

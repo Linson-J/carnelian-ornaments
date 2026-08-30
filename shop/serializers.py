@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from .models import (
     Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme,
-    HomeSection, HomeSectionCategory, HomeSectionProduct, Offer, Favorite,
+    HomeSection, HomeSectionCategory, HomeSectionProduct, Favorite,
 )
 
 
@@ -129,7 +129,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description',
             'price', 'discount_price', 'discount_percent',
             'category', 'stock', 'status',
-            'colors', 'offer',
+            'colors',
             'primary_image', 'images',
             'is_favorited',
             'created_at', 'updated_at',
@@ -170,7 +170,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'name', 'description',
             'price', 'discount_price',
             'category', 'stock', 'status',
-            'colors', 'offer',
+            'colors',
             'uploaded_images', 'primary_image_id', 'removed_image_ids',
         ]
         extra_kwargs = {
@@ -441,7 +441,6 @@ class HomeSectionProductItemSerializer(serializers.ModelSerializer):
     discount_price = serializers.DecimalField(source='product.discount_price', max_digits=10, decimal_places=2, read_only=True)
     discount_percent = serializers.IntegerField(source='product.discount_percent', read_only=True)
     status = serializers.CharField(source='product.status', read_only=True)
-    offer = serializers.CharField(source='product.offer', read_only=True)
     category = CategorySerializer(source='product.category', read_only=True)
     primary_image = serializers.SerializerMethodField()
     images = ProductImageSerializer(source='product.images', many=True, read_only=True)
@@ -452,7 +451,7 @@ class HomeSectionProductItemSerializer(serializers.ModelSerializer):
         model = HomeSectionProduct
         fields = [
             'id', 'name', 'slug', 'price', 'discount_price', 'discount_percent',
-            'status', 'offer', 'category', 'primary_image', 'images', 'item_order',
+            'status', 'category', 'primary_image', 'images', 'item_order',
             'is_favorited',
         ]
 
@@ -569,145 +568,3 @@ class HomeSectionSerializer(serializers.ModelSerializer):
         self._sync_items(instance, category_ids=category_ids, product_ids=product_ids)
         return instance
 
-
-MAX_OFFER_IMAGE_SIZE = 8 * 1024 * 1024
-
-
-class OfferSerializer(serializers.ModelSerializer):
-    banner_image_url = serializers.SerializerMethodField(read_only=True)
-    popup_image_url = serializers.SerializerMethodField(read_only=True)
-    redirect_url = serializers.CharField(read_only=True)
-    is_currently_active = serializers.BooleanField(read_only=True)
-    countdown = serializers.SerializerMethodField(read_only=True)
-    category_detail = CategorySerializer(source='category', read_only=True)
-    product_detail = ProductReadSerializer(source='product', read_only=True)
-
-    class Meta:
-        model = Offer
-        fields = [
-            'id', 'title', 'subtitle', 'description', 'banner_image',
-            'banner_image_url', 'button_text', 'redirect_type', 'category',
-            'category_detail', 'product', 'product_detail', 'customer_page',
-            'external_url', 'redirect_url', 'display_priority_pc',
-            'display_priority_mobile', 'status', 'start_at', 'end_at',
-            'no_expiry', 'countdown', 'is_currently_active', 'show_as_popup',
-            'display_on_home', 'display_on_offer_page', 'popup_title',
-            'popup_description', 'popup_image', 'popup_image_url',
-            'popup_button_text', 'popup_display_mode', 'show_close_button',
-            'created_at', 'updated_at',
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-        extra_kwargs = {
-            'subtitle': {'required': False, 'allow_blank': True},
-            'banner_image': {'required': False},
-            'button_text': {'required': False, 'allow_blank': True},
-            'category': {'required': False, 'allow_null': True},
-            'product': {'required': False, 'allow_null': True},
-            'customer_page': {'required': False, 'allow_blank': True},
-            'external_url': {'required': False, 'allow_blank': True},
-            'display_priority_mobile': {'required': False, 'allow_null': True},
-            'start_at': {'required': False, 'allow_null': True},
-            'end_at': {'required': False, 'allow_null': True},
-            'no_expiry': {'required': False},
-            'show_as_popup': {'required': False},
-            'display_on_home': {'required': False},
-            'display_on_offer_page': {'required': False},
-            'popup_title': {'required': False, 'allow_blank': True},
-            'popup_description': {'required': False, 'allow_blank': True},
-            'popup_image': {'required': False, 'allow_null': True},
-            'popup_button_text': {'required': False, 'allow_blank': True},
-            'popup_display_mode': {'required': False},
-            'show_close_button': {'required': False},
-        }
-
-    def _build_image_url(self, image_field):
-        if not image_field:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(image_field.url)
-        return image_field.url
-
-    def get_banner_image_url(self, obj):
-        return self._build_image_url(obj.banner_image)
-
-    def get_popup_image_url(self, obj):
-        return self._build_image_url(obj.popup_image or obj.banner_image)
-
-    def get_countdown(self, obj):
-        if obj.no_expiry or not obj.end_at:
-            return None
-        remaining = max(int((obj.end_at - timezone.now()).total_seconds()), 0)
-        days, rem = divmod(remaining, 86400)
-        hours, rem = divmod(rem, 3600)
-        minutes, seconds = divmod(rem, 60)
-        return {
-            'days': days,
-            'hours': hours,
-            'minutes': minutes,
-            'seconds': seconds,
-            'total_seconds': remaining,
-        }
-
-    def validate_banner_image(self, image):
-        return self._validate_offer_image(image)
-
-    def validate_popup_image(self, image):
-        return self._validate_offer_image(image)
-
-    def _validate_offer_image(self, image):
-        if image and image.size > MAX_OFFER_IMAGE_SIZE:
-            raise serializers.ValidationError('Image must be 8MB or smaller.')
-        return image
-
-    def validate(self, data):
-        redirect_type = data.get(
-            'redirect_type',
-            getattr(self.instance, 'redirect_type', None) if self.instance else None,
-        )
-        category = data.get('category', getattr(self.instance, 'category', None) if self.instance else None)
-        product = data.get('product', getattr(self.instance, 'product', None) if self.instance else None)
-        external_url = data.get('external_url', getattr(self.instance, 'external_url', '') if self.instance else '')
-        customer_page = data.get('customer_page', getattr(self.instance, 'customer_page', '') if self.instance else '')
-        no_expiry = data.get('no_expiry', getattr(self.instance, 'no_expiry', False) if self.instance else False)
-        start_at = data.get('start_at', getattr(self.instance, 'start_at', None) if self.instance else None)
-        end_at = data.get('end_at', getattr(self.instance, 'end_at', None) if self.instance else None)
-
-        if not self.instance and not data.get('banner_image'):
-            raise serializers.ValidationError({'banner_image': 'Offer banner image is required.'})
-        if not redirect_type:
-            raise serializers.ValidationError({'redirect_type': 'Select a redirect type.'})
-
-        if redirect_type == Offer.RedirectType.CATEGORY:
-            if not category:
-                raise serializers.ValidationError({'category': 'Select a category.'})
-            data['product'] = None
-            data['external_url'] = ''
-            data['customer_page'] = ''
-        elif redirect_type == Offer.RedirectType.PRODUCT:
-            if not product:
-                raise serializers.ValidationError({'product': 'Select a product.'})
-            data['category'] = None
-            data['external_url'] = ''
-            data['customer_page'] = ''
-        elif redirect_type == Offer.RedirectType.EXTERNAL_URL:
-            if not external_url:
-                raise serializers.ValidationError({'external_url': 'Enter an external URL.'})
-            data['category'] = None
-            data['product'] = None
-            data['customer_page'] = ''
-        elif redirect_type == Offer.RedirectType.PAGE:
-            if not customer_page:
-                raise serializers.ValidationError({'customer_page': 'Select a page.'})
-            data['category'] = None
-            data['product'] = None
-            data['external_url'] = ''
-
-        if start_at and end_at and end_at <= start_at:
-            raise serializers.ValidationError({'end_at': 'End date must be after start date.'})
-        if no_expiry:
-            data['end_at'] = None
-        elif not end_at:
-            raise serializers.ValidationError({'end_at': 'End date is required unless No Expiry is enabled.'})
-
-        return data

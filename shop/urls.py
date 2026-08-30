@@ -47,6 +47,8 @@ urlpatterns = [
     path('buy-now/', views.buy_now, name='buy_now'),
     path('checkout/', views.checkout_page, name='checkout_page'),
     path('checkout/verify-address/', views.verify_checkout_address, name='verify_checkout_address'),
+    path('checkout/apply-coupon/', views.apply_coupon, name='apply_coupon'),
+    path('checkout/remove-coupon/', views.remove_coupon, name='remove_coupon'),
     path('checkout/place-order/', views.place_order, name='place_order'),
     path('checkout/order-success/<int:order_id>/', views.order_success, name='order_success'),
     

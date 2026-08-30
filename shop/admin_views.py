@@ -21,7 +21,6 @@ from .models import (
     HomeTheme,
     LoginAttempt,
     NewsletterSubscription,
-    Offer,
     Product,
     ProductImage,
     Favorite,
@@ -31,6 +30,7 @@ from .models import (
     OrderItem,
     OTPSettings,
     ContactMessage,
+    Coupon,
 )
 from .email_utils import send_order_status_email
 
@@ -245,7 +245,6 @@ def edit_product(request, pk):
         product.category_id = request.POST.get('category') or None
         product.stock = request.POST.get('stock', product.stock)
         product.status = request.POST.get('status', product.status)
-        product.offer = request.POST.get('offer', '').strip()
 
         colors_raw = request.POST.get('colors', '')
         product.colors = [c.strip() for c in colors_raw.split(',') if c.strip()]
@@ -510,15 +509,6 @@ def admin_home_sections(request):
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'home_sections',
         'section_count': HomeSection.objects.count(),
-    })
-
-
-@admin_login_required
-def admin_offers(request):
-    return render(request, 'adminpanel/offers.html', {
-        'admin_name': request.session.get('admin_name'),
-        'active_nav': 'offers',
-        'offer_count': Offer.objects.count(),
     })
 
 
@@ -810,5 +800,234 @@ def toggle_message_read(request, pk):
     status_str = "marked as read" if msg.is_read else "marked as unread"
     messages.success(request, f'Message from {msg.name} {status_str}.')
     return redirect('admin_messages')
+
+
+# ─── Coupon Management Views ─────────────────────────────────
+
+@admin_login_required
+def admin_coupons(request):
+    search = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    coupons = Coupon.objects.all().order_by('-created_at')
+    
+    if search:
+        coupons = coupons.filter(code__icontains=search)
+        
+    now = timezone.now()
+    if status_filter == 'active':
+        coupons = coupons.filter(is_active=True, valid_from__lte=now, valid_until__gte=now)
+    elif status_filter == 'scheduled':
+        coupons = coupons.filter(is_active=True, valid_from__gt=now)
+    elif status_filter == 'inactive':
+        coupons = coupons.filter(Q(is_active=False) | Q(valid_until__lt=now))
+    elif status_filter == 'expired':
+        coupons = coupons.filter(valid_until__lt=now)
+
+    total_coupons = Coupon.objects.count()
+    active_coupons = Coupon.objects.filter(is_active=True, valid_from__lte=now, valid_until__gte=now).count()
+    expired_coupons = Coupon.objects.filter(valid_until__lt=now).count()
+
+    return render(request, 'adminpanel/coupons.html', {
+        'coupons': coupons,
+        'total_coupons': total_coupons,
+        'active_coupons': active_coupons,
+        'expired_coupons': expired_coupons,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'coupons',
+        'filter_search': search,
+        'status_filter': status_filter,
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def add_coupon(request):
+    now = timezone.now()
+    if request.method == 'POST':
+        code = request.POST.get('code', '').strip().upper()
+        discount_type = request.POST.get('discount_type', Coupon.DiscountType.PERCENTAGE)
+        
+        try:
+            discount_value = float(request.POST.get('discount_value', 0))
+            min_purchase = float(request.POST.get('min_purchase', 0.0))
+        except ValueError:
+            messages.error(request, 'Please enter valid numeric values for discount and minimum purchase.')
+            return redirect('add_coupon')
+
+        max_discount_raw = request.POST.get('max_discount', '').strip()
+        max_discount = float(max_discount_raw) if max_discount_raw else None
+
+        usage_limit_raw = request.POST.get('usage_limit', '').strip()
+        usage_limit = int(usage_limit_raw) if usage_limit_raw else None
+
+        valid_from_raw = request.POST.get('valid_from', '').strip()
+        days_to_expire_raw = request.POST.get('days_to_expire', '').strip()
+        valid_until_raw = request.POST.get('valid_until', '').strip()
+        
+        if not code:
+            messages.error(request, 'Coupon code is required.')
+            return redirect('add_coupon')
+
+        if Coupon.objects.filter(code__iexact=code).exists():
+            messages.error(request, f"Coupon code '{code}' already exists. Please choose a unique code.")
+            return redirect('add_coupon')
+
+        # Parse valid_from (Start Date)
+        if valid_from_raw:
+            try:
+                from django.utils.dateparse import parse_datetime
+                parsed_from = parse_datetime(valid_from_raw)
+                if not parsed_from:
+                    from datetime import datetime
+                    parsed_from = timezone.make_aware(datetime.strptime(valid_from_raw, '%Y-%m-%d'))
+                valid_from = parsed_from
+            except Exception:
+                valid_from = now
+        else:
+            valid_from = now
+
+        # Compute valid_until (Expiry Date)
+        if days_to_expire_raw and days_to_expire_raw.isdigit():
+            valid_until = valid_from + timedelta(days=int(days_to_expire_raw))
+        elif valid_until_raw:
+            try:
+                from django.utils.dateparse import parse_datetime
+                parsed_until = parse_datetime(valid_until_raw)
+                if not parsed_until:
+                    from datetime import datetime
+                    parsed_until = timezone.make_aware(datetime.strptime(valid_until_raw, '%Y-%m-%d'))
+                valid_until = parsed_until
+            except Exception:
+                valid_until = valid_from + timedelta(days=30)
+        else:
+            valid_until = valid_from + timedelta(days=30)
+
+        is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+
+        Coupon.objects.create(
+            code=code,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            min_purchase=min_purchase,
+            max_discount=max_discount,
+            valid_from=valid_from,
+            valid_until=valid_until,
+            usage_limit=usage_limit,
+            is_active=is_active,
+        )
+
+        messages.success(request, f"Coupon code '{code}' created successfully!")
+        return redirect('admin_coupons')
+
+    return render(request, 'adminpanel/coupon_form.html', {
+        'form_title': 'Add New Coupon',
+        'submit_text': 'Create Coupon',
+        'discount_types': Coupon.DiscountType.choices,
+        'valid_from_formatted': now.strftime('%Y-%m-%dT%H:%M'),
+        'valid_until_formatted': (now + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M'),
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'coupons',
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def edit_coupon(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk)
+
+    if request.method == 'POST':
+        code = request.POST.get('code', '').strip().upper()
+        discount_type = request.POST.get('discount_type', coupon.discount_type)
+        
+        try:
+            discount_value = float(request.POST.get('discount_value', coupon.discount_value))
+            min_purchase = float(request.POST.get('min_purchase', coupon.min_purchase))
+        except ValueError:
+            messages.error(request, 'Please enter valid numeric values.')
+            return redirect('edit_coupon', pk=pk)
+
+        max_discount_raw = request.POST.get('max_discount', '').strip()
+        max_discount = float(max_discount_raw) if max_discount_raw else None
+
+        usage_limit_raw = request.POST.get('usage_limit', '').strip()
+        usage_limit = int(usage_limit_raw) if usage_limit_raw else None
+
+        valid_from_raw = request.POST.get('valid_from', '').strip()
+        days_to_expire_raw = request.POST.get('days_to_expire', '').strip()
+        valid_until_raw = request.POST.get('valid_until', '').strip()
+
+        if not code:
+            messages.error(request, 'Coupon code cannot be empty.')
+            return redirect('edit_coupon', pk=pk)
+
+        if Coupon.objects.filter(code__iexact=code).exclude(pk=pk).exists():
+            messages.error(request, f"Coupon code '{code}' is already used by another coupon.")
+            return redirect('edit_coupon', pk=pk)
+
+        coupon.code = code
+        coupon.discount_type = discount_type
+        coupon.discount_value = discount_value
+        coupon.min_purchase = min_purchase
+        coupon.max_discount = max_discount
+        coupon.usage_limit = usage_limit
+        coupon.is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+
+        if valid_from_raw:
+            try:
+                from django.utils.dateparse import parse_datetime
+                parsed_from = parse_datetime(valid_from_raw)
+                if parsed_from:
+                    coupon.valid_from = parsed_from
+            except Exception:
+                pass
+
+        if days_to_expire_raw and days_to_expire_raw.isdigit():
+            coupon.valid_until = coupon.valid_from + timedelta(days=int(days_to_expire_raw))
+        elif valid_until_raw:
+            try:
+                from django.utils.dateparse import parse_datetime
+                parsed = parse_datetime(valid_until_raw)
+                if parsed:
+                    coupon.valid_until = parsed
+            except Exception:
+                pass
+
+        coupon.save()
+        messages.success(request, f"Coupon '{coupon.code}' updated successfully!")
+        return redirect('admin_coupons')
+
+    return render(request, 'adminpanel/coupon_form.html', {
+        'coupon': coupon,
+        'form_title': f"Edit Coupon: {coupon.code}",
+        'submit_text': 'Save Changes',
+        'discount_types': Coupon.DiscountType.choices,
+        'valid_from_formatted': coupon.valid_from.strftime('%Y-%m-%dT%H:%M') if coupon.valid_from else '',
+        'valid_until_formatted': coupon.valid_until.strftime('%Y-%m-%dT%H:%M') if coupon.valid_until else '',
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'coupons',
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_coupon(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk)
+    code = coupon.code
+    coupon.delete()
+    messages.success(request, f"Coupon '{code}' deleted successfully.")
+    return redirect('admin_coupons')
+
+
+@admin_login_required
+@require_POST
+def toggle_coupon(request, pk):
+    coupon = get_object_or_404(Coupon, pk=pk)
+    coupon.is_active = not coupon.is_active
+    coupon.save(update_fields=['is_active'])
+    status_str = "activated" if coupon.is_active else "deactivated"
+    messages.success(request, f"Coupon '{coupon.code}' {status_str}.")
+    return redirect('admin_coupons')
+
 
 

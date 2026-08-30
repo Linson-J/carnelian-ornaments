@@ -26,6 +26,9 @@
     <a href="{% url 'admin_delivery' %}" class="nav-item{% if active_nav == 'delivery' %} active{% endif %}">
       <span class="nav-icon">DL</span> Delivery
     </a>
+    <a href="{% url 'admin_coupons' %}" class="nav-item{% if active_nav == 'coupons' %} active{% endif %}">
+      <span class="nav-icon">CP</span> Coupons
+    </a>
     <a href="{% url 'admin_customers' %}" class="nav-item{% if active_nav == 'customers' %} active{% endif %}">
       <span class="nav-icon">CU</span> Customers
       {% if customer_count %}<span class="nav-badge">{{ customer_count }}</span>{% endif %}
@@ -41,10 +44,6 @@
     <a href="{% url 'admin_home_sections' %}" class="nav-item{% if active_nav == 'home_sections' %} active{% endif %}">
       <span class="nav-icon">PL</span> Product Lists
       {% if section_count %}<span class="nav-badge">{{ section_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'admin_offers' %}" class="nav-item{% if active_nav == 'offers' %} active{% endif %}">
-      <span class="nav-icon">OF</span> Offers
-      {% if offer_count %}<span class="nav-badge">{{ offer_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_subscriptions' %}" class="nav-item{% if active_nav == 'subscriptions' %} active{% endif %}">
       <span class="nav-icon">SB</span> Subscriptions

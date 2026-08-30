@@ -1,7 +1,6 @@
 from django.urls import path
 
 from .api_views import (
-    ActiveOfferListView,
     CarouselDetailView,
     CarouselListCreateView,
     CategoryDetailView,
@@ -12,10 +11,6 @@ from .api_views import (
     HomeSectionListCreateView,
     HomeThemeView,
     CustomerSearchAPIView,
-    OfferDetailView,
-    OfferListCreateView,
-    OfferToggleStatusView,
-    PopupOfferView,
     ProductDetailView,
     ProductImageView,
     ProductListCreateView,
@@ -37,9 +32,4 @@ urlpatterns = [
     path('theme/', HomeThemeView.as_view()),
     path('home-sections/', HomeSectionListCreateView.as_view()),
     path('home-sections/<int:pk>/', HomeSectionDetailView.as_view()),
-    path('offers/', OfferListCreateView.as_view()),
-    path('offers/active/', ActiveOfferListView.as_view()),
-    path('offers/popup/', PopupOfferView.as_view()),
-    path('offers/<int:pk>/', OfferDetailView.as_view()),
-    path('offers/<int:pk>/toggle/', OfferToggleStatusView.as_view()),
 ]

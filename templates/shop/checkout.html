@@ -411,6 +411,239 @@
   .autocomplete-suggestion:last-child {
     border-bottom: none;
   }
+
+  /* ─── Coupon Promo Styles ─── */
+  .coupon-box-wrap {
+    background: linear-gradient(135deg, rgba(124, 83, 87, 0.04) 0%, rgba(255, 255, 255, 0.95) 100%);
+    border: 1.5px dashed rgba(124, 83, 87, 0.25);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+  }
+  .coupon-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--primary, #7c5357);
+    margin-bottom: 12px;
+  }
+  .coupon-input-group {
+    display: flex;
+    gap: 8px;
+  }
+  .coupon-input {
+    flex: 1;
+    text-transform: uppercase;
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 10px 14px;
+    border: 1px solid rgba(124, 83, 87, 0.2);
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .coupon-input:focus {
+    border-color: var(--primary, #7c5357);
+    box-shadow: 0 0 0 3px rgba(124, 83, 87, 0.1);
+  }
+  .btn-apply-coupon {
+    background: var(--primary, #7c5357);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-apply-coupon:hover {
+    background: #643f43;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 83, 87, 0.25);
+  }
+  .coupon-msg-feedback {
+    font-size: 0.82rem;
+    margin-top: 8px;
+    display: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .coupon-msg-feedback.success {
+    display: block;
+    background: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(46, 125, 50, 0.2);
+  }
+  .coupon-msg-feedback.error {
+    display: block;
+    background: rgba(198, 40, 40, 0.1);
+    color: #c62828;
+    border: 1px solid rgba(198, 40, 40, 0.2);
+  }
+
+  /* Applied state badge */
+  .applied-coupon-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(46, 125, 50, 0.08);
+    border: 1px dashed #2e7d32;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+  .applied-coupon-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .applied-coupon-code {
+    font-family: monospace;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #2e7d32;
+    letter-spacing: 1px;
+  }
+  .btn-remove-coupon {
+    background: none;
+    border: none;
+    color: #c62828;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+  .btn-remove-coupon:hover {
+    background: rgba(198, 40, 40, 0.1);
+  }
+
+  /* Available Offers Section (Ticket Card Layout) */
+  .available-offers-sec {
+    margin-top: 16px;
+    border-top: 1px dashed rgba(124, 83, 87, 0.18);
+    padding-top: 14px;
+  }
+  .offers-sec-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dark, #1a1c1a);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .offers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .offer-item-card {
+    background: #ffffff;
+    border: 1px solid rgba(124, 83, 87, 0.18);
+    border-left: 4px solid var(--primary, #7c5357);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .offer-item-card:hover {
+    border-color: var(--primary, #7c5357);
+    box-shadow: 0 6px 16px rgba(124, 83, 87, 0.12);
+    transform: translateY(-2px);
+  }
+  .offer-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .offer-badge-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124, 83, 87, 0.08);
+    border: 1px dashed rgba(124, 83, 87, 0.3);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .offer-badge-code {
+    font-family: monospace;
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--primary, #7c5357);
+    letter-spacing: 1px;
+  }
+  .offer-card-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .offer-title-text {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-dark, #1a1c1a);
+    line-height: 1.35;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .offer-min-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted, #666);
+    background: rgba(0, 0, 0, 0.04);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .offer-expiry-text {
+    font-size: 0.74rem;
+    color: #777;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .btn-use-offer {
+    background: var(--primary, #7c5357);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(124, 83, 87, 0.2);
+  }
+  .btn-use-offer:hover {
+    background: #643f43;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(124, 83, 87, 0.3);
+  }
 </style>
 {% endblock %}
 
@@ -620,7 +853,7 @@
   <div class="summary-card checkout-card">
     <div class="summary-title">Order Summary</div>
     
-    <div style="max-height: 250px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
+    <div style="max-height: 220px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px;">
       {% for item in cart_items %}
       <div class="item-row">
         <div class="item-info">
@@ -640,7 +873,79 @@
       </div>
       {% endfor %}
     </div>
+
+    <!-- ─── COUPON PROMO SECTION ─── -->
+    <div class="coupon-box-wrap">
+      <div class="coupon-box-header">
+        <span><i class="ri-ticket-2-line" style="font-size: 1.1rem; vertical-align: middle;"></i> Promo Code & Coupons</span>
+      </div>
+
+      <div class="coupon-input-group" id="couponInputContainer" style="{% if applied_coupon %}display: none;{% endif %}">
+        <input type="text" id="couponCodeInput" class="coupon-input" placeholder="ENTER CODE" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCoupon();}">
+        <button class="btn-apply-coupon" type="button" id="btnApplyCoupon" onclick="applyCoupon()">
+          Apply
+        </button>
+      </div>
+
+      <div id="couponMsgFeedback" class="coupon-msg-feedback"></div>
+
+      <!-- Applied Coupon Display -->
+      <div class="applied-coupon-card" id="appliedCouponCard" style="{% if not applied_coupon %}display: none;{% endif %}">
+        <div class="applied-coupon-info">
+          <i class="ri-coupon-3-fill" style="color: #2e7d32; font-size: 1.3rem;"></i>
+          <div>
+            <div class="applied-coupon-code" id="appliedCouponCodeText">{{ applied_coupon.code|default:'' }}</div>
+            <div style="font-size: 0.76rem; color: #2e7d32; font-weight: 600;" id="appliedCouponSavingsText">
+              {% if applied_coupon %}
+                Applied successfully! You save Rs. {{ coupon_discount }}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-remove-coupon" onclick="removeCoupon()" title="Remove Coupon">
+          <i class="ri-close-circle-line"></i> Remove
+        </button>
+      </div>
+
+      <!-- Available Offers (Directly Visible Below) -->
+      {% if available_coupons and available_coupons.count > 0 %}
+      <div class="available-offers-sec">
+        <div class="offers-sec-title">
+          <i class="ri-gift-line" style="color: var(--primary, #7c5357); font-size: 1.05rem;"></i> Available Offers ({{ available_coupons.count }})
+        </div>
+
+        <div class="offers-list" id="availableOffersList">
+          {% for coupon in available_coupons %}
+          <div class="offer-item-card">
+            <div class="offer-card-top">
+              <div class="offer-badge-wrapper">
+                <i class="ri-coupon-3-fill" style="color: var(--primary, #7c5357); font-size: 0.95rem;"></i>
+                <span class="offer-badge-code">{{ coupon.code }}</span>
+              </div>
+              <button type="button" class="btn-use-offer" onclick="applyCoupon('{{ coupon.code }}')">
+                Use Code
+              </button>
+            </div>
+            <div class="offer-card-bottom">
+              <div class="offer-title-text">
+                {% if coupon.discount_type == 'percentage' %}
+                  Get {{ coupon.discount_value|floatformat:"0" }}% OFF
+                {% else %}
+                  Flat Rs. {{ coupon.discount_value|floatformat:"0" }} OFF
+                {% endif %}
+                {% if coupon.min_purchase > 0 %}
+                  <span class="offer-min-tag">Min order Rs. {{ coupon.min_purchase|floatformat:"0" }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
     
+    <!-- Calculation Table -->
     <div class="calc-sec">
       <div class="calc-row">
         <span>Subtotal</span>
@@ -650,6 +955,13 @@
         <span>Discount</span>
         <span>-Rs. {{ discount }}</span>
       </div>
+
+      <!-- Coupon Savings Row -->
+      <div class="calc-row" id="couponCalcRow" style="color: #2e7d32; font-weight: 600; {% if not applied_coupon %}display: none;{% endif %}">
+        <span>Coupon Savings (<strong id="appliedCouponTag">{{ applied_coupon.code }}</strong>)</span>
+        <span id="couponDiscountVal">-Rs. {{ coupon_discount }}</span>
+      </div>
+
       <div class="calc-row">
         <span>Delivery Fee</span>
         <span id="deliveryFeeVal">Rs. {{ default_shipping }}</span>
@@ -661,6 +973,7 @@
     </div>
   </div>
 
+
 </main>
 {% endblock %}
 
@@ -669,6 +982,131 @@
   let addressVerified = false;
   let paymentMethod = 'Card';
   const subtotal = parseFloat("{{ subtotal }}");
+  let currentCouponDiscount = parseFloat("{{ coupon_discount|default:0 }}");
+  let currentDeliveryFee = parseFloat("{{ default_shipping|default:0 }}");
+
+  function recalculateGrandTotal() {
+    let grandTotal = subtotal - currentCouponDiscount + currentDeliveryFee;
+    if (grandTotal < 0) grandTotal = 0;
+    document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+  }
+
+  function toggleOffersList() {
+    const list = document.getElementById('availableOffersList');
+    const icon = document.getElementById('offersToggleIcon');
+    if (list.style.display === 'none') {
+      list.style.display = 'flex';
+      if (icon) icon.style.transform = 'rotate(180deg)';
+    } else {
+      list.style.display = 'none';
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  function showCouponFeedback(msg, isSuccess) {
+    const box = document.getElementById('couponMsgFeedback');
+    if (!box) return;
+    box.className = `coupon-msg-feedback ${isSuccess ? 'success' : 'error'}`;
+    box.innerHTML = msg;
+    box.style.display = 'block';
+    setTimeout(() => {
+      box.style.display = 'none';
+    }, 4000);
+  }
+
+  async function applyCoupon(codeOverride = null) {
+    const inputEl = document.getElementById('couponCodeInput');
+    const btn = document.getElementById('btnApplyCoupon');
+    const code = (codeOverride || inputEl.value || '').trim().toUpperCase();
+
+    if (!code) {
+      showCouponFeedback('Please enter a valid coupon code.', false);
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+    }
+
+    try {
+      const response = await fetch('/checkout/apply-coupon/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ code })
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        currentCouponDiscount = parseFloat(data.discount_amount);
+        
+        // Update Coupon Card UI
+        const inputCont = document.getElementById('couponInputContainer');
+        const cardCont = document.getElementById('appliedCouponCard');
+        if (inputCont) inputCont.style.display = 'none';
+        if (cardCont) cardCont.style.display = 'flex';
+        
+        const codeTxt = document.getElementById('appliedCouponCodeText');
+        const savTxt = document.getElementById('appliedCouponSavingsText');
+        if (codeTxt) codeTxt.textContent = data.coupon_code;
+        if (savTxt) savTxt.textContent = `Applied successfully! You save Rs. ${data.discount_amount.toFixed(2)}`;
+
+        // Update Calc Table
+        const tag = document.getElementById('appliedCouponTag');
+        const discVal = document.getElementById('couponDiscountVal');
+        const calcRow = document.getElementById('couponCalcRow');
+        if (tag) tag.textContent = data.coupon_code;
+        if (discVal) discVal.textContent = `-Rs. ${data.discount_amount.toFixed(2)}`;
+        if (calcRow) calcRow.style.display = 'flex';
+
+        recalculateGrandTotal();
+        showCouponFeedback(data.message, true);
+        if (inputEl) inputEl.value = '';
+      } else {
+        showCouponFeedback(data.message || 'Failed to apply coupon.', false);
+      }
+    } catch (e) {
+      showCouponFeedback('Network error applying coupon code.', false);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Apply';
+      }
+    }
+  }
+
+  async function removeCoupon() {
+    try {
+      const response = await fetch('/checkout/remove-coupon/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        }
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        currentCouponDiscount = 0.0;
+        const inputCont = document.getElementById('couponInputContainer');
+        const cardCont = document.getElementById('appliedCouponCard');
+        const calcRow = document.getElementById('couponCalcRow');
+        
+        if (inputCont) inputCont.style.display = 'flex';
+        if (cardCont) cardCont.style.display = 'none';
+        if (calcRow) calcRow.style.display = 'none';
+
+        recalculateGrandTotal();
+        showCouponFeedback('Coupon removed.', true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   
   // Custom UI notification helpers
   function showStatus(message, type = 'loading') {
@@ -787,9 +1225,9 @@
         addressVerified = true;
         
         // Update Order calculation display
-        document.getElementById('deliveryFeeVal').textContent = `Rs. ${data.delivery_fee.toFixed(2)}`;
-        const grandTotal = subtotal + data.delivery_fee;
-        document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+        currentDeliveryFee = parseFloat(data.delivery_fee);
+        document.getElementById('deliveryFeeVal').textContent = `Rs. ${currentDeliveryFee.toFixed(2)}`;
+        recalculateGrandTotal();
         
         let successMsg = data.message;
         if (data.delivery_fee > 0) {

@@ -16,7 +16,6 @@ urlpatterns = [
     path('carousel/<int:pk>/edit/', admin_views.edit_carousel_item, name='edit_carousel_item'),
     path('carousel/<int:pk>/delete/', admin_views.delete_carousel_item, name='delete_carousel_item'),
     path('home-sections/', admin_views.admin_home_sections, name='admin_home_sections'),
-    path('offers/', admin_views.admin_offers, name='admin_offers'),
     path('login-logs/', admin_views.admin_login_logs, name='admin_login_logs'),
     path('subscriptions/', admin_views.admin_subscriptions, name='admin_subscriptions'),
     path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
@@ -33,4 +32,10 @@ urlpatterns = [
     path('messages/', admin_views.admin_messages, name='admin_messages'),
     path('messages/<int:pk>/delete/', admin_views.delete_message, name='delete_message'),
     path('messages/<int:pk>/toggle-read/', admin_views.toggle_message_read, name='toggle_message_read'),
+    path('coupons/', admin_views.admin_coupons, name='admin_coupons'),
+    path('coupons/add/', admin_views.add_coupon, name='add_coupon'),
+    path('coupons/<int:pk>/edit/', admin_views.edit_coupon, name='edit_coupon'),
+    path('coupons/<int:pk>/delete/', admin_views.delete_coupon, name='delete_coupon'),
+    path('coupons/<int:pk>/toggle/', admin_views.toggle_coupon, name='toggle_coupon'),
 ]
+

@@ -265,6 +265,7 @@ def ajax_signup(request):
         user = User.objects.create_user(username=email, email=email)
         user.set_password(password)
         user.save()
+        UserProfile.objects.get_or_create(user=user)
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         return JsonResponse({'success': True, 'message': 'Account created and logged in successfully.'})
     except Exception as e:
@@ -790,8 +791,53 @@ def checkout_page(request):
         default_shipping = 0.0
     else:
         default_shipping = float(config.base_fee)
-        
-    grand_total = subtotal + default_shipping
+
+    # Coupon handling
+    from .models import Coupon
+    applied_coupon = None
+    coupon_discount = 0.0
+    applied_coupon_id = request.session.get('applied_coupon_id')
+    if applied_coupon_id:
+        c_obj = Coupon.objects.filter(pk=applied_coupon_id, is_active=True).first()
+        if c_obj:
+            valid, _ = c_obj.is_valid(subtotal)
+            if valid:
+                applied_coupon = c_obj
+                coupon_discount = c_obj.calculate_discount(subtotal)
+            else:
+                request.session.pop('applied_coupon_id', None)
+
+    # Ensure default coupons exist if db is empty for demonstration
+    now = timezone.now()
+    if not Coupon.objects.exists():
+        Coupon.objects.create(
+            code='WELCOME10',
+            discount_type=Coupon.DiscountType.PERCENTAGE,
+            discount_value=10.00,
+            min_purchase=0.00,
+            valid_from=now,
+            valid_until=now + timedelta(days=30),
+            is_active=True
+        )
+        Coupon.objects.create(
+            code='SAVE200',
+            discount_type=Coupon.DiscountType.FIXED,
+            discount_value=200.00,
+            min_purchase=999.00,
+            valid_from=now,
+            valid_until=now + timedelta(days=15),
+            is_active=True
+        )
+
+    available_coupons = Coupon.objects.filter(
+        is_active=True,
+        valid_from__lte=now,
+        valid_until__gte=now
+    ).order_by('-created_at')
+
+    grand_total = subtotal - coupon_discount + default_shipping
+    if grand_total < 0:
+        grand_total = 0.0
     
     profile = None
     last_order = None
@@ -803,12 +849,70 @@ def checkout_page(request):
         'cart_items': cart_items,
         'subtotal': subtotal,
         'discount': discount,
+        'coupon_discount': coupon_discount,
+        'applied_coupon': applied_coupon,
+        'available_coupons': available_coupons,
         'default_shipping': default_shipping,
         'grand_total': grand_total,
         'config': config,
         'profile': profile,
         'last_order': last_order,
     })
+
+
+@require_POST
+def apply_coupon(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required to apply coupon.'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        code = data.get('code', '').strip().upper()
+    except (json.JSONDecodeError, AttributeError):
+        code = request.POST.get('code', '').strip().upper()
+
+    if not code:
+        return JsonResponse({'success': False, 'message': 'Please enter a coupon code.'}, status=400)
+
+    cart = request.session.get('cart', {})
+    subtotal = 0.0
+    for prod_id, qty in cart.items():
+        prod = Product.objects.filter(id=int(prod_id)).first()
+        if prod:
+            price = float(prod.discount_price if prod.discount_price else prod.price)
+            subtotal += price * qty
+
+    if subtotal <= 0:
+        return JsonResponse({'success': False, 'message': 'Your cart is empty.'}, status=400)
+
+    from .models import Coupon
+    coupon = Coupon.objects.filter(code__iexact=code).first()
+    if not coupon:
+        return JsonResponse({'success': False, 'message': f"Coupon code '{code}' is invalid or does not exist."}, status=400)
+
+    is_valid, msg = coupon.is_valid(subtotal)
+    if not is_valid:
+        return JsonResponse({'success': False, 'message': msg}, status=400)
+
+    discount_amount = coupon.calculate_discount(subtotal)
+    request.session['applied_coupon_id'] = coupon.id
+
+    return JsonResponse({
+        'success': True,
+        'message': f"Coupon '{coupon.code}' applied! Saved Rs. {discount_amount:.2f}",
+        'coupon_code': coupon.code,
+        'coupon_id': coupon.id,
+        'discount_amount': discount_amount,
+        'discount_type': coupon.discount_type,
+        'discount_value': float(coupon.discount_value),
+    })
+
+
+@require_POST
+def remove_coupon(request):
+    if 'applied_coupon_id' in request.session:
+        del request.session['applied_coupon_id']
+    return JsonResponse({'success': True, 'message': 'Coupon code removed successfully.'})
 
 
 @require_POST
@@ -955,8 +1059,23 @@ def place_order(request):
             delivery_fee = float(matching_zone.delivery_fee)
         else:
             delivery_fee = float(config.base_fee)
-            
-    total = subtotal + delivery_fee
+
+    # Coupon discount processing
+    from .models import Coupon
+    coupon_discount = 0.0
+    applied_coupon = None
+    applied_coupon_id = request.session.get('applied_coupon_id')
+    if applied_coupon_id:
+        c_obj = Coupon.objects.filter(pk=applied_coupon_id, is_active=True).first()
+        if c_obj:
+            valid, _ = c_obj.is_valid(subtotal)
+            if valid:
+                applied_coupon = c_obj
+                coupon_discount = c_obj.calculate_discount(subtotal)
+
+    total = subtotal - coupon_discount + delivery_fee
+    if total < 0:
+        total = 0.0
     
     # Create the Order
     order = Order.objects.create(
@@ -971,11 +1090,20 @@ def place_order(request):
         postal_code=postal_code,
         subtotal=subtotal,
         delivery_fee=delivery_fee,
+        discount=coupon_discount,
+        coupon=applied_coupon,
+        coupon_code=applied_coupon.code if applied_coupon else '',
         total=total,
         status=Order.Status.PROCESSING if payment_method == 'Card' else Order.Status.PENDING,
         payment_method=payment_method,
         payment_id=payment_id
     )
+
+    if applied_coupon:
+        applied_coupon.used_count += 1
+        applied_coupon.save(update_fields=['used_count'])
+        request.session.pop('applied_coupon_id', None)
+
     
     # Create order items and deduct stock
     for prod, qty, price in order_items_data:

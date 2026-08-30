@@ -14,7 +14,6 @@ from .models import (
     HomeTheme,
     LoginAttempt,
     NewsletterSubscription,
-    Offer,
     Product,
     ProductImage,
     DeliveryZone,
@@ -23,6 +22,7 @@ from .models import (
     OrderItem,
     UserProfile,
     ContactMessage,
+    Coupon,
 )
 
 
@@ -61,13 +61,6 @@ class CarouselItemAdmin(admin.ModelAdmin):
     list_display = ('title', 'redirect_type', 'product', 'order', 'is_active')
     list_filter = ('is_active', 'redirect_type')
     search_fields = ('title', 'description', 'button_text')
-
-
-@admin.register(Offer)
-class OfferAdmin(admin.ModelAdmin):
-    list_display = ('title', 'redirect_type', 'status', 'show_as_popup', 'display_priority_pc')
-    list_filter = ('status', 'redirect_type', 'show_as_popup', 'display_on_home')
-    search_fields = ('title', 'subtitle', 'description')
 
 
 @admin.register(HomeTheme)
@@ -174,5 +167,14 @@ class ContactMessageAdmin(admin.ModelAdmin):
     search_fields = ('name', 'email', 'subject', 'message')
     readonly_fields = ('created_at',)
     ordering = ('-created_at',)
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ('code', 'discount_type', 'discount_value', 'min_purchase', 'valid_until', 'used_count', 'usage_limit', 'is_active')
+    list_filter = ('discount_type', 'is_active', 'created_at')
+    search_fields = ('code',)
+    ordering = ('-created_at',)
+
 
 

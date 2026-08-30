@@ -14,7 +14,6 @@ from .models import (
     CategoryTag,
     HomeSection,
     HomeTheme,
-    Offer,
     Product,
     ProductImage,
 )
@@ -24,7 +23,6 @@ from .serializers import (
     CategoryTagSerializer,
     HomeSectionSerializer,
     HomeThemeSerializer,
-    OfferSerializer,
     ProductImageSerializer,
     ProductReadSerializer,
     ProductUploadImageField,
@@ -554,154 +552,6 @@ class HomeSectionDetailView(APIView):
         section = get_object_or_404(HomeSection, pk=pk)
         section.delete()
         return success(msg='Home section deleted')
-
-
-def _active_offer_queryset():
-    now = timezone.now()
-    return Offer.objects.select_related('category', 'product').prefetch_related(
-        'product__images',
-    ).filter(
-        status=Offer.Status.ACTIVE,
-    ).filter(
-        Q(start_at__isnull=True) | Q(start_at__lte=now),
-    ).filter(
-        Q(no_expiry=True) | Q(end_at__gte=now),
-    )
-
-
-class OfferListCreateView(APIView):
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    permission_classes = [AdminWritePermission]
-
-    def get(self, request):
-        qs = Offer.objects.select_related('category', 'product').prefetch_related(
-            'product__images',
-        ).order_by('display_priority_pc', 'id')
-
-        if request.query_params.get('active') in ('true', '1', 'yes'):
-            qs = _active_offer_queryset()
-        elif request.query_params.get('all') == 'true':
-            if request.session.get('admin_authenticated') is not True:
-                return error('Admin login is required for this operation.', code=403)
-        else:
-            qs = _active_offer_queryset()
-
-        placement = request.query_params.get('placement')
-        if placement == 'home':
-            qs = qs.filter(display_on_home=True, show_as_popup=False)
-        elif placement == 'offer_page':
-            qs = qs.filter(display_on_offer_page=True, show_as_popup=False)
-        elif placement == 'popup':
-            qs = qs.filter(show_as_popup=True)
-
-        serializer = OfferSerializer(qs, many=True, context={'request': request})
-        return success({'count': qs.count(), 'offers': serializer.data})
-
-    def post(self, request):
-        serializer = OfferSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            offer = serializer.save()
-            return success(
-                OfferSerializer(offer, context={'request': request}).data,
-                'Offer created',
-                201,
-            )
-        return error('Validation failed', serializer.errors)
-
-
-class OfferDetailView(APIView):
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    permission_classes = [AdminWritePermission]
-
-    def get(self, request, pk):
-        offer = get_object_or_404(
-            Offer.objects.select_related('category', 'product').prefetch_related('product__images'),
-            pk=pk,
-        )
-        return success(OfferSerializer(offer, context={'request': request}).data)
-
-    def put(self, request, pk):
-        return self._update(request, pk)
-
-    def patch(self, request, pk):
-        return self._update(request, pk)
-
-    def _update(self, request, pk):
-        offer = get_object_or_404(Offer, pk=pk)
-        old_banner_image = offer.banner_image
-        old_popup_image = offer.popup_image
-        serializer = OfferSerializer(
-            offer,
-            data=request.data,
-            partial=True,
-            context={'request': request},
-        )
-        if serializer.is_valid():
-            updated = serializer.save()
-            if request.FILES.get('banner_image') and old_banner_image and old_banner_image.name != updated.banner_image.name:
-                old_banner_image.delete(save=False)
-            if (
-                request.FILES.get('popup_image')
-                and old_popup_image
-                and old_popup_image.name != getattr(updated.popup_image, 'name', None)
-            ):
-                old_popup_image.delete(save=False)
-            return success(
-                OfferSerializer(updated, context={'request': request}).data,
-                'Offer updated',
-            )
-        return error('Validation failed', serializer.errors)
-
-    def delete(self, request, pk):
-        offer = get_object_or_404(Offer, pk=pk)
-        if offer.banner_image:
-            offer.banner_image.delete(save=False)
-        if offer.popup_image:
-            offer.popup_image.delete(save=False)
-        offer.delete()
-        return success(msg='Offer deleted')
-
-
-class ActiveOfferListView(APIView):
-    def get(self, request):
-        qs = _active_offer_queryset().filter(show_as_popup=False).order_by(
-            'display_priority_pc', 'id',
-        )
-        placement = request.query_params.get('placement')
-        if placement == 'home':
-            qs = qs.filter(display_on_home=True)
-        elif placement == 'offer_page':
-            qs = qs.filter(display_on_offer_page=True)
-        serializer = OfferSerializer(qs, many=True, context={'request': request})
-        return success({'count': qs.count(), 'offers': serializer.data})
-
-
-class PopupOfferView(APIView):
-    def get(self, request):
-        offer = _active_offer_queryset().filter(show_as_popup=True).order_by(
-            'display_priority_pc', 'id',
-        ).first()
-        if not offer:
-            return success(None, 'No active popup offer')
-        return success(OfferSerializer(offer, context={'request': request}).data)
-
-
-class OfferToggleStatusView(APIView):
-    permission_classes = [AdminWritePermission]
-
-    def patch(self, request, pk):
-        offer = get_object_or_404(Offer, pk=pk)
-        status_value = request.data.get('status')
-        if status_value in (Offer.Status.ACTIVE, Offer.Status.INACTIVE):
-            offer.status = status_value
-        else:
-            offer.status = (
-                Offer.Status.INACTIVE
-                if offer.status == Offer.Status.ACTIVE
-                else Offer.Status.ACTIVE
-            )
-        offer.save(update_fields=['status', 'updated_at'])
-        return success(OfferSerializer(offer, context={'request': request}).data, 'Offer status updated')
 
 
 class CustomerSearchAPIView(APIView):

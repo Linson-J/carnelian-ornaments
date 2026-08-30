@@ -38,10 +38,6 @@
           <div class="char-counter"><span id="char-desc">0</span>/2000</div>
           <div class="field-err" id="err-desc"></div>
         </div>
-        <div class="field">
-          <label for="f-offer">Offer / badge <span style="color:var(--muted2);font-size:10px;text-transform:none;letter-spacing:0">(optional)</span></label>
-          <input type="text" id="f-offer" placeholder="e.g. 10% off this weekend, Free shipping"/>
-        </div>
       </div>
     </div>
 
@@ -403,7 +399,6 @@
     fd.append('category', document.getElementById('f-category').value);
     fd.append('stock', document.getElementById('f-stock').value);
     fd.append('status', document.getElementById('status-input').value);
-    fd.append('offer', document.getElementById('f-offer').value.trim());
     const disc = document.getElementById('f-discount').value;
     if (disc) fd.append('discount_price', disc);
     if (colors.length) fd.append('colors', JSON.stringify(colors));
