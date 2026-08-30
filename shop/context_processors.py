@@ -1,4 +1,4 @@
-from .models import Category
+from .models import Category, PopupBanner
 
 
 def footer_context(request):
@@ -13,8 +13,13 @@ def footer_context(request):
     cart = request.session.get('cart', {})
     cart_count = sum(cart.values()) if isinstance(cart, dict) else 0
     
+    # Get active entry popup banner
+    active_popup_banner = PopupBanner.objects.filter(is_active=True).first()
+    
     return {
         'footer_categories': categories,
         'all_categories': all_categories,
         'cart_count': cart_count,
+        'active_popup_banner': active_popup_banner,
     }
+

@@ -31,6 +31,7 @@ from .models import (
     OTPSettings,
     ContactMessage,
     Coupon,
+    PopupBanner,
 )
 from .email_utils import send_order_status_email
 
@@ -1028,6 +1029,146 @@ def toggle_coupon(request, pk):
     status_str = "activated" if coupon.is_active else "deactivated"
     messages.success(request, f"Coupon '{coupon.code}' {status_str}.")
     return redirect('admin_coupons')
+
+
+# ─── Popup Banner Management Views ────────────────────────────
+
+@admin_login_required
+def admin_popups(request):
+    search = request.GET.get('search', '').strip()
+    popups = PopupBanner.objects.all().order_by('-created_at')
+
+    if search:
+        popups = popups.filter(Q(title__icontains=search) | Q(subtitle__icontains=search))
+
+    popup_count = PopupBanner.objects.count()
+    active_popup_count = PopupBanner.objects.filter(is_active=True).count()
+
+    return render(request, 'adminpanel/popups.html', {
+        'popups': popups,
+        'popup_count': popup_count,
+        'active_popup_count': active_popup_count,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'popups',
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def add_popup(request):
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        subtitle = request.POST.get('subtitle', '').strip()
+        button_text = request.POST.get('button_text', 'Shop Now').strip() or 'Shop Now'
+        link_url = request.POST.get('link_url', '/shop/').strip() or '/shop/'
+        
+        try:
+            display_delay = int(request.POST.get('display_delay', 1))
+        except (ValueError, TypeError):
+            display_delay = 1
+
+        frequency = request.POST.get('frequency', PopupBanner.DisplayFrequency.ONCE_PER_SESSION)
+        is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+        image = request.FILES.get('image')
+
+        if not image:
+            messages.error(request, 'Popup image is required.')
+            return redirect('add_popup')
+
+        PopupBanner.objects.create(
+            title=title,
+            subtitle=subtitle,
+            image=image,
+            button_text=button_text,
+            link_url=link_url,
+            display_delay=display_delay,
+            frequency=frequency,
+            is_active=is_active,
+        )
+
+        messages.success(request, 'Popup Banner created successfully!')
+        return redirect('admin_popups')
+
+    categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
+    products = Product.objects.filter(status=Product.Status.AVAILABLE).order_by('name')
+
+    return render(request, 'adminpanel/popup_form.html', {
+        'form_title': 'Add New Popup Banner',
+        'submit_text': 'Create Popup Banner',
+        'frequencies': PopupBanner.DisplayFrequency.choices,
+        'categories': categories,
+        'products': products,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'popups',
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def edit_popup(request, pk):
+    popup = get_object_or_404(PopupBanner, pk=pk)
+
+    if request.method == 'POST':
+        popup.title = request.POST.get('title', '').strip()
+        popup.subtitle = request.POST.get('subtitle', '').strip()
+        popup.button_text = request.POST.get('button_text', 'Shop Now').strip() or 'Shop Now'
+        popup.link_url = request.POST.get('link_url', '/shop/').strip() or '/shop/'
+
+        try:
+            popup.display_delay = int(request.POST.get('display_delay', popup.display_delay))
+        except (ValueError, TypeError):
+            pass
+
+        popup.frequency = request.POST.get('frequency', popup.frequency)
+        popup.is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+
+        new_image = request.FILES.get('image')
+        if new_image:
+            if popup.image:
+                popup.image.delete(save=False)
+            popup.image = new_image
+
+        popup.save()
+        messages.success(request, f"Popup Banner '{popup}' updated successfully!")
+        return redirect('admin_popups')
+
+    categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
+    products = Product.objects.filter(status=Product.Status.AVAILABLE).order_by('name')
+
+    return render(request, 'adminpanel/popup_form.html', {
+        'popup': popup,
+        'form_title': f"Edit Popup Banner #{popup.id}",
+        'submit_text': 'Save Changes',
+        'frequencies': PopupBanner.DisplayFrequency.choices,
+        'categories': categories,
+        'products': products,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'popups',
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_popup(request, pk):
+    popup = get_object_or_404(PopupBanner, pk=pk)
+    if popup.image:
+        popup.image.delete(save=False)
+    popup.delete()
+    messages.success(request, 'Popup Banner deleted successfully.')
+    return redirect('admin_popups')
+
+
+@admin_login_required
+@require_POST
+def toggle_popup(request, pk):
+    popup = get_object_or_404(PopupBanner, pk=pk)
+    popup.is_active = not popup.is_active
+    popup.save(update_fields=['is_active'])
+    status_str = "activated" if popup.is_active else "deactivated"
+    messages.success(request, f"Popup Banner {status_str}.")
+    return redirect('admin_popups')
+
 
 
 

@@ -37,5 +37,11 @@ urlpatterns = [
     path('coupons/<int:pk>/edit/', admin_views.edit_coupon, name='edit_coupon'),
     path('coupons/<int:pk>/delete/', admin_views.delete_coupon, name='delete_coupon'),
     path('coupons/<int:pk>/toggle/', admin_views.toggle_coupon, name='toggle_coupon'),
+    path('popups/', admin_views.admin_popups, name='admin_popups'),
+    path('popups/add/', admin_views.add_popup, name='add_popup'),
+    path('popups/<int:pk>/edit/', admin_views.edit_popup, name='edit_popup'),
+    path('popups/<int:pk>/delete/', admin_views.delete_popup, name='delete_popup'),
+    path('popups/<int:pk>/toggle/', admin_views.toggle_popup, name='toggle_popup'),
 ]
+
 

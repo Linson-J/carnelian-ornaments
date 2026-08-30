@@ -709,4 +709,37 @@ class Coupon(models.Model):
             return round(min(disc, subtotal), 2)
 
 
+class PopupBanner(models.Model):
+    class DisplayFrequency(models.TextChoices):
+        EVERY_VISIT = 'every_visit', 'Every Page Load'
+        ONCE_PER_SESSION = 'once_per_session', 'Once Per Session'
+        ONCE_PER_DAY = 'once_per_day', 'Once Per Day'
+
+    title = models.CharField(max_length=150, blank=True, default='', help_text="Popup title, e.g. Welcome Special Offer!")
+    subtitle = models.TextField(max_length=500, blank=True, default='', help_text="Short description or terms")
+    image = models.ImageField(upload_to='popups/%Y/%m/', help_text="Promotional popup photo uploaded by Admin")
+    button_text = models.CharField(max_length=50, blank=True, default='Shop Now', help_text="CTA button text")
+    link_url = models.CharField(max_length=255, blank=True, default='/shop/', help_text="URL to redirect when clicked")
+    display_delay = models.PositiveIntegerField(default=1, help_text="Delay in seconds before popup appears")
+    frequency = models.CharField(
+        max_length=20,
+        choices=DisplayFrequency.choices,
+        default=DisplayFrequency.ONCE_PER_SESSION,
+        help_text="How often the popup appears to the customer"
+    )
+    is_active = models.BooleanField(default=True, help_text="Toggle popup active/inactive state")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_popup_banners'
+        ordering = ['-created_at']
+        verbose_name = 'Popup Banner'
+        verbose_name_plural = 'Popup Banners'
+
+    def __str__(self):
+        return self.title or f"Popup Banner #{self.id}"
+
+
+
 
