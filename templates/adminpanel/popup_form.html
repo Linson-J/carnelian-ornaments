@@ -177,11 +177,23 @@
           </div>
         </div>
 
-        <div style="background: var(--surface2, #131d2e); padding: 14px 18px; border-radius: 8px; border: 1px solid var(--border, #1a2438); margin-top: 10px;">
-          <label class="check-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text, #e8edf5); font-size: 0.92rem; font-weight: 600; margin: 0;">
-            <input type="checkbox" name="is_active" {% if popup and popup.is_active %}checked{% elif not popup %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--accent, #4f8ef7);">
-            Enable this Popup Banner on Customer Entrance
-          </label>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+          <div style="background: var(--surface2, #131d2e); padding: 14px 18px; border-radius: 8px; border: 1px solid var(--border, #1a2438);">
+            <label class="check-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text, #e8edf5); font-size: 0.92rem; font-weight: 600; margin: 0;">
+              <input type="checkbox" name="is_active" {% if popup and popup.is_active %}checked{% elif not popup %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--accent, #4f8ef7);">
+              Enable this Popup Banner on Customer Entrance
+            </label>
+          </div>
+
+          <div style="background: var(--surface2, #131d2e); padding: 14px 18px; border-radius: 8px; border: 1px solid var(--border, #1a2438);">
+            <label class="check-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text, #e8edf5); font-size: 0.92rem; font-weight: 600; margin: 0;">
+              <input type="checkbox" name="show_on_homepage" {% if popup and popup.show_on_homepage %}checked{% elif not popup %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--accent, #4f8ef7);">
+              Show on Homepage (Below Popular Categories)
+            </label>
+            <div style="font-size: 0.78rem; color: var(--muted, #8896a8); margin-top: 4px; margin-left: 28px;">
+              When checked, this banner photo and details will be displayed as a featured promo section below Popular Categories on the home page.
+            </div>
+          </div>
         </div>
       </div>
     </div>

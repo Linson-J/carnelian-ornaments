@@ -44,9 +44,9 @@
     right: 0;
     bottom: 0;
     z-index: 999999;
-    background: rgba(10, 10, 10, 0.72);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(75, 48, 52, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -65,10 +65,10 @@
     position: relative;
     width: 100%;
     max-width: 520px;
-    background: #ffffff;
+    background: var(--background, #fffdfa);
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 30px rgba(124, 83, 87, 0.15);
+    box-shadow: 0 20px 50px -10px rgba(124, 83, 87, 0.25), 0 0 30px rgba(124, 83, 87, 0.15);
     transform: scale(0.92) translateY(20px);
     opacity: 0;
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -87,9 +87,9 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.45);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(124, 83, 87, 0.15);
+    color: #7c5357;
+    border: 1px solid rgba(124, 83, 87, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -97,39 +97,43 @@
     cursor: pointer;
     backdrop-filter: blur(6px);
     transition: all 0.25s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(124, 83, 87, 0.15);
   }
 
   .popup-modal-close:hover {
-    background: rgba(124, 83, 87, 0.95);
+    background: #7c5357;
     color: #ffffff;
     transform: rotate(90deg) scale(1.08);
   }
 
   .popup-modal-image-wrap {
     width: 100%;
-    max-height: 380px;
-    overflow: hidden;
-    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--background, #fffdfa);
+    padding: 20px 20px 0 20px;
+    box-sizing: border-box;
   }
 
   .popup-modal-img {
     width: 100%;
     height: auto;
-    max-height: 380px;
-    object-fit: cover;
+    max-height: 420px;
+    object-fit: contain;
     display: block;
-    transition: transform 0.5s ease;
+    border-radius: 12px;
+    transition: transform 0.4s ease;
   }
 
   .popup-modal-image-wrap:hover .popup-modal-img {
-    transform: scale(1.02);
+    transform: scale(1.01);
   }
 
   .popup-modal-content {
-    padding: 24px 28px 28px 28px;
+    padding: 20px 28px 28px 28px;
     text-align: center;
-    background: #ffffff;
+    background: var(--background, #fffdfa);
   }
 
   .popup-modal-title {
@@ -177,19 +181,28 @@
     transform: translateY(-2px);
   }
 
+  @media (min-width: 992px) {
+    .popup-modal-container {
+      max-width: 600px;
+    }
+    .popup-modal-img {
+      max-height: 460px;
+    }
+  }
+
   @media (max-width: 576px) {
     .popup-modal-container {
       max-width: 92%;
       border-radius: 16px;
     }
     .popup-modal-image-wrap {
-      max-height: 280px;
+      padding: 14px 14px 0 14px;
     }
     .popup-modal-img {
-      max-height: 280px;
+      max-height: 300px;
     }
     .popup-modal-content {
-      padding: 20px 20px 24px 20px;
+      padding: 16px 18px 22px 18px;
     }
     .popup-modal-title {
       font-size: 1.28rem;
@@ -222,11 +235,11 @@
       return !sessionStorage.getItem(storageKey);
     }
 
-    function recordPopupDismissed() {
-      if (frequency === 'once_per_session') {
-        sessionStorage.setItem(storageKey, 'true');
-      } else if (frequency === 'once_per_day') {
+    function recordPopupSeen() {
+      if (frequency === 'once_per_day') {
         localStorage.setItem(storageKey, new Date().getTime().toString());
+      } else {
+        sessionStorage.setItem(storageKey, 'true');
       }
     }
 
@@ -234,7 +247,7 @@
       const overlay = document.getElementById('carmelianPopupOverlay');
       if (overlay) {
         overlay.classList.remove('active');
-        recordPopupDismissed();
+        recordPopupSeen();
         setTimeout(function() {
           overlay.style.display = 'none';
         }, 350);
@@ -251,6 +264,7 @@
           // Trigger reflow for smooth CSS transition
           void overlay.offsetWidth;
           overlay.classList.add('active');
+          recordPopupSeen();
         }
       }, delaySeconds * 1000);
     });

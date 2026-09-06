@@ -1,0 +1,248 @@
+{% if homepage_popup_banners %}
+<div class="homepage-promo-banners-container">
+  {% for banner in homepage_popup_banners %}
+  <section class="homepage-promo-banner-card">
+    <div class="promo-banner-grid{% if not banner.title and not banner.subtitle and not banner.button_text %} promo-banner-grid--image-only{% endif %}">
+      <!-- Banner Image -->
+      <div class="promo-banner-img-box">
+        <a href="{{ banner.link_url|default:'/shop/' }}" aria-label="{{ banner.title|default:'Special Offer' }}">
+          <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Promotional Offer' }}" class="promo-banner-img" loading="lazy">
+        </a>
+      </div>
+
+      <!-- Banner Copy & Action -->
+      {% if banner.title or banner.subtitle or banner.button_text %}
+      <div class="promo-banner-content">
+        <div class="promo-badge">
+          <i class="ri-sparkles-fill"></i> Exclusive Offer
+        </div>
+        
+        {% if banner.title %}
+          <h2 class="promo-title">{{ banner.title }}</h2>
+        {% endif %}
+
+        {% if banner.subtitle %}
+          <p class="promo-subtitle">{{ banner.subtitle }}</p>
+        {% endif %}
+
+        {% if banner.button_text %}
+          <div class="promo-action">
+            <a href="{{ banner.link_url|default:'/shop/' }}" class="promo-cta-btn">
+              <span>{{ banner.button_text }}</span>
+              <i class="ri-arrow-right-line"></i>
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<style>
+  .homepage-promo-banners-container {
+    width: 100%;
+    max-width: 1240px;
+    margin: 2.5rem auto;
+    padding: 0 1.25rem;
+    box-sizing: border-box;
+  }
+
+  .homepage-promo-banner-card {
+    background: var(--background, #fffdfa);
+    border: 1px solid var(--border, rgba(124, 83, 87, 0.15));
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(124, 83, 87, 0.08);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    margin-bottom: 2rem;
+  }
+
+  .homepage-promo-banner-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .homepage-promo-banner-card:hover {
+    box-shadow: 0 20px 45px rgba(124, 83, 87, 0.14);
+    border-color: var(--primary, #7c5357);
+    transform: translateY(-3px);
+  }
+
+  .promo-banner-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    min-height: 380px;
+  }
+
+  .promo-banner-grid.promo-banner-grid--image-only {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .promo-banner-grid.promo-banner-grid--image-only .promo-banner-img-box {
+    padding: 0;
+  }
+
+  .promo-banner-grid.promo-banner-grid--image-only .promo-banner-img {
+    max-height: 480px;
+    width: 100%;
+    object-fit: contain;
+    border-radius: 20px;
+  }
+
+  .promo-banner-img-box {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    position: relative;
+    background: transparent;
+  }
+
+  .promo-banner-img-box a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .promo-banner-img {
+    width: 100%;
+    height: auto;
+    max-height: 380px;
+    object-fit: contain;
+    display: block;
+    border-radius: 14px;
+    transition: transform 0.4s ease;
+  }
+
+  .homepage-promo-banner-card:hover .promo-banner-img {
+    transform: scale(1.02);
+  }
+
+  .promo-banner-content {
+    padding: 2.5rem 3rem 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    box-sizing: border-box;
+    background: transparent;
+  }
+
+  .promo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--primary, #7c5357);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 50px;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 4px 12px rgba(124, 83, 87, 0.2);
+  }
+
+  .promo-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark, #1a1c1a);
+    line-height: 1.25;
+    margin: 0 0 0.9rem 0;
+    letter-spacing: -0.02em;
+  }
+
+  .promo-subtitle {
+    font-size: 1rem;
+    color: var(--text-light, #554848);
+    line-height: 1.65;
+    margin: 0 0 1.8rem 0;
+    max-width: 480px;
+  }
+
+  .promo-action {
+    display: flex;
+    width: 100%;
+  }
+
+  .promo-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 30px;
+    background: var(--primary, #7c5357);
+    color: #ffffff !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 50px;
+    box-shadow: 0 6px 20px rgba(124, 83, 87, 0.25);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .promo-cta-btn:hover {
+    background: #623f43;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(124, 83, 87, 0.35);
+  }
+
+  .promo-cta-btn i {
+    font-size: 1.1rem;
+    transition: transform 0.3s ease;
+  }
+
+  .promo-cta-btn:hover i {
+    transform: translateX(4px);
+  }
+
+  /* Mobile Phone & Tablet Responsiveness */
+  @media (max-width: 900px) {
+    .promo-banner-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .promo-banner-img-box {
+      padding: 1.25rem 1.25rem 0.5rem 1.25rem;
+    }
+
+    .promo-banner-img {
+      max-height: 280px;
+      object-fit: contain;
+    }
+
+    .promo-banner-content {
+      padding: 1.5rem;
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .promo-title {
+      font-size: 1.5rem;
+    }
+
+    .promo-subtitle {
+      font-size: 0.92rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .promo-action {
+      width: 100%;
+    }
+
+    .promo-cta-btn {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+</style>
+{% endif %}

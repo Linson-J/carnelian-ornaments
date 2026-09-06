@@ -1070,6 +1070,7 @@ def add_popup(request):
 
         frequency = request.POST.get('frequency', PopupBanner.DisplayFrequency.ONCE_PER_SESSION)
         is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+        show_on_homepage = request.POST.get('show_on_homepage') == 'on' or request.POST.get('show_on_homepage') == '1'
         image = request.FILES.get('image')
 
         if not image:
@@ -1085,6 +1086,7 @@ def add_popup(request):
             display_delay=display_delay,
             frequency=frequency,
             is_active=is_active,
+            show_on_homepage=show_on_homepage,
         )
 
         messages.success(request, 'Popup Banner created successfully!')
@@ -1122,6 +1124,7 @@ def edit_popup(request, pk):
 
         popup.frequency = request.POST.get('frequency', popup.frequency)
         popup.is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+        popup.show_on_homepage = request.POST.get('show_on_homepage') == 'on' or request.POST.get('show_on_homepage') == '1'
 
         new_image = request.FILES.get('image')
         if new_image:

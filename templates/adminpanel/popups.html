@@ -105,11 +105,18 @@
             </div>
           </td>
           <td>
-            {% if popup.is_active %}
-              <span class="badge active" style="background: rgba(76,175,80,0.1); color: #2e7d32; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700;">ACTIVE</span>
-            {% else %}
-              <span class="badge danger" style="background: rgba(0,0,0,0.06); color: #666; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700;">INACTIVE</span>
-            {% endif %}
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+              {% if popup.is_active %}
+                <span class="badge active" style="background: rgba(76,175,80,0.1); color: #2e7d32; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700;">ACTIVE</span>
+              {% else %}
+                <span class="badge danger" style="background: rgba(0,0,0,0.06); color: #666; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700;">INACTIVE</span>
+              {% endif %}
+              {% if popup.show_on_homepage %}
+                <span style="background: rgba(79,142,247,0.1); color: #4f8ef7; padding: 3px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
+                  <i class="ri-home-4-line"></i> Homepage
+                </span>
+              {% endif %}
+            </div>
           </td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px; align-items: center;">

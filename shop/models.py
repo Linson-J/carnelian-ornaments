@@ -728,6 +728,7 @@ class PopupBanner(models.Model):
         help_text="How often the popup appears to the customer"
     )
     is_active = models.BooleanField(default=True, help_text="Toggle popup active/inactive state")
+    show_on_homepage = models.BooleanField(default=True, help_text="Show this popup banner image below Popular Categories on the homepage")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

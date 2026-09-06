@@ -23,6 +23,10 @@
 
         <div data-home-sections></div>
 
+        <div id="homepagePromoBannersMarkup" hidden>
+            {% include 'shop/includes/homepage_promo_banner.html' %}
+        </div>
+
         <section class="story-section" aria-labelledby="story-title">
             <h2 id="story-title">Client Stories</h2>
             <article class="story-card">
@@ -35,6 +39,7 @@
             </article>
         </section>
 
+        {% include 'shop/includes/popup_modal.html' %}
     </main>
 {% endblock %}
 
@@ -202,18 +207,24 @@
 
         function renderHomeSections(sections) {
             const visibleSections = sections.filter(section => section.items && section.items.length);
+            const promoBannersMarkup = document.getElementById('homepagePromoBannersMarkup')?.innerHTML || '';
+            let insertedPromoBanner = false;
+
             if (!visibleSections.length) {
-                homeSectionsWrap.innerHTML = '<section class="home-section"><p class="home-empty">Homepage sections will appear after they are configured from the admin panel.</p></section>';
+                homeSectionsWrap.innerHTML = promoBannersMarkup.trim() 
+                    ? promoBannersMarkup 
+                    : '<section class="home-section"><p class="home-empty">Homepage sections will appear after they are configured from the admin panel.</p></section>';
                 return;
             }
 
             let previousSectionType = '';
-            homeSectionsWrap.innerHTML = visibleSections.map(section => {
+            let html = visibleSections.map(section => {
                 const slug = String(section.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                let sectionContent = '';
                 if (section.section_type === 'categories') {
                     const hasCategoryDivider = previousSectionType === 'categories';
                     previousSectionType = section.section_type;
-                    return `
+                    sectionContent = `
                         <section class="home-section category-section${hasCategoryDivider ? ' category-section--divided' : ''}" id="${slug}">
                             ${hasCategoryDivider ? '<div class="category-section-divider" aria-hidden="true"><span></span></div>' : ''}
                             <div class="section-heading">
@@ -226,9 +237,14 @@
                             <div class="category-mosaic">${renderCategoryCards(section.items)}</div>
                         </section>
                     `;
+                    if (!insertedPromoBanner && promoBannersMarkup.trim()) {
+                        sectionContent += promoBannersMarkup;
+                        insertedPromoBanner = true;
+                    }
+                    return sectionContent;
                 }
                 previousSectionType = section.section_type;
-                return `
+                sectionContent = `
                     <section class="home-section products-section" id="${slug}">
                         <div class="section-heading section-heading-centered">
                             <div>
@@ -239,7 +255,14 @@
                         <div class="product-row">${renderProductCards(section.items)}</div>
                     </section>
                 `;
+                return sectionContent;
             }).join('');
+
+            if (!insertedPromoBanner && promoBannersMarkup.trim()) {
+                html += promoBannersMarkup;
+            }
+
+            homeSectionsWrap.innerHTML = html;
         }
 
         async function bootHome() {
