@@ -9,6 +9,7 @@ from .api_views import (
     CategoryTagListCreateView,
     HomeSectionDetailView,
     HomeSectionListCreateView,
+    HomeSectionReorderView,
     HomeThemeView,
     CustomerSearchAPIView,
     ProductDetailView,
@@ -31,5 +32,6 @@ urlpatterns = [
     path('carousel/<int:pk>/', CarouselDetailView.as_view()),
     path('theme/', HomeThemeView.as_view()),
     path('home-sections/', HomeSectionListCreateView.as_view()),
+    path('home-sections/reorder/', HomeSectionReorderView.as_view()),
     path('home-sections/<int:pk>/', HomeSectionDetailView.as_view()),
 ]

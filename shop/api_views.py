@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -517,6 +518,40 @@ class HomeSectionListCreateView(APIView):
                 201,
             )
         return error('Validation failed', serializer.errors)
+
+
+class HomeSectionReorderView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def post(self, request):
+        section_ids = request.data.get('section_ids')
+        if not isinstance(section_ids, list) or not section_ids:
+            return error('Validation failed', {'section_ids': 'Send a non-empty section_ids list.'})
+
+        try:
+            section_ids = [int(section_id) for section_id in section_ids]
+        except (TypeError, ValueError):
+            return error('Validation failed', {'section_ids': 'Every section id must be a number.'})
+
+        if len(section_ids) != len(set(section_ids)):
+            return error('Validation failed', {'section_ids': 'Duplicate section ids are not allowed.'})
+
+        existing_ids = set(HomeSection.objects.filter(pk__in=section_ids).values_list('pk', flat=True))
+        if existing_ids != set(section_ids):
+            return error('Validation failed', {'section_ids': 'One or more homepage lists do not exist.'})
+
+        all_ids = set(HomeSection.objects.values_list('id', flat=True))
+        if all_ids != set(section_ids):
+            return error(
+                'Validation failed',
+                {'section_ids': 'The submitted order must include every homepage list.'},
+            )
+
+        with transaction.atomic():
+            for index, section_id in enumerate(section_ids, start=1):
+                HomeSection.objects.filter(pk=section_id).update(display_order=index * 10)
+
+        return success(msg='Homepage list order updated')
 
 
 class HomeSectionDetailView(APIView):

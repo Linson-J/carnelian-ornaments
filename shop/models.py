@@ -291,6 +291,7 @@ class HomeSection(models.Model):
     class SectionType(models.TextChoices):
         CATEGORIES = 'categories', 'Categories'
         PRODUCTS = 'products', 'Products'
+        MIXED = 'mixed', 'Categories and Products'
 
     DEFAULT_SECTIONS = (
         ('Popular Categories', SectionType.CATEGORIES, 10),

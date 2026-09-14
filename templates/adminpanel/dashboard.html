@@ -3,6 +3,23 @@
 {% block title %}Admin Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+  .card-recent-products {
+    overflow: visible !important;
+  }
+  .card-recent-products .table-wrap {
+    overflow: visible !important;
+    min-height: 240px;
+  }
+  @media (max-width: 900px) {
+    .card-recent-products .table-wrap {
+      overflow-x: auto !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block topbar_right %}
 <span class="topbar-time" id="clock"></span>
 <div class="secure-dot"><div class="pulse"></div> API Verified</div>
@@ -203,76 +220,95 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card card-recent-products">
   <div class="card-hd">
     <h3>Recent Products</h3>
     <a href="{% url 'add_product' %}" class="btn-primary">+ Add product</a>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Image</th>
-        <th>Name</th>
-        <th>Price</th>
-        <th>Category</th>
-        <th>Stock</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for product in products %}
-      <tr>
-        <td>
-          {% with img=product.images.all|first %}
-            {% if img %}
-              <img src="{{ img.image.url }}" class="product-thumb" alt="{{ product.name }}">
-            {% else %}
-              <div class="product-thumb-placeholder">📦</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Image</th>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Category</th>
+          <th>Stock</th>
+          <th>Status</th>
+          <th style="text-align: right; padding-right: 20px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+        <tr>
+          <td>
+            {% with img=product.images.all|first %}
+              {% if img %}
+                <img src="{{ img.image.url }}" class="product-thumb" alt="{{ product.name }}">
+              {% else %}
+                <div class="product-thumb-placeholder">📦</div>
+              {% endif %}
+            {% endwith %}
+          </td>
+          <td><strong>{{ product.name }}</strong></td>
+          <td>
+            ₹{{ product.price }}
+            {% if product.discount_price %}
+              <span style="color:var(--success);font-size:11px;margin-left:4px">₹{{ product.discount_price }}</span>
             {% endif %}
-          {% endwith %}
-        </td>
-        <td><strong>{{ product.name }}</strong></td>
-        <td>
-          ₹{{ product.price }}
-          {% if product.discount_price %}
-            <span style="color:var(--success);font-size:11px;margin-left:4px">₹{{ product.discount_price }}</span>
-          {% endif %}
-        </td>
-        <td style="color:var(--muted)">{{ product.category.name|default:"—" }}</td>
-        <td>
-          {% if product.stock == 0 %}
-            <span class="badge danger">Out of stock</span>
-          {% elif product.stock <= 5 %}
-            <span class="badge warning">Low: {{ product.stock }}</span>
-          {% else %}
-            {{ product.stock }}
-          {% endif %}
-        </td>
-        <td>
-          {% if product.status == 'available' %}
-            <span class="badge success">● Available</span>
-          {% elif product.status == 'out_of_stock' %}
-            <span class="badge warning">● Out of stock</span>
-          {% else %}
-            <span class="badge danger">● Discontinued</span>
-          {% endif %}
-        </td>
-        <td>
-          <a href="{% url 'edit_product' product.id %}" class="btn-sm">✏ Edit</a>
-          <button class="btn-sm danger" style="margin-left:4px" onclick="confirmDelete({{ product.id }}, '{{ product.name|escapejs }}')">🗑</button>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="7" style="text-align:center;color:var(--muted);padding:30px">
-          No products yet.
-          <a href="{% url 'add_product' %}" style="color:var(--accent)">Add your first product</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          </td>
+          <td style="color:var(--muted)">{{ product.category.name|default:"—" }}</td>
+          <td>
+            {% if product.stock == 0 %}
+              <span class="badge danger">Out of stock</span>
+            {% elif product.stock <= 5 %}
+              <span class="badge warning">Low: {{ product.stock }}</span>
+            {% else %}
+              {{ product.stock }}
+            {% endif %}
+          </td>
+          <td>
+            {% if product.status == 'available' %}
+              <span class="badge success">● Available</span>
+            {% elif product.status == 'out_of_stock' %}
+              <span class="badge warning">● Out of stock</span>
+            {% else %}
+              <span class="badge danger">● Discontinued</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right; padding-right: 20px;">
+            <div class="actions-dropdown">
+              <button type="button" class="actions-dropdown-btn" onclick="toggleDropdown(event, {{ product.id }})" aria-label="Product Actions" title="Actions">
+                <i class="ri-more-2-fill"></i>
+              </button>
+              <div class="actions-dropdown-menu" id="dropdown-{{ product.id }}">
+                {% if product.slug %}
+                <a href="{% url 'product_detail' product.slug %}" target="_blank" class="dropdown-item">
+                  <i class="ri-external-link-line"></i> View on Store
+                </a>
+                {% endif %}
+                <a href="{% url 'edit_product' product.id %}" class="dropdown-item">
+                  <i class="ri-edit-line"></i> Edit Product
+                </a>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item danger" onclick="confirmDelete({{ product.id }}, '{{ product.name|escapejs }}')">
+                  <i class="ri-delete-bin-line"></i> Delete Product
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;color:var(--muted);padding:30px">
+            No products yet.
+            <a href="{% url 'add_product' %}" style="color:var(--accent)">Add your first product</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% endblock %}

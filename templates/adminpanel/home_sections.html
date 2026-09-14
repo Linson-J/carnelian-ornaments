@@ -1,30 +1,286 @@
 {% extends 'adminpanel/base.html' %}
 
-{% block title %}Product Lists{% endblock %}
-{% block page_title %}Product Lists{% endblock %}
+{% block title %}Homepage Lists{% endblock %}
+{% block page_title %}Homepage Lists{% endblock %}
 
 {% block topbar_right %}
-<button class="btn-primary" type="button" id="newSectionBtn">New list</button>
+<button class="btn-sm" type="button" id="reloadBtn"><i class="ri-refresh-line"></i> Reload</button>
+<button class="btn-primary" type="button" id="newSectionBtn"><i class="ri-add-line"></i> Create list</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .home-section-toolbar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .section-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .section-stat span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .section-stat strong {
+    color: var(--text);
+    font-size: 22px;
+  }
+  .section-drag-col {
+    width: 42px;
+    padding-right: 0 !important;
+  }
+  .section-actions-col {
+    width: 64px;
+    text-align: right;
+  }
+  .section-drag-handle {
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    cursor: grab;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .section-drag-handle:hover,
+  .section-drag-handle:focus-visible {
+    background: var(--surface2);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .section-row.dragging { opacity: .45; }
+  .section-row.drag-over td { background: rgba(79,142,247,.08); }
+  .section-title-cell strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+  .section-type-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    background: var(--surface2);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .section-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 14px;
+  }
+  .editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .section-quick-links {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 14px;
+    flex-wrap: wrap;
+  }
+  .section-quick-links a {
+    text-decoration: none;
+  }
+  .section-assigned {
+    display: grid;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--inp);
+    margin-bottom: 14px;
+  }
+  .assigned-empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 4px;
+  }
+  .assigned-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .assigned-chip span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .assigned-chip small {
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .assigned-chip button {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .assigned-chip button:hover {
+    background: var(--surface2);
+    color: var(--danger);
+  }
+  .section-picker-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .section-picker-head .field {
+    flex: 1;
+    margin: 0;
+  }
+  .section-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .section-picker-panel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--inp);
+    overflow: hidden;
+  }
+  .section-picker-panel[hidden] { display: none; }
+  .picker-panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .section-item-picker {
+    display: grid;
+    gap: 8px;
+    max-height: 360px;
+    overflow: auto;
+    padding: 10px;
+  }
+  .section-choice {
+    display: grid;
+    grid-template-columns: auto 38px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    margin: 0;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .section-choice input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent2);
+  }
+  .section-choice-thumb {
+    width: 38px;
+    height: 38px;
+    border-radius: 7px;
+    background: var(--surface2);
+    object-fit: cover;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .section-choice strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .section-choice small {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .home-section-empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 8px;
+  }
+  @media (max-width: 760px) {
+    .home-section-toolbar,
+    .section-form-grid,
+    .section-picker-grid {
+      grid-template-columns: 1fr;
+    }
+    .section-picker-head {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="home-section-admin">
   {% csrf_token %}
+  <div class="home-section-toolbar">
+    <div class="section-stat"><span>Total lists</span><strong id="totalLists">0</strong></div>
+    <div class="section-stat"><span>Visible</span><strong id="visibleLists">0</strong></div>
+    <div class="section-stat"><span>Assigned items</span><strong id="assignedTotal">0</strong></div>
+  </div>
+
   <div class="card section-list-card">
     <div class="card-hd">
-      <h3>Homepage product and category lists</h3>
-      <button class="btn-sm" type="button" id="reloadBtn">Reload</button>
+      <div>
+        <h3>Homepage content lists</h3>
+        <p class="muted-small">Drag the handle to reorder lists on the homepage.</p>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Order</th>
+            <th class="section-drag-col"></th>
             <th>List</th>
             <th>Type</th>
             <th>Items</th>
             <th>Status</th>
-            <th>Actions</th>
+            <th class="section-actions-col">Actions</th>
           </tr>
         </thead>
         <tbody id="sectionRows">
@@ -36,39 +292,61 @@
 
   <form class="card section-editor-card" id="sectionForm">
     <div class="card-hd">
-      <h3 id="formTitle">Create list</h3>
-      <button class="btn-sm" type="button" id="clearBtn">Clear</button>
+      <h3 id="formTitle">Create homepage list</h3>
+      <div class="editor-actions">
+        <button class="btn-sm" type="button" id="clearBtn"><i class="ri-add-line"></i> New</button>
+      </div>
     </div>
     <div class="card-body">
       <input type="hidden" name="id">
-      <div class="field">
-        <label>List title <span class="req">*</span></label>
-        <input type="text" name="title" placeholder="Trending Products" required>
+      <input type="hidden" name="display_order" value="0">
+
+      <div class="section-quick-links">
+        <a class="btn-sm" href="{% url 'add_product' %}"><i class="ri-shopping-bag-3-line"></i> Add product</a>
+        <a class="btn-sm" href="{% url 'admin_categories' %}"><i class="ri-price-tag-3-line"></i> Add category</a>
       </div>
-      <div class="field-row">
+
+      <div class="section-form-grid">
         <div class="field">
-          <label>Content type</label>
+          <label>List heading <span class="req">*</span></label>
+          <input type="text" name="title" placeholder="Trending now" required>
+        </div>
+        <div class="field">
+          <label>Items to include</label>
           <select name="section_type">
-            <option value="categories">Categories</option>
-            <option value="products">Products</option>
+            <option value="mixed">Categories + Products</option>
+            <option value="categories">Categories only</option>
+            <option value="products">Products only</option>
           </select>
         </div>
-        <div class="field">
-          <label>Display order</label>
-          <input type="number" name="display_order" min="0" step="1" value="0">
-        </div>
       </div>
+
       <label class="check-label section-visible">
         <input type="checkbox" name="is_visible" checked>
         Show this list on the home page
       </label>
 
-      <div class="section-item-tools">
-        <label>Assigned items</label>
-        <input type="text" id="itemSearch" placeholder="Search available items">
+      <label>Assigned items</label>
+      <div class="section-assigned" id="assignedItems"></div>
+
+      <div class="section-picker-head">
+        <div class="field">
+          <label for="itemSearch">Find items</label>
+          <input type="text" id="itemSearch" placeholder="Search categories or products">
+        </div>
+        <button class="btn-sm" type="button" id="clearAssignedBtn"><i class="ri-close-circle-line"></i> Clear items</button>
       </div>
-      <div class="section-item-picker" id="itemPicker"></div>
-      <p class="settings-help">Use product lists for New Arrivals, Trending Products, Featured Products, or Best Sellers. Display order controls where the list appears on the home page.</p>
+
+      <div class="section-picker-grid">
+        <div class="section-picker-panel" id="categoryPanel">
+          <div class="picker-panel-title"><span><i class="ri-price-tag-3-line"></i> Categories</span><small id="categorySelectedCount">0 selected</small></div>
+          <div class="section-item-picker" id="categoryPicker"></div>
+        </div>
+        <div class="section-picker-panel" id="productPanel">
+          <div class="picker-panel-title"><span><i class="ri-shopping-bag-3-line"></i> Products</span><small id="productSelectedCount">0 selected</small></div>
+          <div class="section-item-picker" id="productPicker"></div>
+        </div>
+      </div>
     </div>
     <div class="submit-bar">
       <button class="btn-cancel" type="button" id="deleteBtn" hidden>Delete</button>
@@ -82,69 +360,182 @@
 <script>
   const rows = document.getElementById('sectionRows');
   const form = document.getElementById('sectionForm');
-  const picker = document.getElementById('itemPicker');
+  const categoryPicker = document.getElementById('categoryPicker');
+  const productPicker = document.getElementById('productPicker');
+  const categoryPanel = document.getElementById('categoryPanel');
+  const productPanel = document.getElementById('productPanel');
+  const assignedItems = document.getElementById('assignedItems');
   const search = document.getElementById('itemSearch');
   const formTitle = document.getElementById('formTitle');
   const deleteBtn = document.getElementById('deleteBtn');
   let sections = [];
   let categories = [];
   let products = [];
-  let selectedItemIds = new Set();
+  let selectedCategoryIds = new Set();
+  let selectedProductIds = new Set();
 
-  function selectedIds() {
-    return [...selectedItemIds];
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
   }
 
-  function currentItems() {
-    return form.elements.section_type.value === 'categories' ? categories : products;
+  function typeLabel(type) {
+    if (type === 'categories') return 'Categories';
+    if (type === 'products') return 'Products';
+    return 'Categories + Products';
+  }
+
+  function typeIcon(type) {
+    if (type === 'categories') return 'ri-price-tag-3-line';
+    if (type === 'products') return 'ri-shopping-bag-3-line';
+    return 'ri-layout-grid-line';
+  }
+
+  function primaryImage(product) {
+    return product.primary_image?.image_url || product.images?.[0]?.image_url || '';
+  }
+
+  function renderThumb(url, label) {
+    return url
+      ? `<img class="section-choice-thumb" src="${escapeHtml(url)}" alt="">`
+      : `<span class="section-choice-thumb">${escapeHtml((label || '?').charAt(0).toUpperCase())}</span>`;
+  }
+
+  function renderStats() {
+    document.getElementById('totalLists').textContent = sections.length;
+    document.getElementById('visibleLists').textContent = sections.filter(section => section.is_visible).length;
+    document.getElementById('assignedTotal').textContent = sections.reduce((sum, section) => {
+      const categoriesCount = section.selected_category_ids?.length || 0;
+      const productsCount = section.selected_product_ids?.length || 0;
+      if (section.section_type === 'categories') return sum + (section.selected_ids?.length || categoriesCount);
+      if (section.section_type === 'products') return sum + (section.selected_ids?.length || productsCount);
+      return sum + categoriesCount + productsCount;
+    }, 0);
   }
 
   function renderRows() {
+    renderStats();
     if (!sections.length) {
       rows.innerHTML = '<tr><td colspan="6">No homepage lists configured.</td></tr>';
       return;
     }
-    rows.innerHTML = sections.map(section => `
-      <tr>
-        <td><input class="section-order-input" type="number" min="0" value="${section.display_order}" data-order-id="${section.id}"></td>
-        <td><strong>${section.title}</strong><div class="muted-small">Updated ${new Date(section.updated_at).toLocaleString()}</div></td>
-        <td>${section.section_type}</td>
-        <td>${section.selected_ids.length}</td>
-        <td><button class="badge ${section.is_visible ? 'success' : 'muted'}" type="button" data-toggle-id="${section.id}">${section.is_visible ? 'Visible' : 'Hidden'}</button></td>
-        <td>
-          <button class="btn-sm" type="button" data-edit-id="${section.id}">Edit</button>
-          <button class="btn-sm danger" type="button" data-remove-id="${section.id}">Delete</button>
-        </td>
-      </tr>
+    rows.innerHTML = sections.map(section => {
+      const categoryCount = section.selected_category_ids?.length || 0;
+      const productCount = section.selected_product_ids?.length || 0;
+      const itemLabel = section.section_type === 'mixed'
+        ? `${categoryCount} categories, ${productCount} products`
+        : `${section.selected_ids.length} ${section.selected_ids.length === 1 ? 'item' : 'items'}`;
+      return `
+        <tr class="section-row" data-section-id="${section.id}">
+          <td class="section-drag-col">
+            <button class="section-drag-handle" type="button" aria-label="Drag ${escapeHtml(section.title)} to reorder" title="Drag to reorder">
+              <i class="ri-menu-line"></i>
+            </button>
+          </td>
+          <td class="section-title-cell">
+            <strong>${escapeHtml(section.title)}</strong>
+            <div class="muted-small">Updated ${new Date(section.updated_at).toLocaleString()}</div>
+          </td>
+          <td><span class="section-type-pill"><i class="${typeIcon(section.section_type)}"></i>${typeLabel(section.section_type)}</span></td>
+          <td>${itemLabel}</td>
+          <td><button class="badge ${section.is_visible ? 'success' : 'muted'}" type="button" data-toggle-id="${section.id}">${section.is_visible ? 'Visible' : 'Hidden'}</button></td>
+          <td class="section-actions-col">
+            <div class="actions-dropdown">
+              <button type="button" class="actions-dropdown-btn" onclick="toggleDropdown(event, 'section-${section.id}')" aria-label="List actions" title="Actions">
+                <i class="ri-more-2-fill"></i>
+              </button>
+              <div class="actions-dropdown-menu" id="dropdown-section-${section.id}">
+                <button type="button" class="dropdown-item" data-edit-id="${section.id}"><i class="ri-edit-line"></i> Edit list</button>
+                <button type="button" class="dropdown-item" data-toggle-id="${section.id}"><i class="${section.is_visible ? 'ri-eye-off-line' : 'ri-eye-line'}"></i> ${section.is_visible ? 'Hide list' : 'Show list'}</button>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item danger" data-remove-id="${section.id}"><i class="ri-delete-bin-line"></i> Delete list</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function visiblePanels() {
+    const type = form.elements.section_type.value;
+    categoryPanel.hidden = type === 'products';
+    productPanel.hidden = type === 'categories';
+  }
+
+  function itemMatches(item, term) {
+    if (!term) return true;
+    const haystack = `${item.name || ''} ${item.slug || ''} ${item.category?.name || ''}`.toLowerCase();
+    return haystack.includes(term);
+  }
+
+  function renderPickerList(container, items, selectedSet, kind) {
+    const term = search.value.trim().toLowerCase();
+    const choices = items.filter(item => itemMatches(item, term));
+    if (!choices.length) {
+      container.innerHTML = '<p class="home-section-empty">No matching items.</p>';
+      return;
+    }
+    container.innerHTML = choices.map(item => {
+      const meta = kind === 'category'
+        ? `${item.product_count || 0} products`
+        : `${item.category?.name || 'Uncategorized'} | ${item.status || ''}`;
+      const image = kind === 'category' ? item.image_url : primaryImage(item);
+      return `
+        <label class="section-choice">
+          <input type="checkbox" value="${item.id}" data-kind="${kind}" ${selectedSet.has(item.id) ? 'checked' : ''}>
+          ${renderThumb(image, item.name)}
+          <span>
+            <strong>${escapeHtml(item.name)}</strong>
+            <small>${escapeHtml(meta)}</small>
+          </span>
+        </label>
+      `;
+    }).join('');
+  }
+
+  function renderAssignedItems() {
+    const selectedCategories = categories.filter(item => selectedCategoryIds.has(item.id));
+    const selectedProducts = products.filter(item => selectedProductIds.has(item.id));
+    const chips = [
+      ...selectedCategories.map(item => ({kind: 'category', id: item.id, name: item.name})),
+      ...selectedProducts.map(item => ({kind: 'product', id: item.id, name: item.name})),
+    ];
+    document.getElementById('categorySelectedCount').textContent = `${selectedCategories.length} selected`;
+    document.getElementById('productSelectedCount').textContent = `${selectedProducts.length} selected`;
+    if (!chips.length) {
+      assignedItems.innerHTML = '<div class="assigned-empty">No items assigned yet.</div>';
+      return;
+    }
+    assignedItems.innerHTML = chips.map(item => `
+      <div class="assigned-chip">
+        <span><i class="${item.kind === 'category' ? 'ri-price-tag-3-line' : 'ri-shopping-bag-3-line'}"></i>${escapeHtml(item.name)}</span>
+        <small>${item.kind}</small>
+        <button type="button" data-remove-kind="${item.kind}" data-remove-item="${item.id}" aria-label="Remove ${escapeHtml(item.name)}"><i class="ri-close-line"></i></button>
+      </div>
     `).join('');
   }
 
-  function renderPicker(selected = []) {
-    const term = search.value.trim().toLowerCase();
-    const choices = currentItems().filter(item => !term || item.name.toLowerCase().includes(term));
-    if (!choices.length) {
-      picker.innerHTML = '<p class="home-section-empty">No matching items.</p>';
-      return;
-    }
-    picker.innerHTML = choices.map(item => `
-      <label class="section-choice">
-        <input type="checkbox" value="${item.id}" ${selectedItemIds.has(item.id) ? 'checked' : ''}>
-        <span>${item.name}</span>
-        <small>${item.category?.name || item.status || item.slug}</small>
-      </label>
-    `).join('');
+  function renderPickers() {
+    visiblePanels();
+    renderPickerList(categoryPicker, categories, selectedCategoryIds, 'category');
+    renderPickerList(productPicker, products, selectedProductIds, 'product');
+    renderAssignedItems();
   }
 
   function resetForm() {
     form.reset();
     form.elements.id.value = '';
+    form.elements.section_type.value = 'mixed';
     form.elements.display_order.value = sections.length ? Math.max(...sections.map(section => section.display_order)) + 10 : 10;
     form.elements.is_visible.checked = true;
-    formTitle.textContent = 'Create list';
+    formTitle.textContent = 'Create homepage list';
     deleteBtn.hidden = true;
     search.value = '';
-    selectedItemIds = new Set();
-    renderPicker([]);
+    selectedCategoryIds = new Set();
+    selectedProductIds = new Set();
+    renderPickers();
   }
 
   function editSection(id) {
@@ -158,8 +549,10 @@
     formTitle.textContent = `Edit ${section.title}`;
     deleteBtn.hidden = false;
     search.value = '';
-    selectedItemIds = new Set(section.selected_ids);
-    renderPicker(section.selected_ids);
+    selectedCategoryIds = new Set(section.selected_category_ids || (section.section_type === 'categories' ? section.selected_ids : []));
+    selectedProductIds = new Set(section.selected_product_ids || (section.section_type === 'products' ? section.selected_ids : []));
+    renderPickers();
+    form.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
 
   async function loadData() {
@@ -184,7 +577,8 @@
       display_order: Number(form.elements.display_order.value || 0),
       is_visible: form.elements.is_visible.checked
     };
-    payload[type === 'categories' ? 'category_ids' : 'product_ids'] = selectedIds();
+    if (type !== 'products') payload.category_ids = [...selectedCategoryIds];
+    if (type !== 'categories') payload.product_ids = [...selectedProductIds];
     const id = form.elements.id.value;
     id ? await AdminApi.patch(`/api/home-sections/${id}/`, payload) : await AdminApi.post('/api/home-sections/', payload);
     showToast('List saved', 'success');
@@ -200,10 +594,85 @@
     await loadData();
   }
 
+  function currentSectionOrder() {
+    return [...rows.querySelectorAll('.section-row')].map(row => Number(row.dataset.sectionId));
+  }
+
+  async function saveSectionOrder() {
+    const sectionIds = currentSectionOrder();
+    if (!sectionIds.length) return;
+    const previousSections = [...sections];
+    sections = sectionIds.map((id, index) => ({
+      ...sections.find(section => section.id === id),
+      display_order: (index + 1) * 10
+    })).filter(Boolean);
+
+    try {
+      await AdminApi.post('/api/home-sections/reorder/', {section_ids: sectionIds});
+      showToast('List order updated', 'success');
+      hideToast(1800);
+      await loadData();
+    } catch (error) {
+      sections = previousSections;
+      renderRows();
+      showToast(error.message || 'Could not save list order', 'danger');
+      hideToast();
+    }
+  }
+
+  function initSectionDragSort() {
+    let draggedRow = null;
+
+    function setRowsDraggable(enabled) {
+      rows.querySelectorAll('.section-row').forEach(row => { row.draggable = enabled; });
+    }
+
+    rows.addEventListener('mousedown', event => {
+      if (event.target.closest('.section-drag-handle')) setRowsDraggable(true);
+    });
+    rows.addEventListener('touchstart', event => {
+      if (event.target.closest('.section-drag-handle')) setRowsDraggable(true);
+    }, {passive: true});
+
+    rows.addEventListener('dragstart', event => {
+      const row = event.target.closest('.section-row');
+      if (!row || !row.draggable) {
+        event.preventDefault();
+        return;
+      }
+      draggedRow = row;
+      row.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', row.dataset.sectionId);
+    });
+
+    rows.addEventListener('dragover', event => {
+      if (!draggedRow) return;
+      event.preventDefault();
+      const targetRow = event.target.closest('.section-row');
+      if (!targetRow || targetRow === draggedRow) return;
+      const targetRect = targetRow.getBoundingClientRect();
+      rows.insertBefore(draggedRow, event.clientY > targetRect.top + targetRect.height / 2 ? targetRow.nextSibling : targetRow);
+      rows.querySelectorAll('.section-row.drag-over').forEach(row => row.classList.remove('drag-over'));
+      targetRow.classList.add('drag-over');
+    });
+
+    rows.addEventListener('dragend', () => {
+      if (!draggedRow) return;
+      draggedRow.classList.remove('dragging');
+      rows.querySelectorAll('.section-row.drag-over').forEach(row => row.classList.remove('drag-over'));
+      draggedRow = null;
+      setRowsDraggable(false);
+      saveSectionOrder();
+    });
+  }
+
   rows.addEventListener('click', async event => {
-    const editId = event.target.dataset.editId;
-    const removeId = event.target.dataset.removeId;
-    const toggleId = event.target.dataset.toggleId;
+    const action = event.target.closest('[data-edit-id], [data-remove-id], [data-toggle-id]');
+    if (!action) return;
+    const editId = action.dataset.editId;
+    const removeId = action.dataset.removeId;
+    const toggleId = action.dataset.toggleId;
     if (editId) editSection(Number(editId));
     if (removeId) await deleteSection(Number(removeId));
     if (toggleId) {
@@ -213,29 +682,42 @@
     }
   });
 
-  rows.addEventListener('change', async event => {
-    const id = event.target.dataset.orderId;
-    if (!id) return;
-    await AdminApi.patch(`/api/home-sections/${id}/`, {display_order: Number(event.target.value || 0)});
-    await loadData();
-  });
+  function handlePickerChange(event) {
+    if (event.target.type !== 'checkbox') return;
+    const id = Number(event.target.value);
+    const targetSet = event.target.dataset.kind === 'category' ? selectedCategoryIds : selectedProductIds;
+    if (event.target.checked) targetSet.add(id);
+    else targetSet.delete(id);
+    renderPickers();
+  }
 
   form.addEventListener('submit', saveSection);
   form.elements.section_type.addEventListener('change', () => {
-    selectedItemIds = new Set();
-    renderPicker([]);
+    if (form.elements.section_type.value === 'categories') selectedProductIds = new Set();
+    if (form.elements.section_type.value === 'products') selectedCategoryIds = new Set();
+    renderPickers();
   });
-  picker.addEventListener('change', event => {
-    if (event.target.type !== 'checkbox') return;
-    const id = Number(event.target.value);
-    if (event.target.checked) selectedItemIds.add(id);
-    else selectedItemIds.delete(id);
+  categoryPicker.addEventListener('change', handlePickerChange);
+  productPicker.addEventListener('change', handlePickerChange);
+  assignedItems.addEventListener('click', event => {
+    const button = event.target.closest('[data-remove-item]');
+    if (!button) return;
+    const id = Number(button.dataset.removeItem);
+    if (button.dataset.removeKind === 'category') selectedCategoryIds.delete(id);
+    else selectedProductIds.delete(id);
+    renderPickers();
   });
-  search.addEventListener('input', () => renderPicker(selectedIds()));
+  search.addEventListener('input', renderPickers);
   document.getElementById('newSectionBtn').addEventListener('click', resetForm);
   document.getElementById('clearBtn').addEventListener('click', resetForm);
   document.getElementById('reloadBtn').addEventListener('click', loadData);
+  document.getElementById('clearAssignedBtn').addEventListener('click', () => {
+    selectedCategoryIds = new Set();
+    selectedProductIds = new Set();
+    renderPickers();
+  });
   deleteBtn.addEventListener('click', () => deleteSection(Number(form.elements.id.value)));
+  initSectionDragSort();
 
   loadData().catch(error => {
     rows.innerHTML = '<tr><td colspan="6">Unable to load homepage lists.</td></tr>';

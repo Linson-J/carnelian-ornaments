@@ -95,6 +95,47 @@ function initProductLiveSearch() {
   searchInput.addEventListener('input', updateResults);
 }
 
+function toggleDropdown(event, id) {
+  if (event) event.stopPropagation();
+
+  document.querySelectorAll('.actions-dropdown-menu').forEach(menu => {
+    if (menu.id !== `dropdown-${id}`) {
+      menu.classList.remove('show');
+    }
+  });
+
+  const menu = document.getElementById(`dropdown-${id}`);
+  if (menu) {
+    const isShowing = menu.classList.contains('show');
+    if (!isShowing) {
+      const trigger = event && event.currentTarget ? event.currentTarget : null;
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 180 && rect.top > 180) {
+          menu.classList.add('dropup');
+        } else {
+          menu.classList.remove('dropup');
+        }
+      }
+      menu.classList.add('show');
+    } else {
+      menu.classList.remove('show');
+    }
+  }
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.actions-dropdown-menu.show').forEach(menu => {
+    menu.classList.remove('show');
+  });
+}
+
+window.addEventListener('click', closeAllDropdowns);
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAllDropdowns();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   initUrlToast();
   initClock();

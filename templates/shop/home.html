@@ -172,11 +172,11 @@
         }
 
         function renderCategoryCards(categories) {
-            const cards = categories.filter(item => item.image_url).slice(0, 4);
+            const cards = categories.slice(0, 6);
             return cards.map((category, index) => `
-                    <a class="category-card category-card-${index + 1}" href="/shop/?category=${encodeURIComponent(category.slug || '')}" style="--card-image:url('${safeUrl(category.image_url, '')}')">
+                <a class="category-card category-card-${index + 1}${category.image_url ? '' : ' category-card--empty'}" href="/shop/?category=${encodeURIComponent(category.slug || '')}" style="${category.image_url ? `--card-image:url('${safeUrl(category.image_url, '')}')` : ''}">
                     <span>${escapeHtml(category.name)}</span>
-                    <small>${escapeHtml(category.description || 'Explore')}</small>
+                    <small>${escapeHtml(category.description || 'Explore collection')}</small>
                 </a>
             `).join('');
         }
@@ -191,7 +191,7 @@
                         <span class="product-badge">${escapeHtml(index === 0 ? 'New' : index === 1 ? 'Trending' : category)}</span>
                         <span class="product-image" style="position: relative;">
                             ${image ? `<img src="${safeUrl(image, '')}" alt="${escapeHtml(product.name)}">` : ''}
-                            <span class="catalog-wishlist${isFav ? ' favorited' : ''}" data-product-id="${product.id}" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});" style="position: absolute; top: 1rem; right: 1rem; background: var(--background, #fffdfa); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: var(--text-dark, #1a1c1a); z-index: 10; cursor: pointer;">
+                            <span class="catalog-wishlist home-product-wishlist${isFav ? ' favorited' : ''}" data-product-id="${product.id}" onclick="event.preventDefault(); event.stopPropagation(); window.addToWishlist(${product.id});">
                                 <i class="${isFav ? 'ri-heart-fill' : 'ri-heart-line'}"></i>
                             </span>
                         </span>
@@ -203,6 +203,24 @@
                     </a>
                 `;
             }).join('');
+        }
+
+        function renderMixedSection(section, slug) {
+            const categories = (section.items || []).filter(item => item.item_type === 'category');
+            const products = (section.items || []).filter(item => item.item_type === 'product');
+            return `
+                <section class="home-section mixed-section" id="${slug}">
+                    <div class="section-heading">
+                        <div>
+                            <p class="section-kicker">Curated</p>
+                            <h2>${escapeHtml(section.title)}</h2>
+                        </div>
+                        <a href="/shop/">Shop All</a>
+                    </div>
+                    ${categories.length ? `<div class="category-mosaic mixed-category-mosaic">${renderCategoryCards(categories)}</div>` : ''}
+                    ${products.length ? `<div class="product-row mixed-product-row">${renderProductCards(products)}</div>` : ''}
+                </section>
+            `;
         }
 
         function renderHomeSections(sections) {
@@ -242,6 +260,10 @@
                         insertedPromoBanner = true;
                     }
                     return sectionContent;
+                }
+                if (section.section_type === 'mixed') {
+                    previousSectionType = section.section_type;
+                    return renderMixedSection(section, slug);
                 }
                 previousSectionType = section.section_type;
                 sectionContent = `

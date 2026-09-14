@@ -3,6 +3,23 @@
 {% block title %}Categories - Admin{% endblock %}
 {% block page_title %}Categories{% endblock %}
 
+{% block extra_css %}
+<style>
+  .card {
+    overflow: visible;
+  }
+  .table-wrap {
+    overflow: visible;
+    min-height: 220px;
+  }
+  @media (max-width: 900px) {
+    .table-wrap {
+      overflow-x: auto !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block topbar_right %}
 <button type="button" class="btn-sm" onclick="openTagModal()">+ Add tag</button>
 <button type="button" class="btn-primary" onclick="openCategoryModal()">+ Add category</button>
@@ -37,7 +54,7 @@
           <th>Products</th>
           <th>Status</th>
           <th>Tags</th>
-          <th>Actions</th>
+          <th style="text-align: right; padding-right: 20px;">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -74,9 +91,21 @@
               <span class="badge muted">No tags</span>
             {% endif %}
           </td>
-          <td>
-            <button type="button" class="btn-sm" onclick="editCategory({{ category.id }})">Edit</button>
-            <button type="button" class="btn-sm danger" onclick="confirmCategoryDelete({{ category.id }}, '{{ category.name|escapejs }}')">Delete</button>
+          <td style="text-align: right; padding-right: 20px;">
+            <div class="actions-dropdown">
+              <button type="button" class="actions-dropdown-btn" onclick="toggleDropdown(event, 'category-{{ category.id }}')" aria-label="Category actions" title="Actions">
+                <i class="ri-more-2-fill"></i>
+              </button>
+              <div class="actions-dropdown-menu" id="dropdown-category-{{ category.id }}">
+                <button type="button" class="dropdown-item" onclick="editCategory({{ category.id }})">
+                  <i class="ri-edit-line"></i> Edit Category
+                </button>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item danger" onclick="confirmCategoryDelete({{ category.id }}, '{{ category.name|escapejs }}')">
+                  <i class="ri-delete-bin-line"></i> Delete Category
+                </button>
+              </div>
+            </div>
           </td>
         </tr>
         {% empty %}
@@ -104,7 +133,7 @@
           <th>Type</th>
           <th>Status</th>
           <th>Categories</th>
-          <th>Actions</th>
+          <th style="text-align: right; padding-right: 20px;">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -129,14 +158,27 @@
             {% endif %}
           </td>
           <td>{{ tag.categories.count }}</td>
-          <td>
-            <button type="button" class="btn-sm" onclick="editTag({{ tag.id }})">Edit</button>
-            <button type="button" class="btn-sm" onclick="toggleTag({{ tag.id }}, {% if tag.is_active %}false{% else %}true{% endif %})">
-              {% if tag.is_active %}Disable{% else %}Enable{% endif %}
-            </button>
-            {% if not tag.is_system %}
-              <button type="button" class="btn-sm danger" onclick="confirmTagDelete({{ tag.id }}, '{{ tag.name|escapejs }}')">Delete</button>
-            {% endif %}
+          <td style="text-align: right; padding-right: 20px;">
+            <div class="actions-dropdown">
+              <button type="button" class="actions-dropdown-btn" onclick="toggleDropdown(event, 'tag-{{ tag.id }}')" aria-label="Tag actions" title="Actions">
+                <i class="ri-more-2-fill"></i>
+              </button>
+              <div class="actions-dropdown-menu" id="dropdown-tag-{{ tag.id }}">
+                <button type="button" class="dropdown-item" onclick="editTag({{ tag.id }})">
+                  <i class="ri-edit-line"></i> Edit Tag
+                </button>
+                <button type="button" class="dropdown-item" onclick="toggleTag({{ tag.id }}, {% if tag.is_active %}false{% else %}true{% endif %})">
+                  <i class="{% if tag.is_active %}ri-eye-off-line{% else %}ri-eye-line{% endif %}"></i>
+                  {% if tag.is_active %}Disable Tag{% else %}Enable Tag{% endif %}
+                </button>
+                {% if not tag.is_system %}
+                  <div class="dropdown-divider"></div>
+                  <button type="button" class="dropdown-item danger" onclick="confirmTagDelete({{ tag.id }}, '{{ tag.name|escapejs }}')">
+                    <i class="ri-delete-bin-line"></i> Delete Tag
+                  </button>
+                {% endif %}
+              </div>
+            </div>
           </td>
         </tr>
         {% empty %}

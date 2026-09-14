@@ -485,12 +485,15 @@ class HomeSectionSerializer(serializers.ModelSerializer):
     )
     items = serializers.SerializerMethodField()
     selected_ids = serializers.SerializerMethodField()
+    selected_category_ids = serializers.SerializerMethodField()
+    selected_product_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = HomeSection
         fields = [
             'id', 'title', 'section_type', 'display_order', 'is_visible',
-            'category_ids', 'product_ids', 'selected_ids', 'items',
+            'category_ids', 'product_ids', 'selected_ids',
+            'selected_category_ids', 'selected_product_ids', 'items',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -525,15 +528,45 @@ class HomeSectionSerializer(serializers.ModelSerializer):
             links = obj.category_links.select_related('category').filter(
                 category__status=Category.Status.ACTIVE,
             )
-            return HomeSectionCategoryItemSerializer(links, many=True, context=self.context).data
-        links = obj.product_links.select_related('product', 'product__category').prefetch_related(
+            items = HomeSectionCategoryItemSerializer(links, many=True, context=self.context).data
+            return [dict(item, item_type='category') for item in items]
+        if obj.section_type == HomeSection.SectionType.PRODUCTS:
+            links = obj.product_links.select_related('product', 'product__category').prefetch_related(
+                'product__images',
+            ).filter(product__status=Product.Status.AVAILABLE)
+            items = HomeSectionProductItemSerializer(links, many=True, context=self.context).data
+            return [dict(item, item_type='product') for item in items]
+
+        category_links = obj.category_links.select_related('category').filter(
+            category__status=Category.Status.ACTIVE,
+        )
+        product_links = obj.product_links.select_related('product', 'product__category').prefetch_related(
             'product__images',
         ).filter(product__status=Product.Status.AVAILABLE)
-        return HomeSectionProductItemSerializer(links, many=True, context=self.context).data
+        categories = [
+            dict(item, item_type='category')
+            for item in HomeSectionCategoryItemSerializer(category_links, many=True, context=self.context).data
+        ]
+        products = [
+            dict(item, item_type='product')
+            for item in HomeSectionProductItemSerializer(product_links, many=True, context=self.context).data
+        ]
+        return categories + products
 
     def get_selected_ids(self, obj):
         if obj.section_type == HomeSection.SectionType.CATEGORIES:
             return list(obj.category_links.order_by('item_order', 'id').values_list('category_id', flat=True))
+        if obj.section_type == HomeSection.SectionType.PRODUCTS:
+            return list(obj.product_links.order_by('item_order', 'id').values_list('product_id', flat=True))
+        return {
+            'categories': self.get_selected_category_ids(obj),
+            'products': self.get_selected_product_ids(obj),
+        }
+
+    def get_selected_category_ids(self, obj):
+        return list(obj.category_links.order_by('item_order', 'id').values_list('category_id', flat=True))
+
+    def get_selected_product_ids(self, obj):
         return list(obj.product_links.order_by('item_order', 'id').values_list('product_id', flat=True))
 
     def _sync_items(self, section, category_ids=None, product_ids=None):
