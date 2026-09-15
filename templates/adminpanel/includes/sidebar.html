@@ -1,74 +1,74 @@
 <aside class="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-logo">AP</div>
+    <div class="brand-logo"><i class="ri-store-2-line"></i></div>
     <div>
-      <div class="brand-name">AdminPanel</div>
-      <div class="brand-sub">ecommerce</div>
+      <div class="brand-name">Store Admin</div>
+      <div class="brand-sub">Store management</div>
     </div>
   </div>
 
   <div class="nav-section">
-    <div class="nav-label">Main</div>
+    <div class="nav-label">Store</div>
     <a href="{% url 'admin_dashboard' %}" class="nav-item{% if active_nav == 'dashboard' %} active{% endif %}">
-      <span class="nav-icon">DB</span> Dashboard
+      <span class="nav-icon"><i class="ri-dashboard-line"></i></span> Dashboard
     </a>
     <a href="{% url 'admin_products' %}" class="nav-item{% if active_nav == 'products' %} active{% endif %}">
-      <span class="nav-icon">PR</span> Products
+      <span class="nav-icon"><i class="ri-shopping-bag-3-line"></i></span> Products
       {% if product_count %}<span class="nav-badge">{{ product_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_categories' %}" class="nav-item{% if active_nav == 'categories' %} active{% endif %}">
-      <span class="nav-icon">CT</span> Categories
+      <span class="nav-icon"><i class="ri-price-tag-3-line"></i></span> Product Categories
       {% if category_count %}<span class="nav-badge">{{ category_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_orders' %}" class="nav-item{% if active_nav == 'orders' %} active{% endif %}">
-      <span class="nav-icon">OR</span> Orders
+      <span class="nav-icon"><i class="ri-file-list-3-line"></i></span> Orders
     </a>
     <a href="{% url 'admin_delivery' %}" class="nav-item{% if active_nav == 'delivery' %} active{% endif %}">
-      <span class="nav-icon">DL</span> Delivery
+      <span class="nav-icon"><i class="ri-truck-line"></i></span> Shipping & Delivery
     </a>
     <a href="{% url 'admin_coupons' %}" class="nav-item{% if active_nav == 'coupons' %} active{% endif %}">
-      <span class="nav-icon">CP</span> Coupons
+      <span class="nav-icon"><i class="ri-coupon-3-line"></i></span> Discounts & Coupons
     </a>
     <a href="{% url 'admin_customers' %}" class="nav-item{% if active_nav == 'customers' %} active{% endif %}">
-      <span class="nav-icon">CU</span> Customers
+      <span class="nav-icon"><i class="ri-user-3-line"></i></span> Customers
       {% if customer_count %}<span class="nav-badge">{{ customer_count }}</span>{% endif %}
     </a>
   </div>
 
   <div class="nav-section">
-    <div class="nav-label">Content</div>
+    <div class="nav-label">Homepage & Marketing</div>
     <a href="{% url 'admin_carousel' %}" class="nav-item{% if active_nav == 'carousel' %} active{% endif %}">
-      <span class="nav-icon">CR</span> Carousel
+      <span class="nav-icon"><i class="ri-slideshow-3-line"></i></span> Homepage Slider
       {% if carousel_count %}<span class="nav-badge">{{ carousel_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_popups' %}" class="nav-item{% if active_nav == 'popups' %} active{% endif %}">
-      <span class="nav-icon">PB</span> Popups
+      <span class="nav-icon"><i class="ri-image-2-line"></i></span> Promo Popups
       {% if active_popup_count %}<span class="nav-badge" style="background:#27ae60;">{{ active_popup_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_home_sections' %}" class="nav-item{% if active_nav == 'home_sections' %} active{% endif %}">
-      <span class="nav-icon">PL</span> Product Lists
+      <span class="nav-icon"><i class="ri-layout-grid-line"></i></span> Homepage Lists
       {% if section_count %}<span class="nav-badge">{{ section_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_subscriptions' %}" class="nav-item{% if active_nav == 'subscriptions' %} active{% endif %}">
-      <span class="nav-icon">SB</span> Subscriptions
+      <span class="nav-icon"><i class="ri-mail-line"></i></span> Newsletter Emails
       {% if subscription_count %}<span class="nav-badge">{{ subscription_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_reviews' %}" class="nav-item{% if active_nav == 'reviews' %} active{% endif %}">
-      <span class="nav-icon">RV</span> Reviews
+      <span class="nav-icon"><i class="ri-star-line"></i></span> Product Reviews
     </a>
     <a href="{% url 'admin_messages' %}" class="nav-item{% if active_nav == 'messages' %} active{% endif %}">
-      <span class="nav-icon">MS</span> Messages
+      <span class="nav-icon"><i class="ri-chat-3-line"></i></span> Customer Messages
       {% if unread_count %}<span class="nav-badge" style="background:#e74c3c;">{{ unread_count }}</span>{% endif %}
     </a>
   </div>
 
   <div class="nav-section">
-    <div class="nav-label">Security</div>
+    <div class="nav-label">Account</div>
     <a href="{% url 'admin_login_logs' %}" class="nav-item{% if active_nav == 'login_logs' %} active{% endif %}">
-      <span class="nav-icon">LG</span> Login Logs
+      <span class="nav-icon"><i class="ri-history-line"></i></span> Admin Login History
     </a>
     <a href="{% url 'admin_settings' %}" class="nav-item{% if active_nav == 'settings' %} active{% endif %}">
-      <span class="nav-icon">ST</span> Settings
+      <span class="nav-icon"><i class="ri-settings-3-line"></i></span> Store Settings
     </a>
   </div>
 

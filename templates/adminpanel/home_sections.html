@@ -86,6 +86,134 @@
     grid-template-columns: minmax(0, 1fr) 180px;
     gap: 14px;
   }
+  .section-step {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-step:first-child {
+    padding-top: 0;
+  }
+  .section-step:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(79,142,247,.12);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .step-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .step-title h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .section-help {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .preset-chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface2);
+    color: var(--muted);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  .preset-chip:hover,
+  .preset-chip:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .type-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .type-card {
+    position: relative;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--inp);
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+  .type-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .type-card i {
+    display: inline-flex;
+    color: var(--accent);
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .type-card strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .type-card small {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .type-card:has(input:checked) {
+    border-color: rgba(79,142,247,.65);
+    background: rgba(79,142,247,.09);
+  }
+  .section-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 2px 0 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+  }
+  .section-summary strong {
+    color: var(--text);
+    font-size: 13px;
+  }
+  .section-summary span {
+    color: var(--muted);
+    font-size: 12px;
+  }
   .editor-actions {
     display: flex;
     align-items: center;
@@ -209,6 +337,10 @@
     font-size: 13px;
     cursor: pointer;
   }
+  .section-choice.selected {
+    border-color: rgba(52,211,153,.42);
+    background: rgba(52,211,153,.07);
+  }
   .section-choice input {
     width: 16px;
     height: 16px;
@@ -245,6 +377,9 @@
     .home-section-toolbar,
     .section-form-grid,
     .section-picker-grid {
+      grid-template-columns: 1fr;
+    }
+    .type-cards {
       grid-template-columns: 1fr;
     }
     .section-picker-head {
@@ -300,51 +435,106 @@
     <div class="card-body">
       <input type="hidden" name="id">
       <input type="hidden" name="display_order" value="0">
+      <select name="section_type" hidden>
+        <option value="mixed">Categories + Products</option>
+        <option value="categories">Categories only</option>
+        <option value="products">Products only</option>
+      </select>
 
       <div class="section-quick-links">
         <a class="btn-sm" href="{% url 'add_product' %}"><i class="ri-shopping-bag-3-line"></i> Add product</a>
         <a class="btn-sm" href="{% url 'admin_categories' %}"><i class="ri-price-tag-3-line"></i> Add category</a>
       </div>
 
-      <div class="section-form-grid">
-        <div class="field">
-          <label>List heading <span class="req">*</span></label>
-          <input type="text" name="title" placeholder="Trending now" required>
-        </div>
-        <div class="field">
-          <label>Items to include</label>
-          <select name="section_type">
-            <option value="mixed">Categories + Products</option>
-            <option value="categories">Categories only</option>
-            <option value="products">Products only</option>
-          </select>
+      <div class="section-step">
+        <span class="step-number">1</span>
+        <div>
+          <div class="step-title">
+            <h4>Name the homepage list</h4>
+          </div>
+          <div class="field">
+            <label>List heading <span class="req">*</span></label>
+            <input type="text" name="title" placeholder="Trending now" required>
+            <p class="section-help">This heading appears above the selected products or categories on the customer homepage.</p>
+          </div>
+          <div class="preset-row" aria-label="Quick heading presets">
+            <button class="preset-chip" type="button" data-title-preset="Popular Categories">Popular Categories</button>
+            <button class="preset-chip" type="button" data-title-preset="New Arrivals">New Arrivals</button>
+            <button class="preset-chip" type="button" data-title-preset="Trending Products">Trending Products</button>
+            <button class="preset-chip" type="button" data-title-preset="Best Sellers">Best Sellers</button>
+          </div>
         </div>
       </div>
 
-      <label class="check-label section-visible">
-        <input type="checkbox" name="is_visible" checked>
-        Show this list on the home page
-      </label>
+      <div class="section-step">
+        <span class="step-number">2</span>
+        <div>
+          <div class="step-title">
+            <h4>Choose list type</h4>
+          </div>
+          <div class="type-cards" id="sectionTypeCards">
+            <label class="type-card">
+              <input type="radio" name="section_type_choice" value="mixed" checked>
+              <i class="ri-layout-grid-line"></i>
+              <strong>Mixed list</strong>
+              <small>Show selected categories and products together.</small>
+            </label>
+            <label class="type-card">
+              <input type="radio" name="section_type_choice" value="categories">
+              <i class="ri-price-tag-3-line"></i>
+              <strong>Categories</strong>
+              <small>Use this for collection shortcuts.</small>
+            </label>
+            <label class="type-card">
+              <input type="radio" name="section_type_choice" value="products">
+              <i class="ri-shopping-bag-3-line"></i>
+              <strong>Products</strong>
+              <small>Use this for merchandised product rows.</small>
+            </label>
+          </div>
 
-      <label>Assigned items</label>
-      <div class="section-assigned" id="assignedItems"></div>
-
-      <div class="section-picker-head">
-        <div class="field">
-          <label for="itemSearch">Find items</label>
-          <input type="text" id="itemSearch" placeholder="Search categories or products">
+          <label class="check-label section-visible">
+            <input type="checkbox" name="is_visible" checked>
+            Show this list on the home page
+          </label>
         </div>
-        <button class="btn-sm" type="button" id="clearAssignedBtn"><i class="ri-close-circle-line"></i> Clear items</button>
       </div>
 
-      <div class="section-picker-grid">
-        <div class="section-picker-panel" id="categoryPanel">
-          <div class="picker-panel-title"><span><i class="ri-price-tag-3-line"></i> Categories</span><small id="categorySelectedCount">0 selected</small></div>
-          <div class="section-item-picker" id="categoryPicker"></div>
-        </div>
-        <div class="section-picker-panel" id="productPanel">
-          <div class="picker-panel-title"><span><i class="ri-shopping-bag-3-line"></i> Products</span><small id="productSelectedCount">0 selected</small></div>
-          <div class="section-item-picker" id="productPicker"></div>
+      <div class="section-step">
+        <span class="step-number">3</span>
+        <div>
+          <div class="step-title">
+            <h4>Select content</h4>
+          </div>
+
+          <div class="section-summary">
+            <div>
+              <strong id="selectionSummary">No items selected</strong>
+              <span id="selectionHint">Pick at least one item before saving.</span>
+            </div>
+            <button class="btn-sm" type="button" id="clearAssignedBtn"><i class="ri-close-circle-line"></i> Clear</button>
+          </div>
+
+          <label>Assigned items</label>
+          <div class="section-assigned" id="assignedItems"></div>
+
+          <div class="section-picker-head">
+            <div class="field">
+              <label for="itemSearch">Find items</label>
+              <input type="text" id="itemSearch" placeholder="Search categories or products">
+            </div>
+          </div>
+
+          <div class="section-picker-grid">
+            <div class="section-picker-panel" id="categoryPanel">
+              <div class="picker-panel-title"><span><i class="ri-price-tag-3-line"></i> Categories</span><small id="categorySelectedCount">0 selected</small></div>
+              <div class="section-item-picker" id="categoryPicker"></div>
+            </div>
+            <div class="section-picker-panel" id="productPanel">
+              <div class="picker-panel-title"><span><i class="ri-shopping-bag-3-line"></i> Products</span><small id="productSelectedCount">0 selected</small></div>
+              <div class="section-item-picker" id="productPicker"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -368,6 +558,9 @@
   const search = document.getElementById('itemSearch');
   const formTitle = document.getElementById('formTitle');
   const deleteBtn = document.getElementById('deleteBtn');
+  const selectionSummary = document.getElementById('selectionSummary');
+  const selectionHint = document.getElementById('selectionHint');
+  const typeChoices = [...document.querySelectorAll('[name="section_type_choice"]')];
   let sections = [];
   let categories = [];
   let products = [];
@@ -390,6 +583,33 @@
     if (type === 'categories') return 'ri-price-tag-3-line';
     if (type === 'products') return 'ri-shopping-bag-3-line';
     return 'ri-layout-grid-line';
+  }
+
+  function setSectionType(type) {
+    form.elements.section_type.value = type;
+    typeChoices.forEach(choice => { choice.checked = choice.value === type; });
+  }
+
+  function selectedCounts() {
+    return {
+      categories: selectedCategoryIds.size,
+      products: selectedProductIds.size,
+      total: selectedCategoryIds.size + selectedProductIds.size
+    };
+  }
+
+  function updateSelectionSummary() {
+    const counts = selectedCounts();
+    if (!counts.total) {
+      selectionSummary.textContent = 'No items selected';
+      selectionHint.textContent = 'Pick at least one item before saving.';
+      return;
+    }
+    const parts = [];
+    if (counts.categories) parts.push(`${counts.categories} ${counts.categories === 1 ? 'category' : 'categories'}`);
+    if (counts.products) parts.push(`${counts.products} ${counts.products === 1 ? 'product' : 'products'}`);
+    selectionSummary.textContent = parts.join(', ');
+    selectionHint.textContent = 'Selected items appear inside this homepage list.';
   }
 
   function primaryImage(product) {
@@ -483,7 +703,7 @@
         : `${item.category?.name || 'Uncategorized'} | ${item.status || ''}`;
       const image = kind === 'category' ? item.image_url : primaryImage(item);
       return `
-        <label class="section-choice">
+        <label class="section-choice ${selectedSet.has(item.id) ? 'selected' : ''}">
           <input type="checkbox" value="${item.id}" data-kind="${kind}" ${selectedSet.has(item.id) ? 'checked' : ''}>
           ${renderThumb(image, item.name)}
           <span>
@@ -504,6 +724,7 @@
     ];
     document.getElementById('categorySelectedCount').textContent = `${selectedCategories.length} selected`;
     document.getElementById('productSelectedCount').textContent = `${selectedProducts.length} selected`;
+    updateSelectionSummary();
     if (!chips.length) {
       assignedItems.innerHTML = '<div class="assigned-empty">No items assigned yet.</div>';
       return;
@@ -527,7 +748,7 @@
   function resetForm() {
     form.reset();
     form.elements.id.value = '';
-    form.elements.section_type.value = 'mixed';
+    setSectionType('mixed');
     form.elements.display_order.value = sections.length ? Math.max(...sections.map(section => section.display_order)) + 10 : 10;
     form.elements.is_visible.checked = true;
     formTitle.textContent = 'Create homepage list';
@@ -543,7 +764,7 @@
     if (!section) return;
     form.elements.id.value = section.id;
     form.elements.title.value = section.title;
-    form.elements.section_type.value = section.section_type;
+    setSectionType(section.section_type);
     form.elements.display_order.value = section.display_order;
     form.elements.is_visible.checked = section.is_visible;
     formTitle.textContent = `Edit ${section.title}`;
@@ -571,8 +792,20 @@
   async function saveSection(event) {
     event.preventDefault();
     const type = form.elements.section_type.value;
+    const title = form.elements.title.value.trim();
+    const counts = selectedCounts();
+    if (!title) {
+      showToast('Enter a list heading before saving.', 'danger');
+      form.elements.title.focus();
+      return;
+    }
+    if (!counts.total) {
+      showToast('Select at least one category or product.', 'danger');
+      search.focus();
+      return;
+    }
     const payload = {
-      title: form.elements.title.value.trim(),
+      title,
       section_type: type,
       display_order: Number(form.elements.display_order.value || 0),
       is_visible: form.elements.is_visible.checked
@@ -692,13 +925,20 @@
   }
 
   form.addEventListener('submit', saveSection);
-  form.elements.section_type.addEventListener('change', () => {
+  typeChoices.forEach(choice => choice.addEventListener('change', event => {
+    setSectionType(event.target.value);
     if (form.elements.section_type.value === 'categories') selectedProductIds = new Set();
     if (form.elements.section_type.value === 'products') selectedCategoryIds = new Set();
     renderPickers();
-  });
+  }));
   categoryPicker.addEventListener('change', handlePickerChange);
   productPicker.addEventListener('change', handlePickerChange);
+  document.querySelectorAll('[data-title-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      form.elements.title.value = button.dataset.titlePreset;
+      form.elements.title.focus();
+    });
+  });
   assignedItems.addEventListener('click', event => {
     const button = event.target.closest('[data-remove-item]');
     if (!button) return;
