@@ -1,8 +1,9 @@
 from datetime import timedelta
+from textwrap import wrap
 
 import bcrypt
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
@@ -31,6 +32,7 @@ from .models import (
     Order,
     OrderItem,
     OTPSettings,
+    StoreAddressSettings,
     ContactMessage,
     Coupon,
     PopupBanner,
@@ -412,6 +414,7 @@ def admin_settings(request):
     otp_settings = OTPSettings.current()
     theme = HomeTheme.current()
     gst_config = GSTConfig.current()
+    store_address_settings = StoreAddressSettings.current()
     gst_rates = GSTRate.objects.all()
 
     if request.method == 'POST':
@@ -422,6 +425,24 @@ def admin_settings(request):
                 data = json.loads(request.body)
             except json.JSONDecodeError:
                 return JsonResponse({'success': False, 'message': 'Invalid JSON data.'}, status=400)
+
+            if data.get('form_type') == 'store_address_settings':
+                sender_name = data.get('sender_name', '').strip() or 'Carmelian'
+                sender_phone = data.get('sender_phone', '').strip()
+                sender_address = data.get('sender_address', '').strip()
+                store_address_settings.sender_name = sender_name
+                store_address_settings.sender_phone = sender_phone
+                store_address_settings.sender_address = sender_address
+                store_address_settings.save()
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Store sender address updated.',
+                    'store_address_settings': {
+                        'sender_name': store_address_settings.sender_name,
+                        'sender_phone': store_address_settings.sender_phone,
+                        'sender_address': store_address_settings.sender_address,
+                    }
+                })
 
             if data.get('form_type') == 'gst_settings':
                 default_rate = None
@@ -529,6 +550,7 @@ def admin_settings(request):
         'theme': theme,
         'otp_settings': otp_settings,
         'gst_config': gst_config,
+        'store_address_settings': store_address_settings,
         'gst_rates': gst_rates,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'settings',
@@ -699,6 +721,166 @@ def admin_orders(request):
     })
 
 
+def _pdf_escape(value):
+    return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _order_address_pdf_bytes(title, sections):
+    width = 595
+    height = 842
+    content = ['BT', '/F1 22 Tf', f'72 {height - 76} Td', f'({_pdf_escape(title)}) Tj']
+    y = height - 118
+
+    for section_title, lines in sections:
+        content.extend(['ET', 'BT', '/F1 13 Tf', f'72 {y} Td', f'({_pdf_escape(section_title)}) Tj'])
+        y -= 24
+        content.extend(['ET', 'BT', '/F1 10 Tf', f'72 {y} Td'])
+        first_line = True
+        for raw_line in lines:
+            wrapped_lines = wrap(str(raw_line), width=78) or ['']
+            for line in wrapped_lines:
+                if not first_line:
+                    content.append('0 -15 Td')
+                content.append(f'({_pdf_escape(line)}) Tj')
+                y -= 15
+                first_line = False
+            if raw_line == '':
+                content.append('0 -8 Td')
+                y -= 8
+        content.append('ET')
+        y -= 26
+
+    stream = '\n'.join(content).encode('latin-1', errors='replace')
+    objects = [
+        b'1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        b'2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        b'3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
+        b'4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        b'5 0 obj\n<< /Length ' + str(len(stream)).encode('ascii') + b' >>\nstream\n' + stream + b'\nendstream\nendobj\n',
+    ]
+    pdf = bytearray(b'%PDF-1.4\n')
+    offsets = [0]
+    for obj in objects:
+        offsets.append(len(pdf))
+        pdf.extend(obj)
+    xref_position = len(pdf)
+    pdf.extend(f'xref\n0 {len(objects) + 1}\n'.encode('ascii'))
+    pdf.extend(b'0000000000 65535 f \n')
+    for offset in offsets[1:]:
+        pdf.extend(f'{offset:010d} 00000 n \n'.encode('ascii'))
+    pdf.extend(f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n'.encode('ascii'))
+    return bytes(pdf)
+
+
+@admin_login_required
+def download_order_address_pdf(request, pk):
+    order = get_object_or_404(Order.objects.select_related('user'), pk=pk)
+    store_address_settings = StoreAddressSettings.current()
+    store_name = store_address_settings.sender_name.strip() or 'Store'
+    from_address = [line.strip() for line in store_address_settings.sender_address.splitlines() if line.strip()]
+    if store_address_settings.sender_phone.strip():
+        from_address.insert(0, f'Phone: {store_address_settings.sender_phone.strip()}')
+    if not from_address:
+        from_address = ['Store sender address not configured. Update Store Sender Address in Settings.']
+
+    customer_address = [
+        order.full_name,
+        f'Phone: {order.phone}',
+        order.street_address,
+        ', '.join(part for part in [order.city, order.county, order.state] if part),
+        ', '.join(part for part in [order.country, order.postal_code] if part),
+    ]
+
+    sections = [
+        ('From Address', from_address),
+        ('Customer Address', [line for line in customer_address if line]),
+    ]
+    response = HttpResponse(
+        _order_address_pdf_bytes(store_name, sections),
+        content_type='application/pdf',
+    )
+    response['Content-Disposition'] = f'attachment; filename="order-{order.id}-address.pdf"'
+    return response
+
+
+def _apply_order_status_change(order, new_status):
+    old_status = order.status
+    if new_status == old_status:
+        return False
+
+    order.status = new_status
+    if new_status == Order.Status.DELIVERED and not order.delivered_at:
+        order.delivered_at = timezone.now()
+    elif new_status == Order.Status.CANCELLED:
+        if not order.cancelled_at:
+            order.cancelled_at = timezone.now()
+        order.cancel_requested = True
+        for item in order.items.all():
+            if item.product:
+                item.product.stock += item.quantity
+                if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
+                    item.product.status = Product.Status.AVAILABLE
+                item.product.save()
+    elif new_status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
+        if not order.returned_at:
+            order.returned_at = timezone.now()
+        order.return_requested = True
+    order.save()
+
+    status_event_map = {
+        Order.Status.SHIPPED: 'shipped',
+        Order.Status.DELIVERED: 'delivered',
+        Order.Status.CANCELLED: 'cancelled',
+        Order.Status.RETURN_REQUESTED: 'replacement_requested',
+        Order.Status.RETURNED: 'replacement_completed',
+    }
+    event_type = status_event_map.get(new_status)
+    if event_type:
+        send_order_status_email(order, event_type)
+    return True
+
+
+@admin_login_required
+@require_POST
+def bulk_update_order_status(request):
+    order_ids = request.POST.getlist('order_ids')
+    new_status = request.POST.get('status', '').strip()
+    redirect_to = request.META.get('HTTP_REFERER') or 'admin_orders'
+
+    if not order_ids:
+        messages.error(request, 'Select at least one order.')
+        return redirect(redirect_to)
+
+    if new_status not in dict(Order.Status.choices):
+        messages.error(request, 'Invalid status selected.')
+        return redirect(redirect_to)
+
+    orders = list(Order.objects.filter(pk__in=order_ids).prefetch_related('items', 'items__product'))
+    if len(orders) != len(set(order_ids)):
+        messages.error(request, 'One or more selected orders could not be found.')
+        return redirect(redirect_to)
+
+    current_statuses = {order.status for order in orders}
+    if len(current_statuses) != 1:
+        messages.error(request, 'Bulk status change is allowed only when all selected orders have the same current status.')
+        return redirect(redirect_to)
+
+    if Order.Status.CANCELLED in current_statuses:
+        messages.error(request, 'Cancelled orders are locked and cannot be changed.')
+        return redirect(redirect_to)
+
+    updated_count = 0
+    for order in orders:
+        if _apply_order_status_change(order, new_status):
+            updated_count += 1
+
+    if updated_count:
+        messages.success(request, f'{updated_count} selected orders updated to {dict(Order.Status.choices)[new_status]}.')
+    else:
+        messages.info(request, 'Selected orders already have that status.')
+    return redirect(redirect_to)
+
+
 @admin_login_required
 @require_POST
 def update_order_status(request, pk):
@@ -713,38 +895,7 @@ def update_order_status(request, pk):
 
     if new_status in dict(Order.Status.choices):
         if new_status != old_status:
-            order.status = new_status
-            if new_status == Order.Status.DELIVERED and not order.delivered_at:
-                order.delivered_at = timezone.now()
-            elif new_status == Order.Status.CANCELLED:
-                if not order.cancelled_at:
-                    order.cancelled_at = timezone.now()
-                order.cancel_requested = True
-                # Restore stock if cancelled by admin
-                for item in order.items.all():
-                    if item.product:
-                        item.product.stock += item.quantity
-                        if item.product.status == Product.Status.OUT_OF_STOCK and item.product.stock > 0:
-                            item.product.status = Product.Status.AVAILABLE
-                        item.product.save()
-            elif new_status in [Order.Status.RETURN_REQUESTED, Order.Status.RETURNED]:
-                if not order.returned_at:
-                    order.returned_at = timezone.now()
-                order.return_requested = True
-            order.save()
-
-            # Trigger transactional status email notification
-            status_event_map = {
-                Order.Status.SHIPPED: 'shipped',
-                Order.Status.DELIVERED: 'delivered',
-                Order.Status.CANCELLED: 'cancelled',
-                Order.Status.RETURN_REQUESTED: 'replacement_requested',
-                Order.Status.RETURNED: 'replacement_completed',
-            }
-            event_type = status_event_map.get(new_status)
-            if event_type:
-                send_order_status_email(order, event_type)
-
+            _apply_order_status_change(order, new_status)
             messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
         else:
             messages.info(request, f"Order #{order.id} status is already '{order.get_status_display()}'.")

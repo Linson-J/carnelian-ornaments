@@ -14,6 +14,7 @@ from .models import (
     HomeTheme,
     GSTConfig,
     GSTRate,
+    StoreAddressSettings,
     LoginAttempt,
     NewsletterSubscription,
     Product,
@@ -153,6 +154,11 @@ class GSTRateAdmin(admin.ModelAdmin):
 @admin.register(GSTConfig)
 class GSTConfigAdmin(admin.ModelAdmin):
     list_display = ('enabled', 'seller_state', 'default_rate', 'pricing_mode', 'updated_at')
+
+
+@admin.register(StoreAddressSettings)
+class StoreAddressSettingsAdmin(admin.ModelAdmin):
+    list_display = ('sender_name', 'sender_phone', 'updated_at')
 
 
 class OrderItemInline(admin.TabularInline):

@@ -237,6 +237,26 @@ class GSTConfig(models.Model):
 
 
 # ─── Product Images (gallery) ─────────────────────────────────
+class StoreAddressSettings(models.Model):
+    sender_name = models.CharField(max_length=150, default='Carmelian')
+    sender_phone = models.CharField(max_length=20, blank=True, default='')
+    sender_address = models.TextField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_store_address_settings'
+        verbose_name = 'store address settings'
+        verbose_name_plural = 'store address settings'
+
+    def __str__(self):
+        return 'Store Address Settings'
+
+    @classmethod
+    def current(cls):
+        config, _ = cls.objects.get_or_create(pk=1)
+        return config
+
+
 class ProductImage(models.Model):
     product    = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image      = models.ImageField(upload_to='products/%Y/%m/')

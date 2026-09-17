@@ -197,6 +197,91 @@
     border-color: rgba(255, 255, 255, 0.25);
     color: #ffffff;
   }
+  .order-action-menu {
+    position: relative;
+    display: inline-flex;
+    justify-content: flex-end;
+  }
+  .order-action-toggle {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .order-action-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+  }
+  .order-action-dropdown {
+    position: absolute;
+    top: 40px;
+    right: 0;
+    z-index: 30;
+    min-width: 190px;
+    display: none;
+    padding: 6px;
+    background: #171820;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+  .order-action-menu.open .order-action-dropdown {
+    display: grid;
+    gap: 4px;
+  }
+  .order-action-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #e2e8f0;
+    text-decoration: none;
+    font: inherit;
+    font-size: 0.88rem;
+    text-align: left;
+    cursor: pointer;
+  }
+  .order-action-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+  }
+  .bulk-order-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 14px 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .bulk-order-summary {
+    min-width: 180px;
+    color: #cbd5e1;
+    font-size: 0.88rem;
+  }
+  .order-check {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .bulk-order-bar .filter-select:disabled,
+  .bulk-order-bar .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 </style>
 {% endblock %}
 
@@ -222,10 +307,27 @@
     {% endif %}
   </form>
 
+  <form class="bulk-order-bar" id="bulkStatusForm" method="POST" action="{% url 'bulk_update_order_status' %}">
+    {% csrf_token %}
+    <span class="bulk-order-summary" id="bulkOrderSummary">No orders selected</span>
+    <select name="status" class="filter-select" id="bulkStatusSelect" disabled required>
+      <option value="">Change selected to...</option>
+      {% for status_val, status_lbl in choices %}
+        <option value="{{ status_val }}">{{ status_lbl }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-primary" id="bulkStatusButton" disabled style="padding:8px 20px; border-radius:6px; border:none; cursor:pointer;">
+      Update Selected
+    </button>
+  </form>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
+          <th style="width:44px;">
+            <input type="checkbox" class="order-check" id="selectAllOrders" title="Select all visible orders" aria-label="Select all visible orders">
+          </th>
           <th>Order ID</th>
           <th>Customer Info</th>
           <th>Placed On</th>
@@ -237,6 +339,9 @@
       <tbody>
         {% for order in orders %}
         <tr>
+          <td>
+            <input type="checkbox" class="order-check order-row-check" name="order_ids" value="{{ order.id }}" data-status="{{ order.status }}" form="bulkStatusForm" aria-label="Select order #{{ order.id }}">
+          </td>
           <td><strong>#{{ order.id }}</strong></td>
           <td>
             <strong>{{ order.full_name }}</strong><br>
@@ -264,13 +369,25 @@
             {% endif %}
           </td>
           <td>
-            <button class="btn-view-details" onclick="toggleOrderDetails({{ order.id }})">👁 View Details</button>
+            <div class="order-action-menu" id="order-action-menu-{{ order.id }}">
+              <button type="button" class="order-action-toggle" onclick="toggleActionMenu(event, {{ order.id }})" title="Order actions" aria-label="Order actions">
+                <i class="ri-more-2-fill"></i>
+              </button>
+              <div class="order-action-dropdown">
+                <button type="button" class="order-action-item" onclick="toggleOrderDetails({{ order.id }})">
+                  <i class="ri-eye-line"></i> View Details
+                </button>
+                <a class="order-action-item" href="{% url 'download_order_address_pdf' order.id %}">
+                  <i class="ri-download-2-line"></i> Download Address PDF
+                </a>
+              </div>
+            </div>
           </td>
         </tr>
 
         <!-- Expanded Details Row -->
         <tr class="order-details-row" id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
-          <td colspan="6" style="padding: 15px 30px;">
+          <td colspan="7" style="padding: 15px 30px;">
             <div class="order-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
               <div>
                 <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Shipping Address & Action Details</div>
@@ -363,7 +480,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" style="text-align:center; color:var(--muted); padding:30px;">
+          <td colspan="7" style="text-align:center; color:var(--muted); padding:30px;">
             No orders matching the criteria.
           </td>
         </tr>
@@ -376,7 +493,24 @@
 
 {% block extra_js %}
 <script>
+  function closeActionMenus() {
+    document.querySelectorAll('.order-action-menu.open').forEach(menu => {
+      menu.classList.remove('open');
+    });
+  }
+
+  function toggleActionMenu(event, orderId) {
+    event.stopPropagation();
+    const menu = document.getElementById(`order-action-menu-${orderId}`);
+    const isOpen = menu?.classList.contains('open');
+    closeActionMenus();
+    if (menu && !isOpen) {
+      menu.classList.add('open');
+    }
+  }
+
   function toggleOrderDetails(orderId) {
+    closeActionMenus();
     const detailsRow = document.getElementById(`details-row-${orderId}`);
     if (detailsRow) {
       if (detailsRow.style.display === 'none') {
@@ -387,7 +521,66 @@
     }
   }
 
+  function updateBulkStatusControls() {
+    const checks = [...document.querySelectorAll('.order-row-check')];
+    const selected = checks.filter(check => check.checked);
+    const summary = document.getElementById('bulkOrderSummary');
+    const statusSelect = document.getElementById('bulkStatusSelect');
+    const updateButton = document.getElementById('bulkStatusButton');
+    const selectAll = document.getElementById('selectAllOrders');
+    const statuses = new Set(selected.map(check => check.dataset.status));
+    const canBulkUpdate = selected.length > 0 && statuses.size === 1 && !statuses.has('cancelled');
+
+    if (selected.length === 0) {
+      summary.textContent = 'No orders selected';
+    } else if (statuses.size > 1) {
+      summary.textContent = `${selected.length} selected - statuses must match`;
+    } else if (statuses.has('cancelled')) {
+      summary.textContent = `${selected.length} selected - cancelled orders are locked`;
+    } else {
+      summary.textContent = `${selected.length} selected`;
+    }
+
+    statusSelect.disabled = !canBulkUpdate;
+    updateButton.disabled = !canBulkUpdate || !statusSelect.value;
+
+    if (!canBulkUpdate) {
+      statusSelect.value = '';
+    }
+
+    if (selectAll) {
+      selectAll.checked = checks.length > 0 && selected.length === checks.length;
+      selectAll.indeterminate = selected.length > 0 && selected.length < checks.length;
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', closeActionMenus);
+    document.querySelectorAll('.order-action-dropdown').forEach(menu => {
+      menu.addEventListener('click', event => event.stopPropagation());
+    });
+
+    document.querySelectorAll('.order-row-check').forEach(check => {
+      check.addEventListener('change', updateBulkStatusControls);
+    });
+
+    document.getElementById('selectAllOrders')?.addEventListener('change', event => {
+      document.querySelectorAll('.order-row-check').forEach(check => {
+        check.checked = event.target.checked;
+      });
+      updateBulkStatusControls();
+    });
+
+    document.getElementById('bulkStatusSelect')?.addEventListener('change', updateBulkStatusControls);
+    document.getElementById('bulkStatusForm')?.addEventListener('submit', event => {
+      const selectedCount = document.querySelectorAll('.order-row-check:checked').length;
+      const selectedStatus = document.getElementById('bulkStatusSelect')?.value;
+      if (!selectedCount || !selectedStatus) {
+        event.preventDefault();
+      }
+    });
+    updateBulkStatusControls();
+
     const filterSelect = document.querySelector('.filter-select');
     if (filterSelect) {
       filterSelect.addEventListener('change', () => {

@@ -307,6 +307,38 @@
     </div>
   </form>
 
+  <form class="card" id="storeAddressForm">
+    {% csrf_token %}
+    <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="hd-icon" style="background: rgba(34, 197, 94, 0.12); color: #86efac;">
+          <i class="ri-map-pin-user-line"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:15px;font-weight:600;">Store Sender Address</h3>
+          <p class="muted-small" style="margin-top:2px;">Used only for order address PDF downloads. This is separate from GST seller details.</p>
+        </div>
+      </div>
+      <button class="btn-primary" type="submit" id="btnSaveStoreAddress"><i class="ri-save-3-line"></i> Save Sender Address</button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+        <div class="field" style="margin-bottom:0;">
+          <label for="sender_name">Sender / Store Name</label>
+          <input type="text" id="sender_name" value="{{ store_address_settings.sender_name }}" placeholder="Carmelian">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="sender_phone">Sender Phone</label>
+          <input type="text" id="sender_phone" value="{{ store_address_settings.sender_phone }}" placeholder="+91 98765 43210">
+        </div>
+      </div>
+      <div class="field" style="margin-top:18px;">
+        <label for="sender_address">From Address</label>
+        <textarea id="sender_address" rows="3" placeholder="Enter the sender/from address shown in address PDFs">{{ store_address_settings.sender_address }}</textarea>
+      </div>
+    </div>
+  </form>
+
   <form class="card" id="gstSettingsForm">
     {% csrf_token %}
     <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -651,6 +683,48 @@ Customer pays Rs. 1000</div>
     } finally {
       btn.disabled = false;
       btn.innerHTML = origText;
+    }
+  });
+
+  // --- Store Sender Address Handler ---
+  const storeAddressForm = document.getElementById('storeAddressForm');
+  storeAddressForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const btn = document.getElementById('btnSaveStoreAddress');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving...';
+
+    const payload = {
+      form_type: 'store_address_settings',
+      sender_name: document.getElementById('sender_name').value.trim(),
+      sender_phone: document.getElementById('sender_phone').value.trim(),
+      sender_address: document.getElementById('sender_address').value.trim()
+    };
+
+    try {
+      const response = await fetch("{% url 'admin_settings' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast(data.message || 'Store sender address saved', 'success');
+        hideToast();
+      } else {
+        showToast(data.message || 'Could not save store sender address', 'danger');
+        hideToast();
+      }
+    } catch (error) {
+      showToast(error.message || 'Network error updating sender address', 'danger');
+      hideToast();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
     }
   });
 
