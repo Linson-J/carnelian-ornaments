@@ -19,6 +19,8 @@ from .models import (
     CategoryTag,
     HomeSection,
     HomeTheme,
+    GSTConfig,
+    GSTRate,
     LoginAttempt,
     NewsletterSubscription,
     Product,
@@ -222,8 +224,10 @@ def admin_products(request):
 @admin_login_required
 def add_product(request):
     categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
+    gst_rates = GSTRate.objects.filter(is_active=True).order_by('percentage', 'name')
     return render(request, 'adminpanel/add_product.html', {
         'categories': categories,
+        'gst_rates': gst_rates,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'products',
         'product_count': Product.objects.count(),
@@ -235,6 +239,7 @@ def add_product(request):
 def edit_product(request, pk):
     product = get_object_or_404(Product.objects.select_related('category'), pk=pk)
     categories = Category.objects.filter(status=Category.Status.ACTIVE).order_by('name')
+    gst_rates = GSTRate.objects.filter(is_active=True).order_by('percentage', 'name')
     if product.category_id and product.category.status != Category.Status.ACTIVE:
         categories = Category.objects.filter(pk=product.category_id) | categories
 
@@ -283,6 +288,7 @@ def edit_product(request, pk):
     return render(request, 'adminpanel/edit_product.html', {
         'product': product,
         'categories': categories,
+        'gst_rates': gst_rates,
         'colors_str': ', '.join(product.colors) if product.colors else '',
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'products',
@@ -296,6 +302,7 @@ def admin_categories(request):
     CategoryTag.ensure_defaults()
     categories = Category.objects.prefetch_related('products', 'tags').order_by('name')
     tags = CategoryTag.objects.prefetch_related('categories').order_by('name')
+    gst_rates = GSTRate.objects.filter(is_active=True).order_by('percentage', 'name')
     status = request.GET.get('status')
     search = request.GET.get('search')
     if status:
@@ -306,6 +313,7 @@ def admin_categories(request):
     return render(request, 'adminpanel/categories.html', {
         'categories': categories,
         'category_tags': tags,
+        'gst_rates': gst_rates,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'categories',
         'category_count': Category.objects.count(),
@@ -403,6 +411,8 @@ def admin_login_logs(request):
 def admin_settings(request):
     otp_settings = OTPSettings.current()
     theme = HomeTheme.current()
+    gst_config = GSTConfig.current()
+    gst_rates = GSTRate.objects.all()
 
     if request.method == 'POST':
         # Check if JSON request
@@ -412,6 +422,26 @@ def admin_settings(request):
                 data = json.loads(request.body)
             except json.JSONDecodeError:
                 return JsonResponse({'success': False, 'message': 'Invalid JSON data.'}, status=400)
+
+            if data.get('form_type') == 'gst_settings':
+                default_rate = None
+                default_rate_id = data.get('default_rate')
+                if default_rate_id:
+                    default_rate = GSTRate.objects.filter(pk=default_rate_id).first()
+                    if not default_rate:
+                        return JsonResponse({'success': False, 'message': 'Select a valid default GST rate.'}, status=400)
+                pricing_mode = data.get('pricing_mode', GSTConfig.PricingMode.EXCLUSIVE)
+                if pricing_mode not in dict(GSTConfig.PricingMode.choices):
+                    return JsonResponse({'success': False, 'message': 'Invalid GST pricing mode.'}, status=400)
+                gst_config.enabled = bool(data.get('enabled'))
+                gst_config.seller_state = data.get('seller_state', '').strip() or 'Tamil Nadu'
+                gst_config.default_rate = default_rate
+                gst_config.pricing_mode = pricing_mode
+                gst_config.seller_name = data.get('seller_name', '').strip() or 'Carmelian'
+                gst_config.seller_gstin = data.get('seller_gstin', '').strip()
+                gst_config.seller_address = data.get('seller_address', '').strip()
+                gst_config.save()
+                return JsonResponse({'success': True, 'message': 'GST configuration updated.'})
             
             company_name = data.get('company_name', '').strip() or 'Carmelian'
             sender_email = data.get('sender_email', '').strip()
@@ -498,6 +528,8 @@ def admin_settings(request):
     return render(request, 'adminpanel/settings.html', {
         'theme': theme,
         'otp_settings': otp_settings,
+        'gst_config': gst_config,
+        'gst_rates': gst_rates,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'settings',
     })

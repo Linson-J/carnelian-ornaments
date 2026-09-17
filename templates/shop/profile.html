@@ -862,10 +862,19 @@
                 {% endif %}
                 <div class="order-item-info">
                   <h4 class="item-name">{{ item.product_name }}</h4>
+                  {% if order.gst_enabled_snapshot or order.gst_amount > 0 %}
+                  <p class="item-price-qty">
+                    HSN/SAC: {{ item.hsn_sac_code|default:"-" }} | GST {{ item.gst_percentage }}% | Taxable Rs. {{ item.taxable_amount }} | GST Rs. {{ item.gst_amount }}
+                  </p>
+                  {% endif %}
                   <p class="item-price-qty">Qty: {{ item.quantity }} × Rs. {{ item.price }}</p>
                 </div>
                 <div class="item-subtotal">
-                  Rs. {% widthratio item.price 1 item.quantity %}
+                  {% if order.gst_enabled_snapshot or order.gst_amount > 0 %}
+                    Rs. {{ item.final_amount }}
+                  {% else %}
+                    Rs. {% widthratio item.price 1 item.quantity %}
+                  {% endif %}
                 </div>
               </div>
               {% endfor %}
@@ -892,6 +901,44 @@
                   <span>Discount</span>
                   <span>- Rs. {{ order.discount }}</span>
                 </div>
+                {% endif %}
+                {% if order.gst_enabled_snapshot or order.gst_amount > 0 %}
+                <div class="summary-line">
+                  <span>GST Invoice</span>
+                  <span>INV-{{ order.id }}</span>
+                </div>
+                <div class="summary-line">
+                  <span>Taxable Amount</span>
+                  <span>Rs. {{ order.taxable_amount }}</span>
+                </div>
+                {% if order.cgst_amount > 0 %}
+                <div class="summary-line">
+                  <span>CGST</span>
+                  <span>Rs. {{ order.cgst_amount }}</span>
+                </div>
+                {% endif %}
+                {% if order.sgst_amount > 0 %}
+                <div class="summary-line">
+                  <span>SGST</span>
+                  <span>Rs. {{ order.sgst_amount }}</span>
+                </div>
+                {% endif %}
+                {% if order.igst_amount > 0 %}
+                <div class="summary-line">
+                  <span>IGST</span>
+                  <span>Rs. {{ order.igst_amount }}</span>
+                </div>
+                {% endif %}
+                <div class="summary-line">
+                  <span>Total GST</span>
+                  <span>Rs. {{ order.gst_amount }}</span>
+                </div>
+                {% if order.seller_state_snapshot %}
+                <div class="summary-line">
+                  <span>Seller State</span>
+                  <span>{{ order.seller_state_snapshot }}</span>
+                </div>
+                {% endif %}
                 {% endif %}
                 <div class="summary-line">
                   <span>Payment Method</span>

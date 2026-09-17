@@ -15,6 +15,8 @@ from .models import (
     CategoryTag,
     HomeSection,
     HomeTheme,
+    GSTConfig,
+    GSTRate,
     Product,
     ProductImage,
 )
@@ -24,6 +26,8 @@ from .serializers import (
     CategoryTagSerializer,
     HomeSectionSerializer,
     HomeThemeSerializer,
+    GSTConfigSerializer,
+    GSTRateSerializer,
     ProductImageSerializer,
     ProductReadSerializer,
     ProductUploadImageField,
@@ -384,6 +388,75 @@ class ProductImageView(APIView):
             ProductImageSerializer(img, context={'request': request}).data,
             'Primary image updated'
         )
+
+
+class GSTRateListCreateView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        GSTRate.ensure_defaults()
+        qs = GSTRate.objects.all()
+        return success(GSTRateSerializer(qs, many=True).data)
+
+    def post(self, request):
+        serializer = GSTRateSerializer(data=request.data)
+        if serializer.is_valid():
+            rate = serializer.save()
+            return success(GSTRateSerializer(rate).data, 'GST rate created', 201)
+        return error('Validation failed', serializer.errors)
+
+
+class GSTRateDetailView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request, pk):
+        rate = get_object_or_404(GSTRate, pk=pk)
+        return success(GSTRateSerializer(rate).data)
+
+    def put(self, request, pk):
+        return self._update(request, pk)
+
+    def patch(self, request, pk):
+        return self._update(request, pk)
+
+    def _update(self, request, pk):
+        rate = get_object_or_404(GSTRate, pk=pk)
+        serializer = GSTRateSerializer(rate, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated = serializer.save()
+            return success(GSTRateSerializer(updated).data, 'GST rate updated')
+        return error('Validation failed', serializer.errors)
+
+    def delete(self, request, pk):
+        rate = get_object_or_404(GSTRate, pk=pk)
+        if rate.products.exists() or rate.categories.exists() or rate.default_configs.exists():
+            return error('This GST rate is assigned and cannot be deleted. Disable it instead.', code=400)
+        rate.delete()
+        return success(msg='GST rate deleted')
+
+
+class GSTConfigView(APIView):
+    permission_classes = [AdminWritePermission]
+
+    def get(self, request):
+        config = GSTConfig.current()
+        return success(GSTConfigSerializer(config).data)
+
+    def patch(self, request):
+        config = GSTConfig.current()
+        serializer = GSTConfigSerializer(config, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return success(serializer.data, 'GST configuration updated')
+        return error('Validation failed', serializer.errors)
+
+    def put(self, request):
+        config = GSTConfig.current()
+        serializer = GSTConfigSerializer(config, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return success(serializer.data, 'GST configuration updated')
+        return error('Validation failed', serializer.errors)
 
 
 # ══════════════════════════════════════════════════════════════

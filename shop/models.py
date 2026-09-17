@@ -28,6 +28,13 @@ class Category(models.Model):
         related_name='categories',
         db_table='shop_category_tag_assignments',
     )
+    gst_rate    = models.ForeignKey(
+        'GSTRate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='categories',
+    )
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
@@ -86,6 +93,9 @@ class CategoryTag(models.Model):
 
 
 class Product(models.Model):
+    class PricingMode(models.TextChoices):
+        INCLUSIVE = 'inclusive', 'Tax Inclusive'
+        EXCLUSIVE = 'exclusive', 'Tax Exclusive'
 
     class Status(models.TextChoices):
         AVAILABLE   = 'available',   'Available'
@@ -98,6 +108,20 @@ class Product(models.Model):
     price          = models.DecimalField(max_digits=10, decimal_places=2)
     discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     category       = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='products')
+    gst_rate       = models.ForeignKey(
+        'GSTRate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='products',
+    )
+    gst_applicable = models.BooleanField(default=True)
+    gst_pricing_mode = models.CharField(
+        max_length=20,
+        choices=PricingMode.choices,
+        default=PricingMode.EXCLUSIVE,
+    )
+    hsn_sac_code   = models.CharField(max_length=20, blank=True, default='')
     stock          = models.PositiveIntegerField(default=0)
     status         = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
     colors         = models.JSONField(default=list, blank=True)   # e.g. ["red","blue","black"]
@@ -132,6 +156,84 @@ class Product(models.Model):
         if not self.slug:
             self.slug = unique_slug(self, self.name, Product.objects)
         super().save(*args, **kwargs)
+
+
+class GSTRate(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_gst_rates'
+        ordering = ['percentage', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.percentage}%)"
+
+    def clean(self):
+        if self.percentage is not None and (self.percentage < 0 or self.percentage > 100):
+            raise ValidationError({'percentage': 'GST percentage must be between 0 and 100.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def ensure_defaults(cls):
+        for pct in ('0.00', '5.00', '12.00', '18.00', '28.00'):
+            label = f"GST {pct.rstrip('0').rstrip('.')}%"
+            cls.objects.get_or_create(
+                percentage=pct,
+                defaults={'name': label, 'is_active': True},
+            )
+
+
+class GSTConfig(models.Model):
+    class PricingMode(models.TextChoices):
+        INCLUSIVE = 'inclusive', 'Inclusive'
+        EXCLUSIVE = 'exclusive', 'Exclusive'
+
+    enabled = models.BooleanField(default=True)
+    seller_state = models.CharField(max_length=100, default='Tamil Nadu')
+    default_rate = models.ForeignKey(
+        GSTRate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='default_configs',
+    )
+    pricing_mode = models.CharField(
+        max_length=20,
+        choices=PricingMode.choices,
+        default=PricingMode.EXCLUSIVE,
+    )
+    seller_name = models.CharField(max_length=150, default='Carmelian')
+    seller_gstin = models.CharField(max_length=20, blank=True, default='')
+    seller_address = models.TextField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_gst_config'
+        verbose_name = 'GST configuration'
+        verbose_name_plural = 'GST configuration'
+
+    def __str__(self):
+        return 'GST Configuration'
+
+    @classmethod
+    def current(cls):
+        GSTRate.ensure_defaults()
+        default_rate = GSTRate.objects.filter(percentage='18.00').first() or GSTRate.objects.first()
+        config, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={'default_rate': default_rate},
+        )
+        if not config.default_rate_id and default_rate:
+            config.default_rate = default_rate
+            config.save(update_fields=['default_rate'])
+        return config
 
 
 # ─── Product Images (gallery) ─────────────────────────────────
@@ -519,6 +621,12 @@ class Order(models.Model):
         RETURN_REQUESTED = 'return_requested', 'Replacement Requested'
         RETURNED = 'returned', 'Replaced Successfully'
 
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PAID = 'paid', 'Paid'
+        FAILED = 'failed', 'Failed'
+        REFUNDED = 'refunded', 'Refunded'
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20)
@@ -539,10 +647,19 @@ class Order(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    taxable_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    cgst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    sgst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    igst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    tax_type = models.CharField(max_length=20, blank=True, default='')
+    gst_enabled_snapshot = models.BooleanField(default=False)
+    seller_state_snapshot = models.CharField(max_length=100, blank=True, default='')
     total = models.DecimalField(max_digits=10, decimal_places=2)
     
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     payment_method = models.CharField(max_length=50, default='Card')
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     payment_id = models.CharField(max_length=100, blank=True, default='')
 
     # Cancellation & Return details
@@ -594,6 +711,14 @@ class OrderItem(models.Model):
     product_name = models.CharField(max_length=255) # snapshot name in case product gets deleted
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
+    taxable_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    gst_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    cgst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    sgst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    igst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    hsn_sac_code = models.CharField(max_length=20, blank=True, default='')
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     class Meta:
         db_table = 'shop_order_items'

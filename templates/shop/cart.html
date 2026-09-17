@@ -726,6 +726,32 @@
                         <span>Shipping</span>
                         <span id="summary-shipping">{% if shipping == 0 %}Free{% else %}Rs. {{ shipping }}{% endif %}</span>
                     </div>
+                    {% if gst_enabled %}
+                    <details style="margin: 0.6rem 0 0.2rem;">
+                        <summary style="cursor:pointer;color:var(--cart-primary);font-weight:600;font-size:0.92rem;">GST details</summary>
+                        <div style="margin-top:0.8rem;">
+                            <div class="summary-row">
+                                <span>Taxable Amount</span>
+                                <span id="summary-taxable">Rs. {{ taxable_amount }}</span>
+                            </div>
+                            {% if tax_type == 'igst' %}
+                            <div class="summary-row">
+                                <span>IGST</span>
+                                <span id="summary-igst">Rs. {{ igst_amount }}</span>
+                            </div>
+                            {% else %}
+                            <div class="summary-row">
+                                <span>CGST</span>
+                                <span id="summary-cgst">Rs. {{ cgst_amount }}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>SGST</span>
+                                <span id="summary-sgst">Rs. {{ sgst_amount }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </details>
+                    {% endif %}
                     <div class="summary-total-row">
                         <span>Total</span>
                         <span class="summary-total-price" id="summary-total">Rs. {{ grand_total }}</span>
@@ -781,6 +807,27 @@
                         <span>Shipping</span>
                         <span id="mobile-shipping">{% if shipping == 0 %}Free{% else %}Rs. {{ shipping }}{% endif %}</span>
                     </div>
+                    {% if gst_enabled %}
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>Taxable Amount</span>
+                        <span id="mobile-taxable">Rs. {{ taxable_amount }}</span>
+                    </div>
+                    {% if tax_type == 'igst' %}
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>IGST</span>
+                        <span id="mobile-igst">Rs. {{ igst_amount }}</span>
+                    </div>
+                    {% else %}
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>CGST</span>
+                        <span id="mobile-cgst">Rs. {{ cgst_amount }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: var(--cart-text-light);">
+                        <span>SGST</span>
+                        <span id="mobile-sgst">Rs. {{ sgst_amount }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
                     <div style="display: flex; justify-content: space-between; font-weight: 700; border-top: 1px dashed rgba(124,83,87,0.15); padding-top: 0.8rem; font-size: 1.1rem; color: var(--cart-text-dark); margin-top: 0.2rem;">
                         <span>Grand Total</span>
                         <span id="mobile-grandtotal" style="color: var(--cart-primary);">Rs. {{ grand_total }}</span>
@@ -841,6 +888,23 @@
         });
     }
 
+    function updateTaxDisplays(data) {
+        const pairs = [
+            ['summary-taxable', data.taxable_amount],
+            ['summary-cgst', data.cgst_amount],
+            ['summary-sgst', data.sgst_amount],
+            ['summary-igst', data.igst_amount],
+            ['mobile-taxable', data.taxable_amount],
+            ['mobile-cgst', data.cgst_amount],
+            ['mobile-sgst', data.sgst_amount],
+            ['mobile-igst', data.igst_amount],
+        ];
+        pairs.forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el && typeof value === 'number') el.textContent = `Rs. ${value.toFixed(2)}`;
+        });
+    }
+
     // AJAX to change cart quantity
     async function changeQty(productId, delta) {
         const qtyElement = document.getElementById(`qty-val-${productId}`);
@@ -893,6 +957,7 @@
                 document.getElementById('summary-total').textContent = grandTotalStr;
                 document.getElementById('mobile-drawer-total').textContent = grandTotalStr;
                 document.getElementById('mobile-grandtotal').textContent = grandTotalStr;
+                updateTaxDisplays(data);
 
                 // Update badge cart count globally
                 document.querySelectorAll('.bottom-nav-badge').forEach(badge => {
@@ -974,6 +1039,7 @@
                 document.getElementById('summary-total').textContent = grandTotalStr;
                 document.getElementById('mobile-drawer-total').textContent = grandTotalStr;
                 document.getElementById('mobile-grandtotal').textContent = grandTotalStr;
+                updateTaxDisplays(data);
 
                 // Update badge cart count globally
                 document.querySelectorAll('.bottom-nav-badge').forEach(badge => {

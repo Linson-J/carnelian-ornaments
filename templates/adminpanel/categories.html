@@ -53,6 +53,7 @@
           <th>Description</th>
           <th>Products</th>
           <th>Status</th>
+          <th>GST</th>
           <th>Tags</th>
           <th style="text-align: right; padding-right: 20px;">Actions</th>
         </tr>
@@ -80,6 +81,7 @@
               <span class="badge warning">Inactive</span>
             {% endif %}
           </td>
+          <td>{{ category.gst_rate.percentage|default:"Default" }}{% if category.gst_rate %}%{% endif %}</td>
           <td>
             {% if category.tags.all %}
               <div class="tag-list-inline">
@@ -110,7 +112,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" style="text-align:center;color:var(--muted);padding:30px">
+          <td colspan="8" style="text-align:center;color:var(--muted);padding:30px">
             No categories found.
           </td>
         </tr>
@@ -227,6 +229,16 @@
           <option value="inactive">Inactive</option>
         </select>
         <div class="field-err" id="err-category-status"></div>
+      </div>
+      <div class="field">
+        <label for="category-gst-rate">GST rate</label>
+        <select id="category-gst-rate" name="gst_rate">
+          <option value="">Use default GST rate</option>
+          {% for rate in gst_rates %}
+            <option value="{{ rate.id }}">{{ rate.name }} - {{ rate.percentage }}%</option>
+          {% endfor %}
+        </select>
+        <div class="field-err" id="err-category-gst_rate"></div>
       </div>
       <div class="field">
         <label>Tag Management</label>
@@ -383,6 +395,7 @@
       document.getElementById('category-name').value = category.name || '';
       document.getElementById('category-description').value = category.description || '';
       document.getElementById('category-status').value = category.status || 'active';
+      document.getElementById('category-gst-rate').value = category.gst_rate || '';
       selectedTagIds = new Set((category.tags || []).map(tag => String(tag.id)));
       renderCategoryTagOptions();
       document.getElementById('categoryModalTitle').textContent = 'Edit category';
@@ -420,6 +433,7 @@
     const fd = new FormData(categoryForm);
     const id = fd.get('category_id');
     fd.delete('category_id');
+    if (!fd.get('gst_rate')) fd.delete('gst_rate');
     if (!document.getElementById('category-image').files.length) {
       fd.delete('image');
     }

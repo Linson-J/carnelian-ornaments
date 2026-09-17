@@ -66,6 +66,36 @@
           </div>
         </div>
         <div id="discount-preview" style="display:none;font-size:12px;color:var(--success);margin-top:6px"></div>
+        <div class="field-row" style="margin-top:18px;">
+          <div class="field" style="margin:0">
+            <label for="f-gst-rate">GST rate</label>
+            <select id="f-gst-rate">
+              <option value="">Use category/default rate</option>
+              {% for rate in gst_rates %}
+                <option value="{{ rate.id }}">{{ rate.name }} - {{ rate.percentage }}%</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label for="f-gst-mode">GST pricing mode</label>
+            <select id="f-gst-mode">
+              <option value="exclusive">Tax exclusive</option>
+              <option value="inclusive">Tax inclusive</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:18px;">
+          <div class="field" style="margin:0">
+            <label for="f-hsn">HSN/SAC code</label>
+            <input type="text" id="f-hsn" maxlength="20" placeholder="e.g. 6109"/>
+          </div>
+          <div class="field" style="margin:0">
+            <label class="check-label" for="f-gst-applicable">
+              <input type="checkbox" id="f-gst-applicable" checked>
+              GST applicable
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -401,6 +431,11 @@
     fd.append('status', document.getElementById('status-input').value);
     const disc = document.getElementById('f-discount').value;
     if (disc) fd.append('discount_price', disc);
+    const gstRate = document.getElementById('f-gst-rate').value;
+    if (gstRate) fd.append('gst_rate', gstRate);
+    fd.append('gst_pricing_mode', document.getElementById('f-gst-mode').value);
+    fd.append('gst_applicable', document.getElementById('f-gst-applicable').checked ? 'true' : 'false');
+    fd.append('hsn_sac_code', document.getElementById('f-hsn').value.trim());
     if (colors.length) fd.append('colors', JSON.stringify(colors));
     selectedFiles.forEach(f => fd.append('uploaded_images', f));
 

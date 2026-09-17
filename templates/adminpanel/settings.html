@@ -3,6 +3,126 @@
 {% block title %}Settings{% endblock %}
 {% block page_title %}Settings & Security{% endblock %}
 
+{% block extra_css %}
+<style>
+  .gst-help-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    color: #dbeafe;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .gst-help-btn:hover {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(147, 197, 253, 0.45);
+  }
+  .gst-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(5, 8, 15, 0.88);
+    backdrop-filter: blur(10px);
+    display: none;
+    overflow-y: auto;
+    padding: 32px;
+  }
+  .gst-help-overlay.open {
+    display: block;
+  }
+  .gst-help-panel {
+    max-width: 1040px;
+    margin: 0 auto;
+    background: #121722;
+    color: #e5e7eb;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  }
+  .gst-help-head {
+    position: sticky;
+    top: 0;
+    background: #121722;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    border-radius: 14px 14px 0 0;
+  }
+  .gst-help-head h2 {
+    margin: 0;
+    font-size: 22px;
+    color: #ffffff;
+  }
+  .gst-help-close {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .gst-help-body {
+    padding: 24px;
+    display: grid;
+    gap: 18px;
+  }
+  .gst-help-section {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .gst-help-section h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    color: #bfdbfe;
+  }
+  .gst-help-section p,
+  .gst-help-section li {
+    color: #cbd5e1;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .gst-help-section ul,
+  .gst-help-section ol {
+    margin: 8px 0 0;
+    padding-left: 22px;
+  }
+  .gst-help-example {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px dashed rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: Consolas, monospace;
+    white-space: pre-wrap;
+    color: #e0f2fe;
+    font-size: 13px;
+  }
+  @media (max-width: 700px) {
+    .gst-help-overlay {
+      padding: 14px;
+    }
+    .gst-help-head {
+      padding: 16px;
+    }
+    .gst-help-body {
+      padding: 16px;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="settings-grid" style="display: flex; flex-direction: column; gap: 24px;">
 
@@ -187,6 +307,91 @@
     </div>
   </form>
 
+  <form class="card" id="gstSettingsForm">
+    {% csrf_token %}
+    <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button type="button" class="gst-help-btn" onclick="openGstHelp()" title="How GST configuration works" aria-label="How GST configuration works">
+          <i class="ri-information-line"></i>
+        </button>
+        <div>
+        <h3 style="margin:0;font-size:15px;font-weight:600;">GST Configuration</h3>
+        <p class="muted-small" style="margin-top:2px;">Control tax enablement, seller state, default rate, and inclusive/exclusive pricing.</p>
+        </div>
+      </div>
+      <button class="btn-primary" type="submit" id="btnSaveGstSettings"><i class="ri-save-3-line"></i> Save GST Settings</button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;">
+        <div class="field" style="margin-bottom:0;">
+          <label class="check-label" for="gst_enabled">
+            <input type="checkbox" id="gst_enabled" {% if gst_config.enabled %}checked{% endif %}>
+            GST Enabled
+          </label>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="gst_seller_state">Seller State</label>
+          <input type="text" id="gst_seller_state" value="{{ gst_config.seller_state }}" placeholder="Tamil Nadu">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="gst_default_rate">Default GST Rate</label>
+          <select id="gst_default_rate">
+            <option value="">No default</option>
+            {% for rate in gst_rates %}
+              <option value="{{ rate.id }}" {% if gst_config.default_rate_id == rate.id %}selected{% endif %}>{{ rate.name }} - {{ rate.percentage }}%</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="gst_pricing_mode">Default Pricing Mode</label>
+          <select id="gst_pricing_mode">
+            <option value="exclusive" {% if gst_config.pricing_mode == 'exclusive' %}selected{% endif %}>Exclusive</option>
+            <option value="inclusive" {% if gst_config.pricing_mode == 'inclusive' %}selected{% endif %}>Inclusive</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="gst_seller_name">Seller Name</label>
+          <input type="text" id="gst_seller_name" value="{{ gst_config.seller_name }}">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="gst_seller_gstin">Seller GSTIN</label>
+          <input type="text" id="gst_seller_gstin" value="{{ gst_config.seller_gstin }}" maxlength="20">
+        </div>
+      </div>
+      <div class="field" style="margin-top:18px;">
+        <label for="gst_seller_address">Seller Invoice Address</label>
+        <textarea id="gst_seller_address" rows="2">{{ gst_config.seller_address }}</textarea>
+      </div>
+
+      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+          <h3 style="margin:0;font-size:15px;">GST Rates</h3>
+          <button type="button" class="btn-sm" onclick="createGstRate()">+ Add rate</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Percentage</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="gstRatesBody">
+              {% for rate in gst_rates %}
+              <tr data-rate-id="{{ rate.id }}">
+                <td><input type="text" class="gst-rate-name" value="{{ rate.name }}"></td>
+                <td><input type="number" class="gst-rate-percentage" min="0" max="100" step="0.01" value="{{ rate.percentage }}"></td>
+                <td>
+                  {% if rate.is_active %}<span class="badge success">Active</span>{% else %}<span class="badge warning">Disabled</span>{% endif %}
+                </td>
+                <td style="display:flex;gap:8px;">
+                  <button type="button" class="btn-sm" onclick="saveGstRate({{ rate.id }})">Save</button>
+                  <button type="button" class="btn-sm" onclick="toggleGstRate({{ rate.id }}, {% if rate.is_active %}false{% else %}true{% endif %})">{% if rate.is_active %}Disable{% else %}Enable{% endif %}</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </form>
+
   <!-- HOME PAGE THEME & PREVIEW ROW -->
   <div class="settings-grid">
     <form class="card" id="themeForm">
@@ -262,6 +467,127 @@
   </div>
 
 </div>
+
+<div class="gst-help-overlay" id="gstHelpOverlay" role="dialog" aria-modal="true" aria-labelledby="gstHelpTitle">
+  <div class="gst-help-panel">
+    <div class="gst-help-head">
+      <div>
+        <h2 id="gstHelpTitle">GST Configuration Guide</h2>
+        <p class="muted-small" style="margin:4px 0 0;">How to configure GST and how the calculation works in this store.</p>
+      </div>
+      <button type="button" class="gst-help-close" onclick="closeGstHelp()" aria-label="Close GST guide">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+    <div class="gst-help-body">
+      <section class="gst-help-section">
+        <h3>1. Enable or Disable GST</h3>
+        <p>
+          Turn <strong>GST Enabled</strong> on when GST should be calculated and displayed to customers.
+          Turn it off when GST should not appear on the customer cart, checkout, order success page, or order email.
+        </p>
+        <p>
+          Orders store a GST enabled snapshot. If GST was disabled when an order was placed, that order will not show GST details later.
+        </p>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>2. Seller State Controls CGST/SGST vs IGST</h3>
+        <p>
+          Enter the business seller state, for example <strong>Tamil Nadu</strong>. During checkout, the system compares this with the customer's state.
+        </p>
+        <ul>
+          <li>If seller state and customer state are the same, tax is split into CGST and SGST.</li>
+          <li>If they are different, the full tax is shown as IGST.</li>
+        </ul>
+        <div class="gst-help-example">Seller State: Tamil Nadu
+Customer State: Tamil Nadu
+GST 18% = CGST 9% + SGST 9%
+
+Seller State: Tamil Nadu
+Customer State: Kerala
+GST 18% = IGST 18%</div>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>3. Default GST Rate</h3>
+        <p>
+          The default GST rate is used when a product does not have its own GST rate and its category also does not have a GST rate.
+        </p>
+        <ol>
+          <li>Set common rates in the GST Rates table, such as 0%, 5%, 12%, 18%, and 28%.</li>
+          <li>Select the most common rate as the default rate.</li>
+          <li>Use category or product GST overrides only where needed.</li>
+        </ol>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>4. Category and Product GST Priority</h3>
+        <p>The system chooses GST rate in this order:</p>
+        <ol>
+          <li>Product GST rate, if selected.</li>
+          <li>Category GST rate, if selected.</li>
+          <li>Default GST rate from this configuration.</li>
+        </ol>
+        <p>
+          Use product GST for exceptions. Use category GST when many products in a category share the same tax rate.
+        </p>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>5. Inclusive vs Exclusive Pricing</h3>
+        <p>
+          <strong>Exclusive</strong> means GST is added on top of the product price.
+          <strong>Inclusive</strong> means the displayed product price already contains GST.
+        </p>
+        <div class="gst-help-example">Exclusive:
+Product price Rs. 1000
+GST 18% = Rs. 180
+Customer pays Rs. 1180
+
+Inclusive:
+Display price Rs. 1000
+Taxable amount Rs. 847.46
+GST portion Rs. 152.54
+Customer pays Rs. 1000</div>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>6. Discounts and Shipping</h3>
+        <p>
+          Coupon discounts are applied before GST. If multiple products are in the cart, the coupon discount is split across line items before tax is calculated.
+        </p>
+        <p>
+          Shipping is added after product GST. Current implementation does not calculate GST on shipping charges.
+        </p>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>7. Order and Invoice Accuracy</h3>
+        <p>
+          When an order is created, the system stores the product price, taxable amount, GST percentage, CGST, SGST, IGST, HSN/SAC, and final amount on the order item.
+        </p>
+        <p>
+          This means old orders remain correct even if you change GST rates later.
+        </p>
+      </section>
+
+      <section class="gst-help-section">
+        <h3>Recommended Setup Steps</h3>
+        <ol>
+          <li>Create or verify GST rates: 0%, 5%, 12%, 18%, and 28%.</li>
+          <li>Enable GST.</li>
+          <li>Set seller state and seller GSTIN.</li>
+          <li>Select default GST rate.</li>
+          <li>Set default pricing mode.</li>
+          <li>Assign category GST rates for broad product groups.</li>
+          <li>Assign product-specific GST and HSN/SAC only when needed.</li>
+          <li>Test cart and checkout using a same-state and different-state address.</li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -327,6 +653,119 @@
       btn.innerHTML = origText;
     }
   });
+
+  // --- GST Settings Handler ---
+  function openGstHelp() {
+    const overlay = document.getElementById('gstHelpOverlay');
+    if (overlay) overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeGstHelp() {
+    const overlay = document.getElementById('gstHelpOverlay');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeGstHelp();
+  });
+
+  document.getElementById('gstHelpOverlay')?.addEventListener('click', event => {
+    if (event.target.id === 'gstHelpOverlay') closeGstHelp();
+  });
+
+  const gstForm = document.getElementById('gstSettingsForm');
+  gstForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const btn = document.getElementById('btnSaveGstSettings');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving...';
+    const payload = {
+      form_type: 'gst_settings',
+      enabled: document.getElementById('gst_enabled').checked,
+      seller_state: document.getElementById('gst_seller_state').value.trim(),
+      default_rate: document.getElementById('gst_default_rate').value || null,
+      pricing_mode: document.getElementById('gst_pricing_mode').value,
+      seller_name: document.getElementById('gst_seller_name').value.trim(),
+      seller_gstin: document.getElementById('gst_seller_gstin').value.trim(),
+      seller_address: document.getElementById('gst_seller_address').value.trim()
+    };
+    try {
+      const response = await fetch("{% url 'admin_settings' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast(data.message || 'GST settings saved', 'success');
+        hideToast();
+      } else {
+        showToast(data.message || 'Could not save GST settings', 'danger');
+        hideToast();
+      }
+    } catch (error) {
+      showToast(error.message || 'Network error updating GST settings', 'danger');
+      hideToast();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  });
+
+  async function createGstRate() {
+    const name = prompt('Rate name, e.g. GST 18%');
+    if (!name) return;
+    const percentage = prompt('GST percentage, e.g. 18');
+    if (percentage === null) return;
+    const numeric = Number(percentage);
+    if (Number.isNaN(numeric) || numeric < 0 || numeric > 100) {
+      showToast('GST percentage must be between 0 and 100.', 'danger');
+      hideToast();
+      return;
+    }
+    try {
+      await AdminApi.post('/api/gst-rates/', {name, percentage: numeric, is_active: true});
+      window.location.reload();
+    } catch (error) {
+      showToast(error.message || 'Could not create GST rate.', 'danger');
+      hideToast();
+    }
+  }
+
+  async function saveGstRate(id) {
+    const row = document.querySelector(`[data-rate-id="${id}"]`);
+    const name = row.querySelector('.gst-rate-name').value.trim();
+    const percentage = Number(row.querySelector('.gst-rate-percentage').value);
+    if (!name || Number.isNaN(percentage) || percentage < 0 || percentage > 100) {
+      showToast('Enter a valid rate name and percentage between 0 and 100.', 'danger');
+      hideToast();
+      return;
+    }
+    try {
+      await AdminApi.patch(`/api/gst-rates/${id}/`, {name, percentage});
+      showToast('GST rate updated', 'success');
+      hideToast();
+    } catch (error) {
+      showToast(error.message || 'Could not update GST rate.', 'danger');
+      hideToast();
+    }
+  }
+
+  async function toggleGstRate(id, isActive) {
+    try {
+      await AdminApi.patch(`/api/gst-rates/${id}/`, {is_active: isActive});
+      window.location.reload();
+    } catch (error) {
+      showToast(error.message || 'Could not update GST rate status.', 'danger');
+      hideToast();
+    }
+  }
 
   // --- Home Theme Handler ---
   const form = document.getElementById('themeForm');

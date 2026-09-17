@@ -106,11 +106,24 @@ def send_order_status_email(order, event_type):
         'event_type': event_type,
     })
 
+    gst_text = ''
+    if order.gst_enabled_snapshot or order.gst_amount > 0:
+        gst_text = (
+            f"GST Invoice: INV-{order.id}\n"
+            f"Taxable Amount: Rs. {order.taxable_amount}\n"
+            f"CGST: Rs. {order.cgst_amount}\n"
+            f"SGST: Rs. {order.sgst_amount}\n"
+            f"IGST: Rs. {order.igst_amount}\n"
+            f"Total GST: Rs. {order.gst_amount}\n"
+            f"Seller State: {order.seller_state_snapshot or '-'}\n"
+        )
+
     text_content = (
         f"Hello {order.full_name},\n\n"
         f"{config['headline']}\n"
         f"{config['subtitle']}\n\n"
         f"Order ID: #{order.id}\n"
+        f"{gst_text}"
         f"Order Total: ₹{order.total}\n"
         f"Payment Method: {order.payment_method}\n\n"
         f"Thank you for shopping with {company}!"

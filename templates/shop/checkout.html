@@ -962,6 +962,29 @@
         <span id="couponDiscountVal">-Rs. {{ coupon_discount }}</span>
       </div>
 
+      {% if gst_enabled %}
+      <div class="calc-row">
+        <span>Taxable Amount</span>
+        <span id="taxableAmountVal">Rs. {{ taxable_amount }}</span>
+      </div>
+      <details style="border:1px solid rgba(124,83,87,0.12);border-radius:8px;padding:8px 10px;">
+        <summary style="cursor:pointer;color:var(--primary,#7c5357);font-weight:700;font-size:0.88rem;">GST details</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+          <div class="calc-row">
+            <span>CGST</span>
+            <span id="cgstAmountVal">Rs. {{ cgst_amount }}</span>
+          </div>
+          <div class="calc-row">
+            <span>SGST</span>
+            <span id="sgstAmountVal">Rs. {{ sgst_amount }}</span>
+          </div>
+          <div class="calc-row">
+            <span>IGST</span>
+            <span id="igstAmountVal">Rs. {{ igst_amount }}</span>
+          </div>
+        </div>
+      </details>
+      {% endif %}
       <div class="calc-row">
         <span>Delivery Fee</span>
         <span id="deliveryFeeVal">Rs. {{ default_shipping }}</span>
@@ -989,6 +1012,20 @@
     let grandTotal = subtotal - currentCouponDiscount + currentDeliveryFee;
     if (grandTotal < 0) grandTotal = 0;
     document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+  }
+
+  function updateServerTotals(data) {
+    const map = {
+      taxableAmountVal: data.taxable_amount,
+      cgstAmountVal: data.cgst_amount,
+      sgstAmountVal: data.sgst_amount,
+      igstAmountVal: data.igst_amount,
+      grandTotalVal: data.grand_total
+    };
+    Object.entries(map).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el && typeof value === 'number') el.textContent = `Rs. ${value.toFixed(2)}`;
+    });
   }
 
   function toggleOffersList() {
@@ -1062,7 +1099,7 @@
         if (discVal) discVal.textContent = `-Rs. ${data.discount_amount.toFixed(2)}`;
         if (calcRow) calcRow.style.display = 'flex';
 
-        recalculateGrandTotal();
+        setTimeout(() => window.location.reload(), 500);
         showCouponFeedback(data.message, true);
         if (inputEl) inputEl.value = '';
       } else {
@@ -1099,7 +1136,7 @@
         if (cardCont) cardCont.style.display = 'none';
         if (calcRow) calcRow.style.display = 'none';
 
-        recalculateGrandTotal();
+        setTimeout(() => window.location.reload(), 500);
         showCouponFeedback('Coupon removed.', true);
       }
     } catch (e) {
@@ -1227,7 +1264,7 @@
         // Update Order calculation display
         currentDeliveryFee = parseFloat(data.delivery_fee);
         document.getElementById('deliveryFeeVal').textContent = `Rs. ${currentDeliveryFee.toFixed(2)}`;
-        recalculateGrandTotal();
+        updateServerTotals(data);
         
         let successMsg = data.message;
         if (data.delivery_fee > 0) {

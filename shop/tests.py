@@ -1,8 +1,10 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
+from decimal import Decimal
 from rest_framework.test import APITestCase
 
 from .forms import CarouselItemForm
-from .models import CarouselItem, Category, Product, ProductImage
+from .models import CarouselItem, Category, GSTConfig, GSTRate, Product, ProductImage
+from .tax import calculate_cart_totals, calculate_tax
 
 
 def test_image(name='product.gif'):
@@ -116,6 +118,69 @@ class ProductAPITests(APITestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(add_response.status_code, 200)
         self.assertEqual(edit_response.status_code, 200)
+
+
+class GSTCalculationTests(APITestCase):
+    def setUp(self):
+        GSTRate.ensure_defaults()
+        self.rate_18 = GSTRate.objects.get(percentage='18.00')
+        self.category = Category.objects.create(name='Taxable', slug='taxable', gst_rate=self.rate_18)
+        config = GSTConfig.current()
+        config.enabled = True
+        config.seller_state = 'Tamil Nadu'
+        config.default_rate = self.rate_18
+        config.pricing_mode = GSTConfig.PricingMode.EXCLUSIVE
+        config.save()
+
+    def test_exclusive_tax_calculation(self):
+        result = calculate_tax(
+            gross_amount=Decimal('1000.00'),
+            gst_rate=Decimal('18.00'),
+            pricing_mode=GSTConfig.PricingMode.EXCLUSIVE,
+            is_interstate=False,
+        )
+
+        self.assertEqual(result['taxable_amount'], Decimal('1000.00'))
+        self.assertEqual(result['gst_amount'], Decimal('180.00'))
+        self.assertEqual(result['cgst_amount'], Decimal('90.00'))
+        self.assertEqual(result['sgst_amount'], Decimal('90.00'))
+        self.assertEqual(result['final_amount'], Decimal('1180.00'))
+
+    def test_inclusive_tax_calculation(self):
+        result = calculate_tax(
+            gross_amount=Decimal('1000.00'),
+            gst_rate=Decimal('18.00'),
+            pricing_mode=GSTConfig.PricingMode.INCLUSIVE,
+            is_interstate=True,
+        )
+
+        self.assertEqual(result['taxable_amount'], Decimal('847.46'))
+        self.assertEqual(result['gst_amount'], Decimal('152.54'))
+        self.assertEqual(result['igst_amount'], Decimal('152.54'))
+        self.assertEqual(result['final_amount'], Decimal('1000.00'))
+
+    def test_cart_totals_apply_coupon_before_gst_and_choose_igst(self):
+        product = Product.objects.create(
+            name='Kurta',
+            description='Cotton kurta',
+            price='1000.00',
+            category=self.category,
+            stock=5,
+            gst_pricing_mode=Product.PricingMode.EXCLUSIVE,
+        )
+
+        calculation = calculate_cart_totals(
+            {str(product.id): 2},
+            customer_state='Kerala',
+            coupon_discount=Decimal('100.00'),
+            shipping=Decimal('50.00'),
+        )
+        totals = calculation['totals']
+
+        self.assertEqual(totals['taxable_amount'], Decimal('1900.00'))
+        self.assertEqual(totals['gst_amount'], Decimal('342.00'))
+        self.assertEqual(totals['igst_amount'], Decimal('342.00'))
+        self.assertEqual(totals['grand_total'], Decimal('2292.00'))
 
 
 class CarouselManagementTests(APITestCase):
@@ -508,6 +573,36 @@ class OrderStatusEmailTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('Your Order Has Been Placed!', mail.outbox[0].subject)
         self.assertIn('customer@example.com', mail.outbox[0].to)
+
+    def test_send_order_email_includes_gst_bill_when_enabled(self):
+        self.order.gst_enabled_snapshot = True
+        self.order.seller_state_snapshot = 'Tamil Nadu'
+        self.order.taxable_amount = Decimal('2500.00')
+        self.order.gst_amount = Decimal('450.00')
+        self.order.cgst_amount = Decimal('225.00')
+        self.order.sgst_amount = Decimal('225.00')
+        self.order.total = Decimal('2950.00')
+        self.order.save()
+
+        item = self.order.items.first()
+        item.hsn_sac_code = '9102'
+        item.gst_percentage = Decimal('18.00')
+        item.taxable_amount = Decimal('2500.00')
+        item.gst_amount = Decimal('450.00')
+        item.cgst_amount = Decimal('225.00')
+        item.sgst_amount = Decimal('225.00')
+        item.final_amount = Decimal('2950.00')
+        item.save()
+
+        result = send_order_status_email(self.order, 'placed')
+
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(f'GST Invoice: INV-{self.order.id}', mail.outbox[0].body)
+        html_body = mail.outbox[0].alternatives[0][0]
+        self.assertIn('GST Invoice', html_body)
+        self.assertIn('HSN/SAC: 9102', html_body)
+        self.assertIn('Total GST', html_body)
 
     def test_send_order_shipped_email(self):
         result = send_order_status_email(self.order, 'shipped')

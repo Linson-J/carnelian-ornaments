@@ -15,6 +15,7 @@ from .forms import NewsletterSubscriptionForm
 from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile, Review, OTPSettings, ContactMessage
 from .decorators import login_required_ajax
 from .email_utils import send_order_status_email
+from .tax import calculate_cart_totals, calculate_order_totals, calculate_shipping, money
 
 
 
@@ -583,57 +584,38 @@ def cart_page(request):
         return render(request, 'shop/cart.html', {'is_auth': False})
     
     cart = request.session.get('cart', {})
-    cart_items = []
-    subtotal = 0.0
-    original_total = 0.0
-    
-    # Clean up cart session if any invalid keys are present
     valid_cart = {}
     if isinstance(cart, dict):
         for prod_id, qty in list(cart.items()):
             try:
-                prod_id_int = int(prod_id)
-                if qty <= 0:
-                    continue
-                product = Product.objects.filter(id=prod_id_int).first()
-                if product:
-                    valid_cart[str(product.id)] = qty
-                    price = float(product.discount_price if product.discount_price else product.price)
-                    orig_price = float(product.price)
-                    item_subtotal = price * qty
-                    item_original = orig_price * qty
-                    subtotal += item_subtotal
-                    original_total += item_original
-                    
-                    # Fetch primary image or first image
-                    primary_image = product.images.filter(is_primary=True).first()
-                    if not primary_image:
-                        primary_image = product.images.first()
-                    
-                    cart_items.append({
-                        'product': product,
-                        'quantity': qty,
-                        'subtotal': item_subtotal,
-                        'image': primary_image,
-                    })
-            except ValueError:
+                product_id = int(prod_id)
+                quantity = int(qty)
+            except (TypeError, ValueError):
                 continue
-            
-    # Update cleaned cart back to session if changed
+            if quantity > 0 and Product.objects.filter(id=product_id).exists():
+                valid_cart[str(product_id)] = quantity
+
     request.session['cart'] = valid_cart
-        
-    discount = original_total - subtotal
-    # Shipping rules: Free shipping if subtotal >= Rs. 2000, otherwise Rs. 150. Free if empty.
-    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
-    grand_total = subtotal + shipping
+    calculation = calculate_cart_totals(valid_cart, include_shipping=False)
+    totals = calculation['totals']
+    shipping, _ = calculate_shipping(totals['subtotal']) if totals['subtotal'] > 0 else (money(0), True)
+    calculation = calculate_cart_totals(valid_cart, shipping=shipping, include_shipping=True)
+    totals = calculation['totals']
     
     return render(request, 'shop/cart.html', {
-        'cart_items': cart_items,
-        'subtotal': subtotal,
-        'original_total': original_total,
-        'discount': discount,
-        'shipping': shipping,
-        'grand_total': grand_total,
+        'cart_items': calculation['items'],
+        'subtotal': totals['subtotal'],
+        'original_total': totals['original_total'],
+        'discount': totals['discount'],
+        'taxable_amount': totals['taxable_amount'],
+        'gst_amount': totals['gst_amount'],
+        'cgst_amount': totals['cgst_amount'],
+        'sgst_amount': totals['sgst_amount'],
+        'igst_amount': totals['igst_amount'],
+        'tax_type': totals['tax_type'],
+        'gst_enabled': totals['gst_enabled'],
+        'shipping': totals['shipping'],
+        'grand_total': totals['grand_total'],
         'is_auth': True
     })
 
@@ -663,35 +645,28 @@ def update_cart_quantity(request):
     cart = request.session.get('cart', {})
     cart[product_id] = quantity
     request.session['cart'] = cart
-    
-    # Calculate new totals
-    subtotal = 0.0
-    original_total = 0.0
-    item_subtotal = 0.0
-    for prod_id, qty in cart.items():
-        prod = Product.objects.filter(id=int(prod_id)).first()
-        if prod:
-            price = float(prod.discount_price if prod.discount_price else prod.price)
-            orig_price = float(prod.price)
-            subtotal += price * qty
-            original_total += orig_price * qty
-            if prod_id == product_id:
-                item_subtotal = price * qty
-                
-    discount = original_total - subtotal
-    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
-    grand_total = subtotal + shipping
+
+    base_calc = calculate_cart_totals(cart, include_shipping=False)
+    shipping, _ = calculate_shipping(base_calc['totals']['subtotal']) if base_calc['totals']['subtotal'] > 0 else (money(0), True)
+    calculation = calculate_cart_totals(cart, shipping=shipping, include_shipping=True)
+    totals = calculation['totals']
+    item_subtotal = next((item['line_total'] for item in calculation['items'] if str(item['product'].id) == product_id), money(0))
     cart_count = sum(cart.values())
     
     return JsonResponse({
         'success': True,
         'message': 'Quantity updated.',
-        'item_subtotal': item_subtotal,
+        'item_subtotal': float(item_subtotal),
         'cart_count': cart_count,
-        'subtotal': subtotal,
-        'discount': discount,
-        'shipping': shipping,
-        'grand_total': grand_total
+        'subtotal': float(totals['subtotal']),
+        'discount': float(totals['discount']),
+        'taxable_amount': float(totals['taxable_amount']),
+        'gst_amount': float(totals['gst_amount']),
+        'cgst_amount': float(totals['cgst_amount']),
+        'sgst_amount': float(totals['sgst_amount']),
+        'igst_amount': float(totals['igst_amount']),
+        'shipping': float(totals['shipping']),
+        'grand_total': float(totals['grand_total'])
     })
 
 
@@ -708,31 +683,26 @@ def remove_from_cart(request):
     if product_id in cart:
         del cart[product_id]
         request.session['cart'] = cart
-        
-    # Calculate new totals
-    subtotal = 0.0
-    original_total = 0.0
-    for prod_id, qty in cart.items():
-        prod = Product.objects.filter(id=int(prod_id)).first()
-        if prod:
-            price = float(prod.discount_price if prod.discount_price else prod.price)
-            orig_price = float(prod.price)
-            subtotal += price * qty
-            original_total += orig_price * qty
-            
-    discount = original_total - subtotal
-    shipping = 0.0 if (subtotal >= 2000.0 or subtotal == 0) else 150.0
-    grand_total = subtotal + shipping
+
+    base_calc = calculate_cart_totals(cart, include_shipping=False)
+    shipping, _ = calculate_shipping(base_calc['totals']['subtotal']) if base_calc['totals']['subtotal'] > 0 else (money(0), True)
+    calculation = calculate_cart_totals(cart, shipping=shipping, include_shipping=True)
+    totals = calculation['totals']
     cart_count = sum(cart.values())
     
     return JsonResponse({
         'success': True,
         'message': 'Item removed from cart.',
         'cart_count': cart_count,
-        'subtotal': subtotal,
-        'discount': discount,
-        'shipping': shipping,
-        'grand_total': grand_total
+        'subtotal': float(totals['subtotal']),
+        'discount': float(totals['discount']),
+        'taxable_amount': float(totals['taxable_amount']),
+        'gst_amount': float(totals['gst_amount']),
+        'cgst_amount': float(totals['cgst_amount']),
+        'sgst_amount': float(totals['sgst_amount']),
+        'igst_amount': float(totals['igst_amount']),
+        'shipping': float(totals['shipping']),
+        'grand_total': float(totals['grand_total'])
     })
 
 
@@ -765,37 +735,13 @@ def checkout_page(request):
     cart = request.session.get('cart', {})
     if not cart:
         return redirect('cart_page')
-        
-    subtotal = 0.0
-    original_total = 0.0
-    cart_items = []
-    
-    for prod_id, qty in cart.items():
-        prod = Product.objects.filter(id=int(prod_id)).first()
-        if prod:
-            price = float(prod.discount_price if prod.discount_price else prod.price)
-            orig_price = float(prod.price)
-            subtotal += price * qty
-            original_total += orig_price * qty
-            cart_items.append({
-                'product': prod,
-                'quantity': qty,
-                'total_price': price * qty
-            })
-            
-    discount = original_total - subtotal
-    config = DeliveryConfig.current()
-    
-    # Calculate a default delivery fee based on flat rules
-    if config.fee_type == DeliveryConfig.FeeType.THRESHOLD and subtotal >= float(config.free_threshold):
-        default_shipping = 0.0
-    else:
-        default_shipping = float(config.base_fee)
 
     # Coupon handling
     from .models import Coupon
     applied_coupon = None
-    coupon_discount = 0.0
+    coupon_discount = money(0)
+    base_calculation = calculate_cart_totals(cart, include_shipping=False)
+    subtotal = base_calculation['totals']['subtotal']
     applied_coupon_id = request.session.get('applied_coupon_id')
     if applied_coupon_id:
         c_obj = Coupon.objects.filter(pk=applied_coupon_id, is_active=True).first()
@@ -803,7 +749,7 @@ def checkout_page(request):
             valid, _ = c_obj.is_valid(subtotal)
             if valid:
                 applied_coupon = c_obj
-                coupon_discount = c_obj.calculate_discount(subtotal)
+                coupon_discount = money(c_obj.calculate_discount(subtotal))
             else:
                 request.session.pop('applied_coupon_id', None)
 
@@ -835,9 +781,14 @@ def checkout_page(request):
         valid_until__gte=now
     ).order_by('-created_at')
 
-    grand_total = subtotal - coupon_discount + default_shipping
-    if grand_total < 0:
-        grand_total = 0.0
+    default_shipping, _ = calculate_shipping(subtotal) if subtotal > 0 else (money(0), True)
+    calculation = calculate_cart_totals(
+        cart,
+        coupon_discount=coupon_discount,
+        shipping=default_shipping,
+        include_shipping=True,
+    )
+    totals = calculation['totals']
     
     profile = None
     last_order = None
@@ -846,15 +797,22 @@ def checkout_page(request):
         last_order = Order.objects.filter(user=request.user).order_by('-created_at').first()
         
     return render(request, 'shop/checkout.html', {
-        'cart_items': cart_items,
-        'subtotal': subtotal,
-        'discount': discount,
-        'coupon_discount': coupon_discount,
+        'cart_items': calculation['items'],
+        'subtotal': totals['subtotal'],
+        'discount': totals['discount'],
+        'coupon_discount': totals['coupon_discount'],
+        'taxable_amount': totals['taxable_amount'],
+        'gst_amount': totals['gst_amount'],
+        'cgst_amount': totals['cgst_amount'],
+        'sgst_amount': totals['sgst_amount'],
+        'igst_amount': totals['igst_amount'],
+        'tax_type': totals['tax_type'],
+        'gst_enabled': totals['gst_enabled'],
         'applied_coupon': applied_coupon,
         'available_coupons': available_coupons,
-        'default_shipping': default_shipping,
-        'grand_total': grand_total,
-        'config': config,
+        'default_shipping': totals['shipping'],
+        'grand_total': totals['grand_total'],
+        'config': calculation['config'],
         'profile': profile,
         'last_order': last_order,
     })
@@ -875,12 +833,7 @@ def apply_coupon(request):
         return JsonResponse({'success': False, 'message': 'Please enter a coupon code.'}, status=400)
 
     cart = request.session.get('cart', {})
-    subtotal = 0.0
-    for prod_id, qty in cart.items():
-        prod = Product.objects.filter(id=int(prod_id)).first()
-        if prod:
-            price = float(prod.discount_price if prod.discount_price else prod.price)
-            subtotal += price * qty
+    subtotal = calculate_cart_totals(cart, include_shipping=False)['totals']['subtotal']
 
     if subtotal <= 0:
         return JsonResponse({'success': False, 'message': 'Your cart is empty.'}, status=400)
@@ -894,7 +847,7 @@ def apply_coupon(request):
     if not is_valid:
         return JsonResponse({'success': False, 'message': msg}, status=400)
 
-    discount_amount = coupon.calculate_discount(subtotal)
+    discount_amount = money(coupon.calculate_discount(subtotal))
     request.session['applied_coupon_id'] = coupon.id
 
     return JsonResponse({
@@ -902,7 +855,7 @@ def apply_coupon(request):
         'message': f"Coupon '{coupon.code}' applied! Saved Rs. {discount_amount:.2f}",
         'coupon_code': coupon.code,
         'coupon_id': coupon.id,
-        'discount_amount': discount_amount,
+        'discount_amount': float(discount_amount),
         'discount_type': coupon.discount_type,
         'discount_value': float(coupon.discount_value),
     })
@@ -926,7 +879,6 @@ def verify_checkout_address(request):
         state = data.get('state', '').strip()
         city = data.get('city', '').strip()
         county = data.get('county', '').strip()
-        subtotal = float(data.get('subtotal', 0.0))
     except (json.JSONDecodeError, ValueError, TypeError):
         return JsonResponse({'success': False, 'message': 'Invalid address inputs.'}, status=400)
         
@@ -955,28 +907,41 @@ def verify_checkout_address(request):
                 'message': f'Sorry, we do not deliver to {state} ({country}) at this time.'
             })
             
-    # Calculate fee
-    config = DeliveryConfig.current()
-    
-    # Check if subtotal qualifies for free shipping
-    is_free = False
-    if subtotal >= float(config.free_threshold):
-        is_free = True
-        delivery_fee = 0.0
-    else:
-        # Determine zone fee or flat fallback
-        if config.fee_type == DeliveryConfig.FeeType.ZONE and matching_zone:
-            delivery_fee = float(matching_zone.delivery_fee)
-        elif config.fee_type == DeliveryConfig.FeeType.THRESHOLD and matching_zone:
-            delivery_fee = float(matching_zone.delivery_fee)
-        else:
-            delivery_fee = float(config.base_fee)
+    base_calculation = calculate_cart_totals(request.session.get('cart', {}), include_shipping=False)
+    subtotal = base_calculation['totals']['subtotal']
+    delivery_fee, is_free = calculate_shipping(subtotal, matching_zone)
+
+    coupon_discount = money(0)
+    applied_coupon_id = request.session.get('applied_coupon_id')
+    if applied_coupon_id:
+        from .models import Coupon
+        c_obj = Coupon.objects.filter(pk=applied_coupon_id, is_active=True).first()
+        if c_obj:
+            valid, _ = c_obj.is_valid(subtotal)
+            if valid:
+                coupon_discount = money(c_obj.calculate_discount(subtotal))
+
+    calculation = calculate_cart_totals(
+        request.session.get('cart', {}),
+        customer_state=state,
+        coupon_discount=coupon_discount,
+        shipping=delivery_fee,
+        include_shipping=True,
+    )
+    totals = calculation['totals']
             
     return JsonResponse({
         'available': True,
-        'delivery_fee': round(delivery_fee, 2),
+        'delivery_fee': float(delivery_fee),
         'distance_km': 0.0,
         'is_free': is_free,
+        'taxable_amount': float(totals['taxable_amount']),
+        'gst_amount': float(totals['gst_amount']),
+        'cgst_amount': float(totals['cgst_amount']),
+        'sgst_amount': float(totals['sgst_amount']),
+        'igst_amount': float(totals['igst_amount']),
+        'grand_total': float(totals['grand_total']),
+        'tax_type': totals['tax_type'],
         'message': 'Delivery is available for your address!'
     })
 
@@ -1026,10 +991,7 @@ def place_order(request):
         if not matching_zone:
             return JsonResponse({'success': False, 'message': 'Selected shipping address is outside our delivery zones.'}, status=400)
             
-    # Calculate secure totals
-    subtotal = 0.0
-    order_items_data = []
-    
+    # Validate stock before calculating final totals.
     for prod_id, qty in cart.items():
         prod = Product.objects.filter(id=int(prod_id)).first()
         if not prod:
@@ -1040,29 +1002,14 @@ def place_order(request):
                 'success': False,
                 'message': f'Sorry, {prod.name} only has {prod.stock} items left in stock.'
             }, status=400)
-            
-        price = float(prod.discount_price if prod.discount_price else prod.price)
-        subtotal += price * qty
-        order_items_data.append((prod, qty, price))
-        
-    # Calculate delivery fee
-    config = DeliveryConfig.current()
-    
-    is_free = False
-    if subtotal >= float(config.free_threshold):
-        is_free = True
-        delivery_fee = 0.0
-    else:
-        if config.fee_type == DeliveryConfig.FeeType.ZONE and matching_zone:
-            delivery_fee = float(matching_zone.delivery_fee)
-        elif config.fee_type == DeliveryConfig.FeeType.THRESHOLD and matching_zone:
-            delivery_fee = float(matching_zone.delivery_fee)
-        else:
-            delivery_fee = float(config.base_fee)
+
+    base_calculation = calculate_cart_totals(cart, include_shipping=False)
+    subtotal = base_calculation['totals']['subtotal']
+    delivery_fee, _ = calculate_shipping(subtotal, matching_zone)
 
     # Coupon discount processing
     from .models import Coupon
-    coupon_discount = 0.0
+    coupon_discount = money(0)
     applied_coupon = None
     applied_coupon_id = request.session.get('applied_coupon_id')
     if applied_coupon_id:
@@ -1071,12 +1018,18 @@ def place_order(request):
             valid, _ = c_obj.is_valid(subtotal)
             if valid:
                 applied_coupon = c_obj
-                coupon_discount = c_obj.calculate_discount(subtotal)
+                coupon_discount = money(c_obj.calculate_discount(subtotal))
 
-    total = subtotal - coupon_discount + delivery_fee
-    if total < 0:
-        total = 0.0
+    calculation = calculate_order_totals(
+        cart,
+        customer_state=state,
+        coupon_discount=coupon_discount,
+        shipping=delivery_fee,
+    )
+    totals = calculation['totals']
     
+    payment_status = Order.PaymentStatus.PAID if payment_method == 'Card' else Order.PaymentStatus.PENDING
+
     # Create the Order
     order = Order.objects.create(
         user=request.user,
@@ -1088,14 +1041,23 @@ def place_order(request):
         county=county,
         street_address=street_address,
         postal_code=postal_code,
-        subtotal=subtotal,
-        delivery_fee=delivery_fee,
-        discount=coupon_discount,
+        subtotal=totals['subtotal'],
+        delivery_fee=totals['shipping'],
+        discount=totals['coupon_discount'],
+        taxable_amount=totals['taxable_amount'],
+        gst_amount=totals['gst_amount'],
+        cgst_amount=totals['cgst_amount'],
+        sgst_amount=totals['sgst_amount'],
+        igst_amount=totals['igst_amount'],
+        tax_type=totals['tax_type'],
+        gst_enabled_snapshot=totals['gst_enabled'],
+        seller_state_snapshot=totals['seller_state'],
         coupon=applied_coupon,
         coupon_code=applied_coupon.code if applied_coupon else '',
-        total=total,
+        total=totals['grand_total'],
         status=Order.Status.PROCESSING if payment_method == 'Card' else Order.Status.PENDING,
         payment_method=payment_method,
+        payment_status=payment_status,
         payment_id=payment_id
     )
 
@@ -1106,13 +1068,23 @@ def place_order(request):
 
     
     # Create order items and deduct stock
-    for prod, qty, price in order_items_data:
+    for item in calculation['items']:
+        prod = item['product']
+        qty = item['quantity']
         OrderItem.objects.create(
             order=order,
             product=prod,
             product_name=prod.name,
-            price=price,
-            quantity=qty
+            price=item['unit_price'],
+            quantity=qty,
+            taxable_amount=item['taxable_amount'],
+            gst_percentage=item['gst_percentage'],
+            gst_amount=item['gst_amount'],
+            cgst_amount=item['cgst_amount'],
+            sgst_amount=item['sgst_amount'],
+            igst_amount=item['igst_amount'],
+            hsn_sac_code=item['hsn_sac_code'],
+            final_amount=item['final_amount'],
         )
         prod.stock -= qty
         if prod.stock <= 0:

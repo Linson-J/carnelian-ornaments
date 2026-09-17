@@ -7,6 +7,7 @@ from rest_framework import serializers
 from .models import (
     Category, CategoryTag, Product, ProductImage, CarouselItem, HomeTheme,
     HomeSection, HomeSectionCategory, HomeSectionProduct, Favorite,
+    GSTRate, GSTConfig,
 )
 
 
@@ -64,7 +65,7 @@ class CategorySerializer(serializers.ModelSerializer):
         model  = Category
         fields = [
             'id', 'name', 'slug', 'image', 'image_url', 'description',
-            'status', 'is_popular', 'tags', 'tag_ids',
+            'status', 'is_popular', 'tags', 'tag_ids', 'gst_rate',
             'product_count', 'created_at', 'updated_at',
         ]
         read_only_fields = ['slug', 'product_count', 'created_at', 'updated_at']
@@ -129,6 +130,7 @@ class ProductReadSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description',
             'price', 'discount_price', 'discount_percent',
             'category', 'stock', 'status',
+            'gst_rate', 'gst_applicable', 'gst_pricing_mode', 'hsn_sac_code',
             'colors',
             'primary_image', 'images',
             'is_favorited',
@@ -170,6 +172,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'name', 'description',
             'price', 'discount_price',
             'category', 'stock', 'status',
+            'gst_rate', 'gst_applicable', 'gst_pricing_mode', 'hsn_sac_code',
             'colors',
             'uploaded_images', 'primary_image_id', 'removed_image_ids',
         ]
@@ -180,6 +183,10 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'discount_price': {'min_value': Decimal('0.01')},
             'category': {'required': True, 'allow_null': False},
             'stock': {'min_value': 0},
+            'gst_rate': {'required': False, 'allow_null': True},
+            'gst_applicable': {'required': False},
+            'gst_pricing_mode': {'required': False},
+            'hsn_sac_code': {'required': False, 'allow_blank': True},
         }
 
     def validate(self, data):
@@ -303,6 +310,34 @@ class ProductWriteSerializer(serializers.ModelSerializer):
                 next_image.save()
 
         return instance
+
+
+class GSTRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GSTRate
+        fields = ['id', 'name', 'percentage', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+        extra_kwargs = {
+            'percentage': {'min_value': Decimal('0.00'), 'max_value': Decimal('100.00')},
+            'name': {'allow_blank': False},
+        }
+
+
+class GSTConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GSTConfig
+        fields = [
+            'enabled', 'seller_state', 'default_rate', 'pricing_mode',
+            'seller_name', 'seller_gstin', 'seller_address', 'updated_at',
+        ]
+        read_only_fields = ['updated_at']
+        extra_kwargs = {
+            'seller_state': {'allow_blank': False},
+            'default_rate': {'required': False, 'allow_null': True},
+            'seller_name': {'required': False, 'allow_blank': True},
+            'seller_gstin': {'required': False, 'allow_blank': True},
+            'seller_address': {'required': False, 'allow_blank': True},
+        }
 
 
 # ─── Carousel ─────────────────────────────────────────────────

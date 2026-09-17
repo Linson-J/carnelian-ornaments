@@ -45,6 +45,40 @@
           <div class="field-err" id="err-discount_price"></div>
         </div>
       </div>
+      <div class="field-row">
+        <div class="field">
+          <label>GST rate</label>
+          <select name="gst_rate">
+            <option value="">Use category/default rate</option>
+            {% for rate in gst_rates %}
+              <option value="{{ rate.id }}" {% if product.gst_rate_id == rate.id %}selected{% endif %}>{{ rate.name }} - {{ rate.percentage }}%</option>
+            {% endfor %}
+          </select>
+          <div class="field-err" id="err-gst_rate"></div>
+        </div>
+        <div class="field">
+          <label>GST pricing mode</label>
+          <select name="gst_pricing_mode">
+            <option value="exclusive" {% if product.gst_pricing_mode == 'exclusive' %}selected{% endif %}>Tax exclusive</option>
+            <option value="inclusive" {% if product.gst_pricing_mode == 'inclusive' %}selected{% endif %}>Tax inclusive</option>
+          </select>
+          <div class="field-err" id="err-gst_pricing_mode"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>HSN/SAC code</label>
+          <input type="text" name="hsn_sac_code" maxlength="20" value="{{ product.hsn_sac_code }}" />
+          <div class="field-err" id="err-hsn_sac_code"></div>
+        </div>
+        <div class="field">
+          <label class="check-label">
+            <input type="checkbox" name="gst_applicable" {% if product.gst_applicable %}checked{% endif %}>
+            GST applicable
+          </label>
+          <div class="field-err" id="err-gst_applicable"></div>
+        </div>
+      </div>
       <div class="field">
         <label>Category</label>
         <select name="category" required>
@@ -147,6 +181,8 @@
     fd.delete('images');
     fd.delete('delete_images');
     fd.delete('primary_image');
+    if (!fd.get('gst_rate')) fd.delete('gst_rate');
+    fd.set('gst_applicable', form.elements.gst_applicable.checked ? 'true' : 'false');
     fd.set('colors', JSON.stringify(
       form.elements.colors.value.split(',').map(color => color.trim()).filter(Boolean)
     ));

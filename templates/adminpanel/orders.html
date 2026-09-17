@@ -332,6 +332,26 @@
                     <span>- ₹{{ order.discount }}</span>
                   </div>
                   {% endif %}
+                  <div class="summary-line">
+                    <span>Taxable Amount</span>
+                    <span>₹{{ order.taxable_amount }}</span>
+                  </div>
+                  <div class="summary-line">
+                    <span>CGST</span>
+                    <span>₹{{ order.cgst_amount }}</span>
+                  </div>
+                  <div class="summary-line">
+                    <span>SGST</span>
+                    <span>₹{{ order.sgst_amount }}</span>
+                  </div>
+                  <div class="summary-line">
+                    <span>IGST</span>
+                    <span>₹{{ order.igst_amount }}</span>
+                  </div>
+                  <div class="summary-line">
+                    <span>Total Tax</span>
+                    <span>₹{{ order.gst_amount }}</span>
+                  </div>
                   <div class="summary-line total">
                     <span>Grand Total</span>
                     <span>₹{{ order.total }}</span>

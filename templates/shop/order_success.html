@@ -198,15 +198,29 @@
         Phone: {{ order.phone }}
       </p>
       
+      <div class="details-title">Invoice</div>
+      <p style="font-size:0.9rem;line-height:1.5;color:var(--text-dark,#1a1c1a);margin-bottom:20px;">
+        <strong>Invoice Number:</strong> INV-{{ order.id }}<br>
+        <strong>Invoice Date:</strong> {{ order.created_at|date:"F j, Y" }}<br>
+        <strong>Seller State:</strong> {{ order.seller_state_snapshot|default:"-" }}
+      </p>
+
       <div class="details-title">Items Ordered</div>
       <div class="items-list">
         {% for item in order.items.all %}
-        <div class="item-row">
-          <div>
-            <span class="item-name">{{ item.product_name }}</span>
-            <span class="item-qty">x {{ item.quantity }}</span>
+        <div class="item-row" style="align-items:flex-start;gap:12px;">
+          <div style="flex:1;">
+            <div>
+              <span class="item-name">{{ item.product_name }}</span>
+              <span class="item-qty">x {{ item.quantity }}</span>
+            </div>
+            {% if order.gst_enabled_snapshot %}
+            <div style="font-size:0.78rem;color:var(--text-muted,#504444);margin-top:3px;">
+              HSN/SAC: {{ item.hsn_sac_code|default:"-" }} | GST {{ item.gst_percentage }}% | Taxable Rs. {{ item.taxable_amount }} | Tax Rs. {{ item.gst_amount }}
+            </div>
+            {% endif %}
           </div>
-          <span class="item-price">Rs. {{ item.price }}</span>
+          <span class="item-price">Rs. {{ item.final_amount }}</span>
         </div>
         {% endfor %}
       </div>
@@ -216,6 +230,30 @@
           <span>Subtotal</span>
           <span>Rs. {{ order.subtotal }}</span>
         </div>
+        {% if order.discount > 0 %}
+        <div class="totals-row">
+          <span>Discount</span>
+          <span>-Rs. {{ order.discount }}</span>
+        </div>
+        {% endif %}
+        {% if order.gst_enabled_snapshot %}
+        <div class="totals-row">
+          <span>Taxable Amount</span>
+          <span>Rs. {{ order.taxable_amount }}</span>
+        </div>
+        <div class="totals-row">
+          <span>CGST</span>
+          <span>Rs. {{ order.cgst_amount }}</span>
+        </div>
+        <div class="totals-row">
+          <span>SGST</span>
+          <span>Rs. {{ order.sgst_amount }}</span>
+        </div>
+        <div class="totals-row">
+          <span>IGST</span>
+          <span>Rs. {{ order.igst_amount }}</span>
+        </div>
+        {% endif %}
         <div class="totals-row">
           <span>Delivery Fee</span>
           <span>Rs. {{ order.delivery_fee }}</span>

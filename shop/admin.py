@@ -12,6 +12,8 @@ from .models import (
     HomeSectionCategory,
     HomeSectionProduct,
     HomeTheme,
+    GSTConfig,
+    GSTRate,
     LoginAttempt,
     NewsletterSubscription,
     Product,
@@ -141,6 +143,18 @@ class DeliveryConfigAdmin(admin.ModelAdmin):
     list_display = ('fee_type', 'base_fee', 'free_threshold')
 
 
+@admin.register(GSTRate)
+class GSTRateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'percentage', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+
+
+@admin.register(GSTConfig)
+class GSTConfigAdmin(admin.ModelAdmin):
+    list_display = ('enabled', 'seller_state', 'default_rate', 'pricing_mode', 'updated_at')
+
+
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
@@ -148,8 +162,8 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'full_name', 'total', 'status', 'payment_method', 'created_at')
-    list_filter = ('status', 'payment_method', 'created_at')
+    list_display = ('id', 'user', 'full_name', 'total', 'status', 'payment_method', 'payment_status', 'created_at')
+    list_filter = ('status', 'payment_method', 'payment_status', 'created_at')
     search_fields = ('full_name', 'phone', 'street_address', 'city')
     inlines = (OrderItemInline,)
 
