@@ -1,5 +1,7 @@
 from datetime import timedelta
+import re
 from textwrap import wrap
+from urllib.parse import quote
 
 import bcrypt
 from django.contrib import messages
@@ -695,6 +697,77 @@ def delete_delivery_zone(request, pk):
 
 # ─── Order Management Views ───────────────────────────────────
 
+def _whatsapp_phone_number(raw_phone, country='India'):
+    digits = re.sub(r'\D+', '', raw_phone or '')
+    if not digits:
+        return ''
+    if digits.startswith('00'):
+        return digits[2:]
+    if len(digits) == 10:
+        country_code_map = {
+            'india': '91',
+            'united states': '1',
+            'usa': '1',
+            'us': '1',
+        }
+        return f"{country_code_map.get((country or '').strip().lower(), '91')}{digits}"
+    return digits
+
+
+def _build_order_whatsapp_url(order, store_address_settings):
+    customer_phone = _whatsapp_phone_number(order.phone, order.country)
+    if not customer_phone:
+        return ''
+
+    store_name = (store_address_settings.sender_name or '').strip() or 'Store'
+    store_phone = (store_address_settings.sender_phone or '').strip()
+    item_lines = [
+        f"- {item.product_name} x {item.quantity} = Rs. {item.final_amount or (item.price * item.quantity)}"
+        for item in order.items.all()
+    ]
+    if not item_lines:
+        item_lines = ['- Order items unavailable']
+
+    address = ', '.join(
+        part for part in [
+            order.street_address,
+            order.city,
+            order.county,
+            order.state,
+            order.country,
+            order.postal_code,
+        ] if part
+    )
+    lines = [
+        f"Hello {order.full_name},",
+        f"Greetings from {store_name}.",
+        '',
+        f"Order #{order.id}",
+        f"Status: {order.get_status_display()}",
+        f"Payment: {order.payment_method} ({order.get_payment_status_display()})",
+        '',
+        "Order details:",
+        *item_lines,
+        '',
+        f"Subtotal: Rs. {order.subtotal}",
+        f"Delivery fee: Rs. {order.delivery_fee}",
+    ]
+    if order.discount and order.discount > 0:
+        lines.append(f"Discount: Rs. {order.discount}")
+    if order.gst_amount and order.gst_amount > 0:
+        lines.append(f"GST: Rs. {order.gst_amount}")
+    lines.extend([
+        f"Total: Rs. {order.total}",
+        '',
+        f"Delivery address: {address}",
+    ])
+    if store_phone:
+        lines.extend(['', f"For help, contact {store_name}: {store_phone}"])
+    lines.append('')
+    lines.append('Thank you for shopping with us.')
+    return f"https://wa.me/{customer_phone}?text={quote(chr(10).join(lines))}"
+
+
 @admin_login_required
 def admin_orders(request):
     orders = Order.objects.prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')
@@ -709,6 +782,10 @@ def admin_orders(request):
             orders = orders.filter(id=search_query)
         else:
             orders = orders.filter(full_name__icontains=search_query)
+    orders = list(orders)
+    store_address_settings = StoreAddressSettings.current()
+    for order in orders:
+        order.whatsapp_url = _build_order_whatsapp_url(order, store_address_settings)
 
     return render(request, 'adminpanel/orders.html', {
         'orders': orders,

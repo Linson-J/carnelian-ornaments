@@ -256,6 +256,13 @@
     background: rgba(255, 255, 255, 0.08);
     color: #ffffff;
   }
+  .order-action-item.whatsapp-action {
+    color: #86efac;
+  }
+  .order-action-item.whatsapp-action:hover {
+    background: rgba(34, 197, 94, 0.14);
+    color: #bbf7d0;
+  }
   .bulk-order-bar {
     display: flex;
     gap: 12px;
@@ -380,6 +387,11 @@
                 <a class="order-action-item" href="{% url 'download_order_address_pdf' order.id %}">
                   <i class="ri-download-2-line"></i> Download Address PDF
                 </a>
+                {% if order.whatsapp_url %}
+                <a class="order-action-item whatsapp-action" href="{{ order.whatsapp_url }}" target="_blank" rel="noopener">
+                  <i class="ri-whatsapp-line"></i> WhatsApp Customer
+                </a>
+                {% endif %}
               </div>
             </div>
           </td>

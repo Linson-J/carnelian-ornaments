@@ -316,7 +316,7 @@
         </div>
         <div>
           <h3 style="margin:0;font-size:15px;font-weight:600;">Store Sender Address</h3>
-          <p class="muted-small" style="margin-top:2px;">Used only for order address PDF downloads. This is separate from GST seller details.</p>
+          <p class="muted-small" style="margin-top:2px;">Used for order address PDF downloads and as the store contact in WhatsApp order messages. This is separate from GST seller details.</p>
         </div>
       </div>
       <button class="btn-primary" type="submit" id="btnSaveStoreAddress"><i class="ri-save-3-line"></i> Save Sender Address</button>
@@ -328,7 +328,7 @@
           <input type="text" id="sender_name" value="{{ store_address_settings.sender_name }}" placeholder="Carmelian">
         </div>
         <div class="field" style="margin-bottom:0;">
-          <label for="sender_phone">Sender Phone</label>
+          <label for="sender_phone">Sender / WhatsApp Phone</label>
           <input type="text" id="sender_phone" value="{{ store_address_settings.sender_phone }}" placeholder="+91 98765 43210">
         </div>
       </div>
