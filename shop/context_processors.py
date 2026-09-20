@@ -1,6 +1,6 @@
 import re
 
-from .models import Category, PopupBanner, StoreAddressSettings
+from .models import Category, Order, PopupBanner, StoreAddressSettings
 
 
 def _external_url(value):
@@ -56,5 +56,32 @@ def footer_context(request):
         'store_contact': store_contact,
         'store_whatsapp_url': _whatsapp_url(store_contact.whatsapp_number),
         'footer_social_links': footer_social_links,
+    }
+
+
+def admin_order_context(request):
+    if not request.path.startswith('/admin-panel/') or not request.session.get('admin_authenticated'):
+        return {}
+
+    waiting_statuses = [
+        Order.Status.PENDING,
+        Order.Status.PROCESSING,
+        Order.Status.SHIPPED,
+        Order.Status.RETURN_REQUESTED,
+    ]
+    visible_orders = Order.objects.exclude(
+        payment_method='PhonePe',
+        payment_status__in=[
+            Order.PaymentStatus.PENDING,
+            Order.PaymentStatus.FAILED,
+            Order.PaymentStatus.CANCELLED,
+            Order.PaymentStatus.TIMEOUT,
+        ],
+    )
+    latest_order = visible_orders.order_by('-id').first()
+
+    return {
+        'admin_waiting_order_count': visible_orders.filter(status__in=waiting_statuses).count(),
+        'admin_latest_order_id': latest_order.id if latest_order else 0,
     }
 

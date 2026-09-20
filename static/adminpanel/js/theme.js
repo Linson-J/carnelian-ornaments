@@ -95,6 +95,128 @@ function initProductLiveSearch() {
   searchInput.addEventListener('input', updateResults);
 }
 
+function initOrderNotifications() {
+  const nav = document.getElementById('adminOrderNav');
+  const badges = [...document.querySelectorAll('.admin-waiting-order-badge')];
+  const countEls = [...document.querySelectorAll('.admin-waiting-order-count')];
+  if (!nav || badges.length === 0 || countEls.length === 0 || !window.AdminApi) return;
+
+  const notificationUrl = nav.dataset.notificationUrl;
+  if (!notificationUrl) return;
+
+  const storageKey = 'adminLatestSeenOrderId';
+  let latestSeen = Number(localStorage.getItem(storageKey) || nav.dataset.latestOrderId || 0);
+  const pageLatest = Number(nav.dataset.latestOrderId || 0);
+  if (pageLatest > latestSeen) {
+    latestSeen = pageLatest;
+    localStorage.setItem(storageKey, String(latestSeen));
+  }
+
+  function playOrderSound() {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(660, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+      osc.addEventListener('ended', () => ctx.close());
+    } catch (error) {
+      console.debug('Order notification sound skipped', error);
+    }
+  }
+
+  function showOrderPopup(data) {
+    const popup = document.getElementById('adminOrderPopup');
+    const text = document.getElementById('adminOrderPopupText');
+    const action = document.getElementById('adminOrderPopupAction');
+    if (!popup || !text || !action) return;
+
+    const label = data.latest_order_label || 'New order';
+    const customer = data.latest_order_customer || 'Customer';
+    const total = data.latest_order_total ? ` - Rs. ${data.latest_order_total}` : '';
+
+    text.textContent = `${label} from ${customer}${total}`;
+    action.href = data.latest_order_url || '/admin-panel/orders/';
+    popup.classList.add('show');
+    popup.setAttribute('aria-hidden', 'false');
+
+    clearTimeout(showOrderPopup.timer);
+    showOrderPopup.timer = setTimeout(() => {
+      popup.classList.remove('show');
+      popup.setAttribute('aria-hidden', 'true');
+    }, 12000);
+  }
+
+  document.getElementById('adminOrderPopupClose')?.addEventListener('click', () => {
+    const popup = document.getElementById('adminOrderPopup');
+    if (popup) {
+      popup.classList.remove('show');
+      popup.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  function updateBadge(waitingCount, isNew) {
+    countEls.forEach(countEl => {
+      countEl.textContent = waitingCount;
+    });
+    badges.forEach(badge => {
+      badge.classList.toggle('hidden', waitingCount <= 0);
+    });
+    if (isNew) {
+      badges.forEach(badge => {
+        badge.classList.remove('has-new');
+        void badge.offsetWidth;
+        badge.classList.add('has-new');
+      });
+      showToast(`New order waiting (${waitingCount})`, 'success');
+      hideToast(4500);
+      playOrderSound();
+    }
+  }
+
+  async function pollOrderNotifications() {
+    try {
+      const result = await AdminApi.get(notificationUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = result.data || {};
+      const latestOrderId = Number(data.latest_order_id || 0);
+      const waitingCount = Number(data.waiting_count || 0);
+      const hasNewOrder = latestSeen > 0 && latestOrderId > latestSeen;
+
+      updateBadge(waitingCount, hasNewOrder);
+      if (hasNewOrder) {
+        showOrderPopup(data);
+      }
+
+      if (latestOrderId > latestSeen) {
+        latestSeen = latestOrderId;
+        localStorage.setItem(storageKey, String(latestSeen));
+      }
+    } catch (error) {
+      if (error.status !== 401) {
+        console.debug('Order notification check failed', error);
+      }
+    }
+  }
+
+  updateBadge(Number(countEls[0].textContent || 0), false);
+  setInterval(pollOrderNotifications, 20000);
+}
+
 function toggleDropdown(event, id) {
   if (event) event.stopPropagation();
 
@@ -140,4 +262,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initUrlToast();
   initClock();
   initProductLiveSearch();
+  initOrderNotifications();
 });

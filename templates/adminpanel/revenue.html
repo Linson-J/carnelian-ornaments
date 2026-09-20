@@ -1,0 +1,452 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Revenue - Admin{% endblock %}
+{% block page_title %}Revenue{% endblock %}
+
+{% block topbar_right %}
+<a href="{% url 'download_revenue_pdf' %}{% if pdf_query %}?{{ pdf_query }}{% endif %}" class="btn-primary">
+  <i class="ri-download-2-line"></i> Export PDF
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .revenue-page {
+    display: grid;
+    gap: 18px;
+  }
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .report-title {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .report-subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .report-range {
+    text-align: right;
+    min-width: 210px;
+  }
+  .report-range-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 6px;
+  }
+  .report-range-value {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .revenue-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--card-color, #64748b);
+  }
+  .summary-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+  }
+  .summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .summary-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  .summary-card.good { --card-color: #22c55e; }
+  .summary-card.bad { --card-color: #ef4444; }
+  .summary-card.warn { --card-color: #f59e0b; }
+  .summary-card.info { --card-color: #38bdf8; }
+  .summary-card.good .summary-value { color: #86efac; }
+  .summary-card.bad .summary-value { color: #fca5a5; }
+  .summary-card.warn .summary-value { color: #fcd34d; }
+  .summary-card.info .summary-value { color: #7dd3fc; }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title i {
+    color: var(--accent);
+    font-size: 18px;
+  }
+  .filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .money-good { color: #86efac; font-weight: 700; }
+  .money-bad { color: #fca5a5; font-weight: 700; }
+  .money-muted { color: #cbd5e1; font-weight: 600; }
+  .period-hint {
+    color: var(--muted);
+    font-size: 12px;
+    padding: 0 20px 16px;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .page-links {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .page-link {
+    color: var(--text);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .page-link.current {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .revenue-table th {
+    white-space: nowrap;
+  }
+  .revenue-table td {
+    vertical-align: top;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .status-pill.sale {
+    color: #bbf7d0;
+    background: rgba(34, 197, 94, .12);
+    border-color: rgba(34, 197, 94, .28);
+  }
+  .status-pill.pending {
+    color: #fde68a;
+    background: rgba(245, 158, 11, .12);
+    border-color: rgba(245, 158, 11, .28);
+  }
+  .status-pill.loss {
+    color: #fecaca;
+    background: rgba(239, 68, 68, .12);
+    border-color: rgba(239, 68, 68, .28);
+  }
+  .amount-stack {
+    display: grid;
+    gap: 4px;
+    min-width: 110px;
+  }
+  .amount-label {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .filters input,
+  .filters select {
+    min-height: 38px;
+  }
+  .date-field {
+    display: grid;
+    gap: 5px;
+  }
+  .date-field label {
+    color: #cbd5e1;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .filters input[type="date"] {
+    color-scheme: dark;
+    color: #f8fafc;
+    background: var(--inp);
+    border-color: var(--border);
+    min-width: 150px;
+  }
+  .filters input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: brightness(0) invert(1);
+    opacity: 1;
+    cursor: pointer;
+  }
+  .filters input[type="date"]:disabled {
+    opacity: 1;
+    color: #f8fafc;
+    background: var(--inp);
+    border-color: var(--border);
+    cursor: not-allowed;
+  }
+  .filters .filter-actions .btn-sm {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+  }
+  @media (max-width: 900px) {
+    .revenue-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .report-header { flex-direction: column; }
+    .report-range { text-align: left; }
+  }
+  @media (max-width: 560px) {
+    .revenue-summary { grid-template-columns: 1fr; }
+    .pagination { align-items: flex-start; flex-direction: column; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="revenue-page">
+<div class="report-header">
+  <div>
+    <h2 class="report-title">Revenue Report</h2>
+    <div class="report-subtitle">
+      Track sales revenue, discounts, GST, delivery charges, refunds, and profit/loss from filtered orders.
+    </div>
+  </div>
+  <div class="report-range">
+    <div class="report-range-label">Selected Period</div>
+    <div class="report-range-value">{{ start_date|date:"d M Y" }} - {{ end_date|date:"d M Y" }}</div>
+  </div>
+</div>
+
+<div class="revenue-summary">
+  <div class="summary-card good">
+    <div class="summary-label">Collected Revenue</div>
+    <div class="summary-value">Rs. {{ summary.net|floatformat:2 }}</div>
+    <div class="summary-note">{{ summary.sales_orders }} successful sale orders</div>
+  </div>
+  <div class="summary-card bad">
+    <div class="summary-label">Loss / Refunds</div>
+    <div class="summary-value">Rs. {{ summary.loss|floatformat:2 }}</div>
+    <div class="summary-note">{{ summary.loss_orders }} cancelled, returned, or refunded</div>
+  </div>
+  <div class="summary-card {% if summary.profit < 0 %}bad{% else %}good{% endif %}">
+    <div class="summary-label">Final Result</div>
+    <div class="summary-value">Rs. {{ summary.profit|floatformat:2 }}</div>
+    <div class="summary-note">Collected revenue minus losses</div>
+  </div>
+  <div class="summary-card info">
+    <div class="summary-label">Total Orders</div>
+    <div class="summary-value">Rs. {{ summary.gross|floatformat:2 }}</div>
+    <div class="summary-note">{{ summary.orders }} orders before discounts/losses</div>
+  </div>
+</div>
+
+<div class="revenue-summary">
+  <div class="summary-card">
+    <div class="summary-label">Discounts</div>
+    <div class="summary-value">Rs. {{ summary.discount|floatformat:2 }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">GST / Tax</div>
+    <div class="summary-value">Rs. {{ summary.tax|floatformat:2 }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Delivery Fees</div>
+    <div class="summary-value">Rs. {{ summary.delivery|floatformat:2 }}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">COD Charges</div>
+    <div class="summary-value">Rs. {{ summary.cod|floatformat:2 }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <h3 class="section-title"><i class="ri-filter-3-line"></i> Filters</h3>
+  </div>
+
+  <form class="filters" method="get">
+    <input type="text" name="search" placeholder="Search order ID, customer, email..." value="{{ search_query }}">
+    <select name="period" id="periodSelect">
+      <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+      <option value="7d" {% if period == '7d' %}selected{% endif %}>Last 7 days</option>
+      <option value="30d" {% if period == '30d' %}selected{% endif %}>Last 30 days</option>
+      <option value="3m" {% if period == '3m' %}selected{% endif %}>Last 3 months</option>
+      <option value="6m" {% if period == '6m' %}selected{% endif %}>Last 6 months</option>
+      <option value="12m" {% if period == '12m' %}selected{% endif %}>Last 12 months</option>
+      <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom dates</option>
+    </select>
+    <div class="date-field">
+      <label for="startDate">Start date</label>
+      <input id="startDate" type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+    </div>
+    <div class="date-field">
+      <label for="endDate">End date</label>
+      <input id="endDate" type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+    </div>
+    <select name="status">
+      <option value="">All order statuses</option>
+      {% for val, lbl in choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+    <select name="payment_status">
+      <option value="">All payment statuses</option>
+      {% for val, lbl in payment_choices %}
+        <option value="{{ val }}" {% if payment_filter == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+    <div class="filter-actions">
+      <button type="submit" class="btn-sm">Filter</button>
+      {% if search_query or status_filter or payment_filter or period != '3m' %}
+        <a href="{% url 'admin_revenue' %}" class="btn-sm">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+  <div class="period-hint">
+    PDF export uses the same filters shown here.
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <h3 class="section-title"><i class="ri-file-chart-line"></i> Order Revenue Details</h3>
+  </div>
+
+  <div class="table-wrap">
+    <table class="revenue-table">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Customer</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Gross</th>
+          <th>Discount</th>
+          <th>GST</th>
+          <th>Net</th>
+          <th>Loss</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><strong>#{{ row.order.id }}</strong></td>
+          <td>
+            <strong>{{ row.order.full_name }}</strong><br>
+            <span class="muted-small">{{ row.order.user.email }}</span>
+          </td>
+          <td>{{ row.order.created_at|date:"Y-m-d h:i A" }}</td>
+          <td>
+            <span class="status-pill {% if row.is_loss %}loss{% elif row.order.status == 'delivered' %}sale{% else %}pending{% endif %}">
+              {{ row.order.get_status_display }}
+            </span>
+            <div class="muted-small">{{ row.order.get_payment_status_display }}</div>
+          </td>
+          <td class="money-muted">Rs. {{ row.gross|floatformat:2 }}</td>
+          <td class="money-muted">Rs. {{ row.discount|floatformat:2 }}</td>
+          <td class="money-muted">Rs. {{ row.tax|floatformat:2 }}</td>
+          <td>
+            <div class="amount-stack">
+              <span class="money-good">Rs. {{ row.net|floatformat:2 }}</span>
+              <span class="amount-label">received</span>
+            </div>
+          </td>
+          <td>
+            <div class="amount-stack">
+              <span class="{% if row.loss > 0 %}money-bad{% else %}money-muted{% endif %}">Rs. {{ row.loss|floatformat:2 }}</span>
+              <span class="amount-label">refund/loss</span>
+            </div>
+          </td>
+          <td>
+            <div class="amount-stack">
+              <span class="{% if row.result < 0 %}money-bad{% else %}money-good{% endif %}">Rs. {{ row.result|floatformat:2 }}</span>
+              <span class="amount-label">final</span>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" style="text-align:center;color:var(--muted);padding:30px">
+            No revenue records for this filter.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination">
+    <div class="muted-small">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} - {{ page_obj.paginator.count }} records
+    </div>
+    <div class="page-links">
+      {% if page_obj.has_previous %}
+        <a class="page-link" href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page=1">First</a>
+        <a class="page-link" href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+      {% endif %}
+      <span class="page-link current">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a class="page-link" href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        <a class="page-link" href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const periodSelect = document.getElementById('periodSelect');
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    function syncDateInputs() {
+      const custom = periodSelect.value === 'custom';
+      dateInputs.forEach(input => {
+        input.disabled = !custom;
+      });
+    }
+    periodSelect.addEventListener('change', syncDateInputs);
+    syncDateInputs();
+  });
+</script>
+{% endblock %}

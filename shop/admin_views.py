@@ -1,4 +1,5 @@
-from datetime import timedelta
+import calendar
+from datetime import datetime, timedelta, time
 from decimal import Decimal, InvalidOperation
 import re
 from textwrap import wrap
@@ -15,6 +16,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.models import User
 from django.db.models import Sum, Q
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 
 from .forms import CarouselItemForm
 from .decorators import admin_login_required
@@ -24,7 +26,6 @@ from .models import (
     Category,
     CategoryTag,
     HomeSection,
-    HomeTheme,
     GSTConfig,
     GSTRate,
     LoginAttempt,
@@ -48,6 +49,26 @@ from .email_utils import send_order_status_email
 
 MAX_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+
+
+ORDER_WAITING_STATUSES = [
+    Order.Status.PENDING,
+    Order.Status.PROCESSING,
+    Order.Status.SHIPPED,
+    Order.Status.RETURN_REQUESTED,
+]
+
+
+def _admin_visible_orders():
+    return Order.objects.exclude(
+        payment_method='PhonePe',
+        payment_status__in=[
+            Order.PaymentStatus.PENDING,
+            Order.PaymentStatus.FAILED,
+            Order.PaymentStatus.CANCELLED,
+            Order.PaymentStatus.TIMEOUT,
+        ],
+    )
 
 
 def _get_ip(request):
@@ -418,7 +439,6 @@ def admin_login_logs(request):
 @require_http_methods(['GET', 'POST'])
 def admin_settings(request):
     otp_settings = OTPSettings.current()
-    theme = HomeTheme.current()
     gst_config = GSTConfig.current()
     store_address_settings = StoreAddressSettings.current()
     gst_rates = GSTRate.objects.all()
@@ -591,7 +611,6 @@ def admin_settings(request):
             return redirect('admin_settings')
 
     return render(request, 'adminpanel/settings.html', {
-        'theme': theme,
         'otp_settings': otp_settings,
         'gst_config': gst_config,
         'store_address_settings': store_address_settings,
@@ -944,15 +963,7 @@ def _build_order_whatsapp_url(order, store_address_settings, request=None, inclu
 @admin_login_required
 def admin_orders(request):
     orders = (
-        Order.objects.exclude(
-            payment_method='PhonePe',
-            payment_status__in=[
-                Order.PaymentStatus.PENDING,
-                Order.PaymentStatus.FAILED,
-                Order.PaymentStatus.CANCELLED,
-                Order.PaymentStatus.TIMEOUT,
-            ],
-        )
+        _admin_visible_orders()
         .prefetch_related('items', 'items__product', 'items__product__images')
         .order_by('-created_at')
     )
@@ -986,6 +997,320 @@ def admin_orders(request):
         'order_count': Order.objects.count(),
         'choices': Order.Status.choices,
     })
+
+
+@admin_login_required
+def admin_order_notifications(request):
+    visible_orders = _admin_visible_orders()
+    latest_order = visible_orders.order_by('-id').first()
+    waiting_count = visible_orders.filter(status__in=ORDER_WAITING_STATUSES).count()
+
+    return JsonResponse({
+        'success': True,
+        'waiting_count': waiting_count,
+        'latest_order_id': latest_order.id if latest_order else 0,
+        'latest_order_label': f'#{latest_order.id}' if latest_order else '',
+        'latest_order_customer': latest_order.full_name if latest_order else '',
+        'latest_order_total': str(latest_order.total) if latest_order else '',
+        'latest_order_url': reverse('admin_orders') if latest_order else '',
+    })
+
+
+def _admin_revenue_base_orders():
+    return _admin_visible_orders()
+
+
+def _add_months(value, months):
+    month = value.month - 1 + months
+    year = value.year + month // 12
+    month = month % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def _parse_admin_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+def _revenue_filter_dates(request):
+    today = timezone.localdate()
+    period = request.GET.get('period', '3m').strip() or '3m'
+    start_date = _parse_admin_date(request.GET.get('start_date'))
+    end_date = _parse_admin_date(request.GET.get('end_date'))
+
+    if period == 'custom':
+        start_date = start_date or _add_months(today, -3)
+        end_date = end_date or today
+    elif period == 'today':
+        start_date = end_date = today
+    elif period == '7d':
+        start_date = today - timedelta(days=6)
+        end_date = today
+    elif period == '30d':
+        start_date = today - timedelta(days=29)
+        end_date = today
+    elif period == '6m':
+        start_date = _add_months(today, -6)
+        end_date = today
+    elif period == '12m':
+        start_date = _add_months(today, -12)
+        end_date = today
+    else:
+        period = '3m'
+        start_date = _add_months(today, -3)
+        end_date = today
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(start_date, time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(end_date, time.max), tz)
+    return period, start_date, end_date, start_dt, end_dt
+
+
+def _money(value):
+    return value or Decimal('0.00')
+
+
+def _revenue_rows(queryset):
+    rows = []
+    for order in queryset:
+        subtotal = _money(order.subtotal)
+        delivery_fee = _money(order.delivery_fee)
+        cod_extra_charge = _money(order.cod_extra_charge)
+        discount = _money(order.discount)
+        gst_amount = _money(order.gst_amount)
+        total = _money(order.total)
+        is_loss = (
+            order.status in [Order.Status.CANCELLED, Order.Status.RETURNED]
+            or order.payment_status == Order.PaymentStatus.REFUNDED
+        )
+        rows.append({
+            'order': order,
+            'gross': subtotal + delivery_fee + cod_extra_charge,
+            'discount': discount,
+            'tax': gst_amount,
+            'net': Decimal('0.00') if is_loss else total,
+            'loss': total if is_loss else Decimal('0.00'),
+            'result': -total if is_loss else total,
+            'is_loss': is_loss,
+        })
+    return rows
+
+
+def _revenue_summary(queryset):
+    totals = {
+        'orders': 0,
+        'sales_orders': 0,
+        'loss_orders': 0,
+        'gross': Decimal('0.00'),
+        'discount': Decimal('0.00'),
+        'tax': Decimal('0.00'),
+        'delivery': Decimal('0.00'),
+        'cod': Decimal('0.00'),
+        'net': Decimal('0.00'),
+        'loss': Decimal('0.00'),
+        'profit': Decimal('0.00'),
+    }
+    for order in queryset:
+        subtotal = _money(order.subtotal)
+        delivery_fee = _money(order.delivery_fee)
+        cod_extra_charge = _money(order.cod_extra_charge)
+        discount = _money(order.discount)
+        gst_amount = _money(order.gst_amount)
+        total = _money(order.total)
+        is_loss = (
+            order.status in [Order.Status.CANCELLED, Order.Status.RETURNED]
+            or order.payment_status == Order.PaymentStatus.REFUNDED
+        )
+
+        totals['orders'] += 1
+        totals['gross'] += subtotal + delivery_fee + cod_extra_charge
+        totals['discount'] += discount
+        totals['tax'] += gst_amount
+        totals['delivery'] += delivery_fee
+        totals['cod'] += cod_extra_charge
+        if is_loss:
+            totals['loss_orders'] += 1
+            totals['loss'] += total
+        else:
+            totals['sales_orders'] += 1
+            totals['net'] += total
+
+    totals['profit'] = totals['net'] - totals['loss']
+    return totals
+
+
+def _revenue_querystring(request, **overrides):
+    params = request.GET.copy()
+    for key, value in overrides.items():
+        if value in [None, '']:
+            params.pop(key, None)
+        else:
+            params[key] = value
+    return params.urlencode()
+
+
+@admin_login_required
+def admin_revenue(request):
+    period, start_date, end_date, start_dt, end_dt = _revenue_filter_dates(request)
+    status_filter = request.GET.get('status', '').strip()
+    payment_filter = request.GET.get('payment_status', '').strip()
+    search_query = request.GET.get('search', '').strip()
+
+    orders = (
+        _admin_revenue_base_orders()
+        .select_related('user')
+        .prefetch_related('items')
+        .filter(created_at__gte=start_dt, created_at__lte=end_dt)
+        .order_by('-created_at')
+    )
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    if payment_filter:
+        orders = orders.filter(payment_status=payment_filter)
+    if search_query:
+        if search_query.isdigit():
+            orders = orders.filter(id=search_query)
+        else:
+            orders = orders.filter(Q(full_name__icontains=search_query) | Q(user__email__icontains=search_query))
+
+    summary = _revenue_summary(orders)
+    paginator = Paginator(orders, 15)
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    return render(request, 'adminpanel/revenue.html', {
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'revenue',
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'status_filter': status_filter,
+        'payment_filter': payment_filter,
+        'search_query': search_query,
+        'summary': summary,
+        'page_obj': page_obj,
+        'rows': _revenue_rows(page_obj.object_list),
+        'choices': Order.Status.choices,
+        'payment_choices': Order.PaymentStatus.choices,
+        'query_without_page': _revenue_querystring(request, page=''),
+        'pdf_query': _revenue_querystring(request, page=''),
+        'order_count': Order.objects.count(),
+    })
+
+
+def _simple_pdf_bytes(title, lines):
+    width = 595
+    height = 842
+    y = height - 72
+    content = ['BT', '/F1 18 Tf', f'56 {y} Td', f'({_pdf_escape(title)}) Tj', 'ET']
+    y -= 34
+    for raw_line in lines:
+        if y < 60:
+            break
+        content.extend(['BT', '/F1 10 Tf', f'56 {y} Td'])
+        for index, line in enumerate(wrap(str(raw_line), width=95) or ['']):
+            if index:
+                y -= 13
+                if y < 60:
+                    break
+                content.append(f'0 -13 Td')
+            content.append(f'({_pdf_escape(line)}) Tj')
+        content.append('ET')
+        y -= 16
+
+    stream = '\n'.join(content).encode('latin-1', errors='replace')
+    objects = [
+        b'1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        b'2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        b'3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
+        b'4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        b'5 0 obj\n<< /Length ' + str(len(stream)).encode('ascii') + b' >>\nstream\n' + stream + b'\nendstream\nendobj\n',
+    ]
+    pdf = bytearray(b'%PDF-1.4\n')
+    offsets = [0]
+    for obj in objects:
+        offsets.append(len(pdf))
+        pdf.extend(obj)
+    xref_position = len(pdf)
+    pdf.extend(f'xref\n0 {len(objects) + 1}\n'.encode('ascii'))
+    pdf.extend(b'0000000000 65535 f \n')
+    for offset in offsets[1:]:
+        pdf.extend(f'{offset:010d} 00000 n \n'.encode('ascii'))
+    pdf.extend(f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n'.encode('ascii'))
+    return bytes(pdf)
+
+
+@admin_login_required
+def download_revenue_pdf(request):
+    period, start_date, end_date, start_dt, end_dt = _revenue_filter_dates(request)
+    status_filter = request.GET.get('status', '').strip()
+    payment_filter = request.GET.get('payment_status', '').strip()
+    search_query = request.GET.get('search', '').strip()
+
+    orders = (
+        _admin_revenue_base_orders()
+        .select_related('user')
+        .filter(created_at__gte=start_dt, created_at__lte=end_dt)
+        .order_by('-created_at')
+    )
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    if payment_filter:
+        orders = orders.filter(payment_status=payment_filter)
+    if search_query:
+        if search_query.isdigit():
+            orders = orders.filter(id=search_query)
+        else:
+            orders = orders.filter(Q(full_name__icontains=search_query) | Q(user__email__icontains=search_query))
+
+    summary = _revenue_summary(orders)
+    lines = [
+        f"Period: {start_date:%d %b %Y} to {end_date:%d %b %Y}",
+        f"Preset: {period}",
+        '',
+        f"Total orders: {summary['orders']}",
+        f"Successful sale orders: {summary['sales_orders']}",
+        f"Loss/refund orders: {summary['loss_orders']}",
+        f"Gross amount: Rs. {summary['gross']:.2f}",
+        f"Discounts: Rs. {summary['discount']:.2f}",
+        f"Tax/GST: Rs. {summary['tax']:.2f}",
+        f"Delivery fees: Rs. {summary['delivery']:.2f}",
+        f"COD charges: Rs. {summary['cod']:.2f}",
+        f"Net revenue: Rs. {summary['net']:.2f}",
+        f"Loss/refunds: Rs. {summary['loss']:.2f}",
+        f"Profit/Loss result: Rs. {summary['profit']:.2f}",
+        '',
+        'Orders',
+    ]
+    for row in _revenue_rows(orders[:35]):
+        order = row['order']
+        lines.append(
+            f"#{order.id} | {timezone.localtime(order.created_at):%d %b %Y} | {order.full_name} | "
+            f"{order.get_status_display()} | {order.get_payment_status_display()} | "
+            f"Net Rs. {row['net']:.2f} | Loss Rs. {row['loss']:.2f}"
+        )
+    if orders.count() > 35:
+        lines.append(f"... {orders.count() - 35} more orders hidden in PDF preview. Use page filters to narrow the report.")
+
+    response = HttpResponse(
+        _simple_pdf_bytes('Revenue Report', lines),
+        content_type='application/pdf',
+    )
+    response['Content-Disposition'] = f'attachment; filename="revenue-{start_date:%Y%m%d}-{end_date:%Y%m%d}.pdf"'
+    return response
 
 
 def _pdf_escape(value):
