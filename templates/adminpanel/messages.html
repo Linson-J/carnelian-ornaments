@@ -192,7 +192,7 @@
           <td>
             <div class="msg-snippet">{{ msg.message }}</div>
           </td>
-          <td>{{ msg.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ msg.created_at|date:"Y-m-d h:i A" }}</td>
           <td>
             {% if msg.is_read %}
               <span class="status-pill read">Read</span>
@@ -206,7 +206,7 @@
                 <i class="ri-more-2-fill"></i>
               </button>
               <div class="actions-dropdown-menu" id="dropdown-{{ msg.id }}">
-                <button type="button" class="dropdown-item" onclick="openViewModal({{ msg.id }}, '{{ msg.name|escapejs }}', '{{ msg.email|escapejs }}', '{{ msg.subject|escapejs }}', '{{ msg.created_at|date:"Y-m-d H:i"|escapejs }}', '{{ msg.message|escapejs }}')">
+                <button type="button" class="dropdown-item" onclick="openViewModal({{ msg.id }}, '{{ msg.name|escapejs }}', '{{ msg.email|escapejs }}', '{{ msg.subject|escapejs }}', '{{ msg.created_at|date:"Y-m-d h:i A"|escapejs }}', '{{ msg.message|escapejs }}')">
                   <i class="ri-eye-line"></i> View Full Message
                 </button>
                 

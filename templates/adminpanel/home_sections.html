@@ -655,7 +655,7 @@
           </td>
           <td class="section-title-cell">
             <strong>${escapeHtml(section.title)}</strong>
-            <div class="muted-small">Updated ${new Date(section.updated_at).toLocaleString()}</div>
+            <div class="muted-small">Updated ${new Date(section.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })}</div>
           </td>
           <td><span class="section-type-pill"><i class="${typeIcon(section.section_type)}"></i>${typeLabel(section.section_type)}</span></td>
           <td>${itemLabel}</td>

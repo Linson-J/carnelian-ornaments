@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -21,8 +21,10 @@ import re
 import requests
 import string
 
+from django.core import signing
+from django.core.signing import BadSignature, SignatureExpired
 from .forms import NewsletterSubscriptionForm
-from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, PaymentTransaction, PaymentWebhookEvent, StoreAddressSettings, UserProfile, Review, OTPSettings, ContactMessage
+from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, PaymentTransaction, PaymentWebhookEvent, StoreAddressSettings, UserProfile, Review, OTPSettings, ContactMessage, GSTConfig
 from .decorators import login_required_ajax
 from .email_utils import send_order_status_email
 from .tax import calculate_cart_totals, calculate_order_totals, calculate_shipping, money
@@ -1451,6 +1453,18 @@ def place_order(request):
     }
 
     with transaction.atomic():
+        UserProfile.objects.update_or_create(
+            user=request.user,
+            defaults={
+                'phone': phone,
+                'street_address': street_address,
+                'city': city,
+                'county': county,
+                'state': state,
+                'country': country,
+                'postal_code': postal_code,
+            },
+        )
         order, is_phonepe = _create_order_from_checkout(
             request,
             cart,
@@ -1508,6 +1522,185 @@ def order_success(request, order_id):
         
     order = get_object_or_404(Order.objects.prefetch_related('items'), id=order_id, user=request.user)
     return render(request, 'shop/order_success.html', {'order': order})
+
+
+def _customer_invoice_available(order):
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return True
+    return order.payment_method.upper() == 'COD' and order.status == Order.Status.DELIVERED
+
+
+def build_invoice_share_token(order):
+    return signing.TimestampSigner(salt='shop.invoice.share').sign(str(order.id))
+
+
+def _invoice_share_max_age_seconds():
+    days = int(getattr(settings, 'WHATSAPP_INVOICE_LINK_MAX_AGE_DAYS', 30))
+    return max(1, days) * 24 * 60 * 60
+
+
+def _pdf_escape(value):
+    return str(value or '').replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _simple_pdf_bytes(title, lines):
+    width, height = 595, 842
+    y = height - 72
+    content = ['BT', '/F1 18 Tf', f'72 {y} Td', f'({_pdf_escape(title)}) Tj', 'ET']
+    y -= 34
+    for line in lines:
+        if y < 60:
+            break
+        if line == '':
+            y -= 12
+            continue
+        content.extend(['BT', '/F1 10 Tf', f'72 {y} Td', f'({_pdf_escape(line)}) Tj', 'ET'])
+        y -= 15
+    stream = '\n'.join(content).encode('latin-1', errors='replace')
+    objects = [
+        b'1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n',
+        b'2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n',
+        b'3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n',
+        b'4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n',
+        f'5 0 obj << /Length {len(stream)} >> stream\n'.encode('ascii') + stream + b'\nendstream endobj\n',
+    ]
+    pdf = bytearray(b'%PDF-1.4\n')
+    offsets = []
+    for obj in objects:
+        offsets.append(len(pdf))
+        pdf.extend(obj)
+    xref_position = len(pdf)
+    pdf.extend(f'xref\n0 {len(objects) + 1}\n'.encode('ascii'))
+    pdf.extend(b'0000000000 65535 f \n')
+    for offset in offsets:
+        pdf.extend(f'{offset:010d} 00000 n \n'.encode('ascii'))
+    pdf.extend(f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_position}\n%%EOF\n'.encode('ascii'))
+    return bytes(pdf)
+
+
+def _invoice_pdf_response(order):
+    def invoice_datetime(value):
+        if not value:
+            return '-'
+        return timezone.localtime(value).strftime('%d %b %Y, %I:%M %p IST')
+
+    store_settings = StoreAddressSettings.current()
+    gst_config = GSTConfig.current()
+    payment_txn = PaymentTransaction.objects.filter(order=order).order_by('-created_at').first()
+    company_name = (
+        (getattr(gst_config, 'seller_name', '') or '').strip()
+        or (getattr(store_settings, 'sender_name', '') or '').strip()
+        or 'Carmelian'
+    )
+    company_phone = (getattr(store_settings, 'sender_phone', '') or '').strip()
+    company_address = ' '.join(
+        line.strip()
+        for line in (getattr(gst_config, 'seller_address', '') or getattr(store_settings, 'sender_address', '') or '').splitlines()
+        if line.strip()
+    )
+    invoice_uid = f'INV-{order.created_at:%Y%m%d}-{order.id:06d}'
+
+    lines = [
+        company_name,
+        'Thank you for shopping with us.',
+        'This invoice confirms your order and payment/delivery details.',
+        '',
+        f'Invoice Number: {invoice_uid}',
+        f'Invoice Date: {invoice_datetime(order.created_at)}',
+        f'Order ID: ORDER-{order.id:06d}',
+        f'Order Date: {invoice_datetime(order.created_at)}',
+        f'Order Status: {order.get_status_display()}',
+        f'Delivery Date: {invoice_datetime(order.delivered_at) if order.delivered_at else "Not delivered yet"}',
+        f'Delivery Location: {order.city}, {order.state} - {order.postal_code}',
+        f'Payment Method: {order.payment_method}',
+        f'Payment Status: {order.get_payment_status_display()}',
+        f'Payment Date: {invoice_datetime(getattr(payment_txn, "verified_at", None) or getattr(payment_txn, "updated_at", None)) if order.payment_status == Order.PaymentStatus.PAID else "-"}',
+        f'Payment Provider: {getattr(payment_txn, "provider", "") or ("COD" if order.payment_method.upper() == "COD" else "-")}',
+        f'Merchant Order ID: {order.phonepe_merchant_order_id or getattr(payment_txn, "merchant_order_id", "") or "-"}',
+        f'Provider Order ID: {order.phonepe_order_id or getattr(payment_txn, "provider_order_id", "") or "-"}',
+        f'Transaction ID: {order.phonepe_transaction_id or getattr(payment_txn, "provider_transaction_id", "") or "-"}',
+        f'Provider Status: {getattr(payment_txn, "provider_state", "") or getattr(payment_txn, "status", "") or "-"}',
+        f'Customer Name: {order.full_name}',
+        '',
+        'Seller / Company Details',
+        f'Company Name: {company_name}',
+        f'Company Phone: {company_phone or "-"}',
+        f'Company Address: {company_address or "-"}',
+        f'GSTIN: {gst_config.seller_gstin or "-"}',
+        '',
+        'Delivery Location',
+        f'{order.full_name} ({order.phone})',
+        order.street_address,
+        f'{order.city}, {order.state} - {order.postal_code}',
+        order.country,
+        '',
+        'Order List',
+    ]
+    for index, item in enumerate(order.items.all(), start=1):
+        lines.append(f'{index}. {item.product_name} | Qty {item.quantity} | Rate Rs. {item.price} | Amount Rs. {item.final_amount}')
+        if order.gst_enabled_snapshot:
+            lines.append(f'  HSN/SAC {item.hsn_sac_code or "-"} | GST {item.gst_percentage}% | Tax Rs. {item.gst_amount}')
+
+    lines.extend([
+        '',
+        f'Subtotal: Rs. {order.subtotal}',
+        f'Delivery Fee: Rs. {order.delivery_fee}',
+    ])
+    if order.cod_extra_charge > 0:
+        lines.append(f'COD Extra Charge: Rs. {order.cod_extra_charge}')
+    if order.discount > 0:
+        lines.append(f'Discount: - Rs. {order.discount}')
+    if order.gst_enabled_snapshot or order.gst_amount > 0:
+        lines.extend([
+            f'Taxable Amount: Rs. {order.taxable_amount}',
+            f'CGST: Rs. {order.cgst_amount}',
+            f'SGST: Rs. {order.sgst_amount}',
+            f'IGST: Rs. {order.igst_amount}',
+            f'Total GST: Rs. {order.gst_amount}',
+            f'Seller State: {order.seller_state_snapshot or "-"}',
+        ])
+    lines.append(f'Grand Total: Rs. {order.total}')
+
+    response = HttpResponse(
+        _simple_pdf_bytes(f'{company_name} - Invoice {invoice_uid}', lines),
+        content_type='application/pdf',
+    )
+    response['Content-Disposition'] = f'attachment; filename="invoice-{invoice_uid}.pdf"'
+    return response
+
+
+def download_customer_invoice(request, order_id):
+    if not request.user.is_authenticated:
+        return redirect('/?login_required=1')
+
+    order = get_object_or_404(
+        Order.objects.prefetch_related('items'),
+        id=order_id,
+        user=request.user,
+    )
+    if not _customer_invoice_available(order):
+        return HttpResponse('Invoice is available after payment is completed or COD order is delivered.', status=403)
+    return _invoice_pdf_response(order)
+
+
+def download_shared_invoice(request, order_id, token):
+    try:
+        signed_order_id = signing.TimestampSigner(salt='shop.invoice.share').unsign(
+            token,
+            max_age=_invoice_share_max_age_seconds(),
+        )
+    except SignatureExpired:
+        return HttpResponse('This invoice link has expired. Please contact support for a new invoice link.', status=403)
+    except BadSignature:
+        return HttpResponse('Invalid invoice link.', status=403)
+
+    if str(signed_order_id) != str(order_id):
+        return HttpResponse('Invalid invoice link.', status=403)
+
+    order = get_object_or_404(Order.objects.prefetch_related('items'), id=order_id)
+    if not _customer_invoice_available(order):
+        return HttpResponse('Invoice is available after payment is completed or COD order is delivered.', status=403)
+    return _invoice_pdf_response(order)
 
 
 def phonepe_payment_return(request, merchant_order_id):

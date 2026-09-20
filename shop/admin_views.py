@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 import bcrypt
 from django.contrib import messages
+from django.core import signing
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -832,13 +833,38 @@ def _whatsapp_phone_number(raw_phone, country='India'):
     return digits
 
 
-def _build_order_whatsapp_url(order, store_address_settings):
+def _invoice_available_for_whatsapp(order):
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return True
+    return order.payment_method.upper() == 'COD' and order.status == Order.Status.DELIVERED
+
+
+def _build_shared_invoice_url(request, order):
+    if not _invoice_available_for_whatsapp(order):
+        return ''
+    token = signing.TimestampSigner(salt='shop.invoice.share').sign(str(order.id))
+    path = reverse('download_shared_invoice', kwargs={'order_id': order.id, 'token': token})
+    return request.build_absolute_uri(path)
+
+
+def _build_order_whatsapp_url(order, store_address_settings, request=None, include_invoice=False):
     customer_phone = _whatsapp_phone_number(order.phone, order.country)
     if not customer_phone:
         return ''
 
     store_name = (store_address_settings.sender_name or '').strip() or 'Store'
     store_phone = (store_address_settings.sender_phone or '').strip()
+    invoice_url = _build_shared_invoice_url(request, order) if request and include_invoice else ''
+    invoice_number = f"INV-{order.created_at:%Y%m%d}-{order.id:06d}"
+    status_messages = {
+        Order.Status.PENDING: f"Your order from {store_name} is pending payment.",
+        Order.Status.PROCESSING: f"Your order from {store_name} is now being processed.",
+        Order.Status.SHIPPED: f"Your order from {store_name} has been shipped.",
+        Order.Status.DELIVERED: f"Your order from {store_name} has been delivered.",
+        Order.Status.CANCELLED: f"Your order from {store_name} has been cancelled.",
+        Order.Status.RETURN_REQUESTED: f"Your replacement request for {store_name} is under review.",
+        Order.Status.RETURNED: f"Your replacement for {store_name} has been completed successfully.",
+    }
     item_lines = [
         f"- {item.product_name} x {item.quantity} = Rs. {item.final_amount or (item.price * item.quantity)}"
         for item in order.items.all()
@@ -858,13 +884,13 @@ def _build_order_whatsapp_url(order, store_address_settings):
     )
     lines = [
         f"Hello {order.full_name},",
-        f"Greetings from {store_name}.",
+        status_messages.get(order.status, f"Your order from {store_name} status has been updated."),
         '',
-        f"Order #{order.id}",
+        f"Order ID: ORDER-{order.id:06d}",
         f"Status: {order.get_status_display()}",
         f"Payment: {order.payment_method} ({order.get_payment_status_display()})",
         '',
-        "Order details:",
+        "Items:",
         *item_lines,
         '',
         f"Subtotal: Rs. {order.subtotal}",
@@ -879,6 +905,8 @@ def _build_order_whatsapp_url(order, store_address_settings):
         '',
         f"Delivery address: {address}",
     ])
+    if invoice_url:
+        lines.extend(['', f"Invoice: {invoice_number}", f"Download invoice: {invoice_url}"])
     if store_phone:
         lines.extend(['', f"For help, contact {store_name}: {store_phone}"])
     lines.append('')
@@ -915,7 +943,12 @@ def admin_orders(request):
     orders = list(orders)
     store_address_settings = StoreAddressSettings.current()
     for order in orders:
-        order.whatsapp_url = _build_order_whatsapp_url(order, store_address_settings)
+        order.status_whatsapp_url = _build_order_whatsapp_url(order, store_address_settings, request)
+        order.invoice_whatsapp_url = (
+            _build_order_whatsapp_url(order, store_address_settings, request, include_invoice=True)
+            if order.status == Order.Status.DELIVERED
+            else ''
+        )
 
     return render(request, 'adminpanel/orders.html', {
         'orders': orders,
@@ -1150,8 +1183,18 @@ def update_order_status(request, pk):
 
     if new_status in dict(Order.Status.choices):
         if new_status != old_status:
-            _apply_order_status_change(order, new_status)
+            updated = _apply_order_status_change(order, new_status)
             messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
+            if updated:
+                whatsapp_url = _build_order_whatsapp_url(
+                    order,
+                    StoreAddressSettings.current(),
+                    request,
+                    include_invoice=(new_status == Order.Status.DELIVERED),
+                )
+                if whatsapp_url:
+                    return redirect(whatsapp_url)
+                messages.warning(request, f"Order #{order.id} was updated, but no valid customer WhatsApp number is available.")
         else:
             messages.info(request, f"Order #{order.id} status is already '{order.get_status_display()}'.")
     else:

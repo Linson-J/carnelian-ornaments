@@ -363,26 +363,123 @@
   }
   
   .payment-methods {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 18px;
   }
   .pay-method-btn {
-    border: 1.5px solid rgba(124, 83, 87, 0.15);
-    background: rgba(255,255,255,0.8);
+    border: 1.5px solid rgba(124, 83, 87, 0.14);
+    background: #ffffff;
     border-radius: 12px;
     padding: 16px;
-    text-align: center;
+    text-align: left;
     cursor: pointer;
-    font-weight: 600;
     color: var(--text-dark, #1a1c1a);
-    transition: all 0.3s;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    display: grid;
+    grid-template-columns: 42px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    min-height: 78px;
   }
   .pay-method-btn.active {
     border-color: var(--primary, #7c5357);
     background: rgba(124, 83, 87, 0.05);
     color: var(--primary, #7c5357);
+    box-shadow: 0 8px 22px rgba(124, 83, 87, 0.1);
+  }
+  .payment-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(124, 83, 87, 0.08);
+    color: var(--primary, #7c5357);
+    font-size: 1.35rem;
+  }
+  .payment-title {
+    display: block;
+    font-weight: 800;
+    font-size: 0.98rem;
+    color: var(--text-dark, #1a1c1a);
+    margin-bottom: 3px;
+  }
+  .payment-subtitle {
+    display: block;
+    color: var(--text-muted, #504444);
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+  .payment-check {
+    color: var(--primary, #7c5357);
+    font-size: 1.35rem;
+    opacity: 0;
+  }
+  .pay-method-btn.active .payment-check {
+    opacity: 1;
+  }
+  .payment-note {
+    background: rgba(124, 83, 87, 0.05);
+    border: 1px solid rgba(124, 83, 87, 0.12);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    color: var(--text-muted, #504444);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+  .payment-note strong {
+    color: var(--text-dark, #1a1c1a);
+  }
+  .payment-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .payment-total-strip {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .payment-methods {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 576px) {
+    .pay-method-btn {
+      grid-template-columns: 38px 1fr auto;
+      min-height: 72px;
+      padding: 14px;
+    }
+    .payment-icon {
+      width: 38px;
+      height: 38px;
+      font-size: 1.2rem;
+    }
+    .payment-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      background: rgba(255, 253, 250, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(124, 83, 87, 0.1);
+      margin: 18px -30px -30px;
+      padding: 12px 16px;
+      box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.07);
+    }
+    .payment-actions .hero-btn {
+      padding: 0.9rem !important;
+    }
+    .payment-total-strip {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted, #504444);
+      margin-bottom: 2px;
+    }
   }
 
   .autocomplete-suggestions {
@@ -644,6 +741,51 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(124, 83, 87, 0.3);
   }
+
+  .selected-address-panel {
+    background: #ffffff;
+    border: 1.5px solid rgba(124, 83, 87, 0.16);
+    border-left: 4px solid var(--primary, #7c5357);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .selected-address-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .selected-address-label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--primary, #7c5357);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .selected-address-text {
+    color: var(--text-muted, #504444);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+  .address-action-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .address-form-wrap {
+    display: none;
+  }
+  .address-form-wrap.active {
+    display: block;
+  }
+  .saved-addresses-wrapper {
+    display: none;
+  }
 </style>
 {% endblock %}
 
@@ -676,6 +818,31 @@
     
     <!-- STEP 1 FORM: Delivery details -->
     <div class="form-sec active" id="addressStepSec">
+
+      <div class="selected-address-panel" id="selectedAddressPanel" style="display: none;">
+        <div class="selected-address-top">
+          <div class="selected-address-label"><i class="ri-map-pin-user-line"></i> Delivery Address</div>
+          <button type="button" class="btn-remove-coupon" onclick="showAddressForm(false)">
+            <i class="ri-pencil-line"></i> Change
+          </button>
+        </div>
+        <div class="selected-address-text" id="selectedAddressText"></div>
+      </div>
+
+      <div class="address-action-row">
+        {% if profile and profile.street_address %}
+        <button type="button" class="btn-outline" onclick="selectQuickAddress('profile')" style="width: auto; margin-bottom: 0;">
+          <i class="ri-user-location-line"></i> Use saved address
+        </button>
+        {% elif last_order %}
+        <button type="button" class="btn-outline" onclick="selectQuickAddress('last_order')" style="width: auto; margin-bottom: 0;">
+          <i class="ri-history-line"></i> Use last order address
+        </button>
+        {% endif %}
+        <button type="button" class="btn-outline" onclick="selectQuickAddress('new')" style="width: auto; margin-bottom: 0;">
+          <i class="ri-add-circle-line"></i> Add new address
+        </button>
+      </div>
 
       {% if profile.street_address or last_order %}
       <div class="saved-addresses-wrapper" style="margin-bottom: 24px;">
@@ -729,6 +896,7 @@
       </div>
       {% endif %}
 
+      <div class="address-form-wrap" id="addressFormWrap">
       <!-- Autocomplete input search -->
       <div class="form-group" style="position: relative; margin-bottom: 24px;">
         <label for="addressSearch">Search / Autocomplete Address</label>
@@ -778,7 +946,10 @@
         </div>
       </div>
       
-      <button class="hero-btn primary" onclick="verifyAddress()" style="width: 100%; border: none; padding: 1.1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 15px;">Verify & Continue</button>
+      <button class="hero-btn primary" onclick="verifyAddress()" style="width: 100%; border: none; padding: 1.1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 15px;">Save Address & Continue</button>
+      </div>
+
+      <button class="hero-btn primary" id="continueWithAddressBtn" onclick="verifyAddress()" style="display: none; width: 100%; border: none; padding: 1.1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 15px;">Deliver Here</button>
     </div>
     
     <!-- STEP 2 FORM: Payment -->
@@ -786,33 +957,43 @@
       <div class="payment-methods">
         {% if cod_enabled %}
         <div class="pay-method-btn active" id="btnCodPay" onclick="setPaymentMethod('COD')">
-          <i class="ri-coins-line"></i> Cash on Delivery
+          <div class="payment-icon"><i class="ri-coins-line"></i></div>
+          <div>
+            <span class="payment-title">Cash on Delivery</span>
+            <span class="payment-subtitle">Pay by cash or scanner when the order arrives.</span>
+          </div>
+          <i class="ri-checkbox-circle-fill payment-check"></i>
         </div>
         {% endif %}
         <div class="pay-method-btn {% if not cod_enabled %}active{% endif %}" id="btnPhonePePay" onclick="setPaymentMethod('PhonePe')">
-          <i class="ri-secure-payment-line"></i> Pay Online
+          <div class="payment-icon"><i class="ri-secure-payment-line"></i></div>
+          <div>
+            <span class="payment-title">Pay Online</span>
+            <span class="payment-subtitle">UPI, cards, wallets, and net banking with secure payment.</span>
+          </div>
+          <i class="ri-checkbox-circle-fill payment-check"></i>
         </div>
       </div>
       
-      <div id="phonepePaymentDetails" style="{% if cod_enabled %}display: none;{% endif %} padding: 10px 0 25px 0;">
-        <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #504444);">
-          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i>
-          Pay securely using UPI, cards, wallets, or net banking. Your order will be placed only after payment is verified.
-        </p>
+      <div class="payment-note" id="phonepePaymentDetails" style="{% if cod_enabled %}display: none;{% endif %}">
+        <i class="ri-shield-check-line" style="color: var(--primary, #7c5357);"></i>
+        <strong>Secure online payment.</strong> Your order is confirmed after payment verification.
       </div>
       
       {% if cod_enabled %}
-      <div id="codPaymentDetails" style="padding: 10px 0 25px 0;">
-        <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #504444);">
-          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i> You can pay in cash or via mobile scanner when our delivery agent arrives at your shipping address.
-          {% if cod_extra_charge > 0 %}<br><strong>COD extra charge: Rs. {{ cod_extra_charge }}</strong>{% endif %}
-        </p>
+      <div class="payment-note" id="codPaymentDetails">
+        <i class="ri-truck-line" style="color: var(--primary, #7c5357);"></i>
+        <strong>Pay at delivery.</strong> Keep cash or mobile scanner ready when the delivery agent arrives.
+        {% if cod_extra_charge > 0 %}<br>COD extra charge: <strong>Rs. {{ cod_extra_charge }}</strong>{% endif %}
       </div>
       {% endif %}
       
-      <div style="display: flex; gap: 15px; margin-top: 20px;">
+      <div class="payment-actions">
         <button class="hero-btn" onclick="backToAddress()" style="flex: 1; background: none; border: 1px solid rgba(0,0,0,0.15); color: var(--text-dark, #1a1c1a); padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Back</button>
-        <button class="hero-btn primary" id="btnPlaceOrder" onclick="submitOrder()" style="flex: 2; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">{% if cod_enabled %}Place COD Order{% else %}Pay Online{% endif %}</button>
+        <button class="hero-btn primary" id="btnPlaceOrder" onclick="submitOrder()" style="flex: 2; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">
+          <span class="payment-total-strip" id="paymentActionTotal">Total Rs. {{ grand_total }}</span>
+          <span id="paymentActionText">{% if cod_enabled %}Place COD Order{% else %}Pay Online{% endif %}</span>
+        </button>
       </div>
     </div>
   </div>
@@ -988,6 +1169,8 @@
     let grandTotal = currentBaseGrandTotal + (paymentMethod === 'COD' ? currentCodExtraCharge : 0);
     if (grandTotal < 0) grandTotal = 0;
     document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+    const actionTotal = document.getElementById('paymentActionTotal');
+    if (actionTotal) actionTotal.textContent = `Total Rs. ${grandTotal.toFixed(2)}`;
     const codChargeRow = document.getElementById('codChargeRow');
     if (codChargeRow) {
       codChargeRow.style.display = paymentMethod === 'COD' && currentCodExtraCharge > 0 ? 'flex' : 'none';
@@ -1153,6 +1336,69 @@
     document.getElementById('checkoutStatusPanel').style.display = 'none';
   }
 
+  function getAddressFormData() {
+    return {
+      fullName: document.getElementById('fullName').value.trim(),
+      phone: document.getElementById('phone').value.trim(),
+      streetAddress: document.getElementById('streetAddress').value.trim(),
+      city: document.getElementById('city').value.trim(),
+      county: document.getElementById('county').value.trim(),
+      state: document.getElementById('state').value.trim(),
+      country: document.getElementById('country').value.trim(),
+      postalCode: document.getElementById('postalCode').value.trim()
+    };
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char]));
+  }
+
+  function updateSelectedAddressSummary() {
+    const data = getAddressFormData();
+    const panel = document.getElementById('selectedAddressPanel');
+    const text = document.getElementById('selectedAddressText');
+    const continueBtn = document.getElementById('continueWithAddressBtn');
+    if (!data.streetAddress || !data.city || !data.state || !data.postalCode) return;
+
+    const district = data.county ? `${data.county}, ` : '';
+    text.innerHTML = `
+      <strong>${escapeHtml(data.fullName || 'Customer')}</strong> ${data.phone ? `- ${escapeHtml(data.phone)}` : ''}<br>
+      ${escapeHtml(data.streetAddress)}<br>
+      ${escapeHtml(data.city)}, ${escapeHtml(district)}${escapeHtml(data.state)} - ${escapeHtml(data.postalCode)}<br>
+      ${escapeHtml(data.country || 'India')}
+    `;
+    panel.style.display = 'block';
+    if (continueBtn) continueBtn.style.display = 'block';
+  }
+
+  function showAddressForm(clearFields = false) {
+    const formWrap = document.getElementById('addressFormWrap');
+    const continueBtn = document.getElementById('continueWithAddressBtn');
+    formWrap.classList.add('active');
+    if (continueBtn) continueBtn.style.display = 'none';
+    if (clearFields) {
+      ['fullName', 'phone', 'streetAddress', 'city', 'county', 'state', 'postalCode', 'addressSearch'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('country').value = 'India';
+      document.getElementById('selectedAddressPanel').style.display = 'none';
+      addressVerified = false;
+    }
+    setTimeout(() => document.getElementById('fullName').focus(), 50);
+  }
+
+  function hideAddressForm() {
+    const formWrap = document.getElementById('addressFormWrap');
+    if (formWrap) formWrap.classList.remove('active');
+  }
+
   // Address steps toggling
   function backToAddress() {
     document.getElementById('step2-indicator').classList.remove('active');
@@ -1168,20 +1414,20 @@
     const codBtn = document.getElementById('btnCodPay');
     const phonepeDetails = document.getElementById('phonepePaymentDetails');
     const codDetails = document.getElementById('codPaymentDetails');
-    const submitBtn = document.getElementById('btnPlaceOrder');
+    const submitText = document.getElementById('paymentActionText');
     
     if (method === 'PhonePe') {
-      phonepeBtn.classList.add('active');
+      if (phonepeBtn) phonepeBtn.classList.add('active');
       if (codBtn) codBtn.classList.remove('active');
-      phonepeDetails.style.display = 'block';
+      if (phonepeDetails) phonepeDetails.style.display = 'block';
       if (codDetails) codDetails.style.display = 'none';
-      if (submitBtn) submitBtn.textContent = 'Pay Online';
+      if (submitText) submitText.textContent = 'Pay Online';
     } else {
-      phonepeBtn.classList.remove('active');
+      if (phonepeBtn) phonepeBtn.classList.remove('active');
       if (codBtn) codBtn.classList.add('active');
-      phonepeDetails.style.display = 'none';
+      if (phonepeDetails) phonepeDetails.style.display = 'none';
       if (codDetails) codDetails.style.display = 'block';
-      if (submitBtn) submitBtn.textContent = 'Place COD Order';
+      if (submitText) submitText.textContent = 'Place COD Order';
     }
     recalculateGrandTotal();
   }
@@ -1231,7 +1477,11 @@
         } else {
           successMsg += ` Free Shipping!`;
         }
-        showStatus(successMsg, "success");
+        if (!silent) {
+          showStatus(successMsg, "success");
+        }
+        updateSelectedAddressSummary();
+        hideAddressForm();
         
         if (!silent) {
           // Transition to Payment step
@@ -1246,9 +1496,15 @@
         }
       } else {
         addressVerified = false;
+        if (silent) {
+          showAddressForm(false);
+        }
         showStatus(data.message || "Delivery to this address is unavailable.", "error");
       }
     } catch (e) {
+      if (silent) {
+        showAddressForm(false);
+      }
       showStatus("Failed to contact delivery verification server.", "error");
     }
   }
@@ -1271,10 +1527,13 @@
     const postalCode = document.getElementById('postalCode').value.trim();
     
     const btnOrder = document.getElementById('btnPlaceOrder');
+    const submitText = document.getElementById('paymentActionText');
     if (btnOrder) {
       btnOrder.classList.add('btn-loading-shimmer');
       btnOrder.disabled = true;
-      btnOrder.innerHTML = paymentMethod === 'PhonePe' ? '<i class="ri-loader-4-line ri-spin"></i> Redirecting...' : '<i class="ri-loader-4-line ri-spin"></i> Placing Order...';
+      if (submitText) {
+        submitText.innerHTML = paymentMethod === 'PhonePe' ? '<i class="ri-loader-4-line ri-spin"></i> Redirecting...' : '<i class="ri-loader-4-line ri-spin"></i> Placing Order...';
+      }
     }
     if (window.showGlobalLoader) {
       window.showGlobalLoader(paymentMethod === 'PhonePe' ? 'Starting secure online payment...' : 'Placing your order...');
@@ -1316,7 +1575,7 @@
         if (btnOrder) {
           btnOrder.classList.remove('btn-loading-shimmer');
           btnOrder.disabled = false;
-          btnOrder.innerHTML = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
+          if (submitText) submitText.textContent = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
         }
         showStatus(data.message || "Failed to submit checkout.", "error");
       }
@@ -1325,7 +1584,7 @@
       if (btnOrder) {
         btnOrder.classList.remove('btn-loading-shimmer');
         btnOrder.disabled = false;
-        btnOrder.innerHTML = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
+        if (submitText) submitText.textContent = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
       }
       showStatus("Connection error while submitting order.", "error");
     }
@@ -1479,15 +1738,7 @@
         verifyAddress(true);
       }
     } else if (type === 'new') {
-      document.getElementById('fullName').value = '';
-      document.getElementById('phone').value = '';
-      document.getElementById('streetAddress').value = '';
-      document.getElementById('city').value = '';
-      document.getElementById('county').value = '';
-      document.getElementById('state').value = '';
-      document.getElementById('country').value = 'India';
-      document.getElementById('postalCode').value = '';
-      document.getElementById('fullName').focus();
+      showAddressForm(true);
     }
   }
 
@@ -1513,6 +1764,8 @@
       selectQuickAddress('profile');
     {% elif last_order %}
       selectQuickAddress('last_order');
+    {% else %}
+      showAddressForm(false);
     {% endif %}
   });
 </script>

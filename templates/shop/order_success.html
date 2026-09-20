@@ -293,6 +293,11 @@
     </div>
     
     <div class="btn-row">
+      {% if order.payment_status == 'paid' or order.payment_method == 'COD' and order.status == 'delivered' %}
+      <a href="{% url 'download_customer_invoice' order.id %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">
+        <i class="ri-file-download-line"></i> Download Invoice
+      </a>
+      {% endif %}
       {% if order.payment_method == 'PhonePe' and order.payment_status != 'paid' %}
       <a href="{% url 'phonepe_payment_retry' order.id %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">Retry Online Payment</a>
       {% endif %}

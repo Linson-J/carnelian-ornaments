@@ -355,7 +355,7 @@
             <strong>{{ order.full_name }}</strong><br>
             <span style="font-size:0.8rem; color:var(--muted)">{{ order.user.email }}</span>
           </td>
-          <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ order.created_at|date:"Y-m-d h:i A" }}</td>
           <td>
             <strong>₹{{ order.total }}</strong><br>
             <span style="font-size:0.8rem; color:var(--muted); text-transform:uppercase;">{{ order.payment_method }}</span>
@@ -403,9 +403,14 @@
                 <a class="order-action-item" href="{% url 'download_order_address_pdf' order.id %}">
                   <i class="ri-download-2-line"></i> Download Address PDF
                 </a>
-                {% if order.whatsapp_url %}
-                <a class="order-action-item whatsapp-action" href="{{ order.whatsapp_url }}" target="_blank" rel="noopener">
-                  <i class="ri-whatsapp-line"></i> WhatsApp Customer
+                {% if order.status_whatsapp_url %}
+                <a class="order-action-item whatsapp-action" href="{{ order.status_whatsapp_url }}" target="_blank" rel="noopener">
+                  <i class="ri-whatsapp-line"></i> Send Status on WhatsApp
+                </a>
+                {% endif %}
+                {% if order.invoice_whatsapp_url %}
+                <a class="order-action-item whatsapp-action" href="{{ order.invoice_whatsapp_url }}" target="_blank" rel="noopener">
+                  <i class="ri-whatsapp-line"></i> Send Invoice on WhatsApp
                 </a>
                 {% endif %}
               </div>
@@ -435,7 +440,7 @@
                 <div class="cancel-alert-box" style="margin-top: 15px; padding: 12px 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
                   <div style="color: #fca5a5; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
                     <span>🚫 Order Cancelled by Customer</span>
-                    {% if order.cancelled_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.cancelled_at|date:"Y-m-d H:i" }})</span>{% endif %}
+                    {% if order.cancelled_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.cancelled_at|date:"Y-m-d h:i A" }})</span>{% endif %}
                   </div>
                   <div style="color: #e2e8f0; font-size: 0.85rem;">
                     <strong>Reason:</strong> {{ order.cancellation_reason }}
@@ -455,7 +460,7 @@
                 <div class="return-alert-box" style="margin-top: 15px; padding: 12px 15px; background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 8px;">
                   <div style="color: #fb923c; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
                     <span>🔄 Replacement Requested by Customer</span>
-                    {% if order.returned_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.returned_at|date:"Y-m-d H:i" }})</span>{% endif %}
+                    {% if order.returned_at %}<span style="font-size: 0.8rem; opacity: 0.8; font-weight: normal;">({{ order.returned_at|date:"Y-m-d h:i A" }})</span>{% endif %}
                   </div>
                   <div style="color: #e2e8f0; font-size: 0.85rem;">
                     <strong>Reason:</strong> {{ order.return_reason }}

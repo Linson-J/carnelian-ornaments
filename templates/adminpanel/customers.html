@@ -222,8 +222,8 @@
         {% for customer in customers %}
         <tr>
           <td><strong>{{ customer.email }}</strong></td>
-          <td>{{ customer.date_joined|date:"Y-m-d H:i:s" }}</td>
-          <td>{{ customer.last_login|date:"Y-m-d H:i:s"|default:"Never logged in" }}</td>
+          <td>{{ customer.date_joined|date:"Y-m-d h:i:s A" }}</td>
+          <td>{{ customer.last_login|date:"Y-m-d h:i:s A"|default:"Never logged in" }}</td>
           <td>
             <span class="badge" style="background: rgba(124, 83, 87, 0.15); color: #c48c96; border: 1px solid rgba(124, 83, 87, 0.3);">
               {{ customer.favorites_count }} items

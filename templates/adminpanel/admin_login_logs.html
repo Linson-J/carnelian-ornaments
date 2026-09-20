@@ -30,7 +30,7 @@
               <span class="badge danger">Failed</span>
             {% endif %}
           </td>
-          <td>{{ log.attempted_at|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ log.attempted_at|date:"Y-m-d h:i:s A" }}</td>
         </tr>
         {% empty %}
         <tr>
