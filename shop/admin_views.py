@@ -7,6 +7,7 @@ import bcrypt
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
@@ -38,6 +39,7 @@ from .models import (
     ContactMessage,
     Coupon,
     PopupBanner,
+    UserProfile,
 )
 from .email_utils import send_order_status_email
 
@@ -596,22 +598,126 @@ def delete_subscription(request, pk):
 
 @admin_login_required
 def admin_customers(request):
-    from django.contrib.auth.models import User
     from django.db.models import Count
 
     search = request.GET.get('search', '').strip()
-    customers = User.objects.filter(is_superuser=False, is_staff=False).annotate(
+    customers = User.objects.filter(is_superuser=False, is_staff=False).select_related('profile').annotate(
         favorites_count=Count('favorites')
     ).order_by('-date_joined')
 
     if search:
         customers = customers.filter(email__icontains=search)
 
+    customer_list = list(customers)
+    customer_ids = [customer.id for customer in customer_list]
+
+    orders = Order.objects.filter(user_id__in=customer_ids).prefetch_related('items').order_by('-created_at')
+    orders_by_customer = {}
+    for order in orders:
+        orders_by_customer.setdefault(order.user_id, []).append(order)
+
+    shop_url = request.build_absolute_uri(reverse('shop_all'))
+
+    def absolute_url(path):
+        return request.build_absolute_uri(path)
+
+    def product_payload(product):
+        product_url = absolute_url(reverse('product_detail', args=[product.slug])) if product.slug else shop_url
+        price = product.discount_price if product.discount_price else product.price
+        return {
+            'id': product.id,
+            'name': product.name,
+            'price': str(price),
+            'url': product_url,
+        }
+
+    products = list(Product.objects.filter(status=Product.Status.AVAILABLE).order_by('-created_at')[:30])
+    latest_products = [product_payload(product) for product in products[:12]]
+
+    trending_products_qs = Product.objects.filter(
+        status=Product.Status.AVAILABLE,
+        home_sections__title__iexact='Trending Products',
+        home_sections__is_visible=True,
+    ).distinct().order_by('-created_at')
+    trending_products = [product_payload(product) for product in trending_products_qs[:12]]
+
+    coupons = Coupon.objects.filter(is_active=True, valid_until__gte=timezone.now()).order_by('-created_at')[:20]
+    offers = []
+    for coupon in coupons:
+        discount_value = f"{coupon.discount_value:.2f}".rstrip('0').rstrip('.')
+        discount = (
+            f"{discount_value}%"
+            if coupon.discount_type == Coupon.DiscountType.PERCENTAGE
+            else f"Rs. {discount_value}"
+        )
+        offers.append({
+            'id': f'coupon-{coupon.id}',
+            'title': coupon.code,
+            'description': f"Use coupon {coupon.code}"
+                           + (f" on orders above Rs. {coupon.min_purchase}." if coupon.min_purchase else "."),
+            'discount': discount,
+            'valid_until': timezone.localtime(coupon.valid_until).strftime('%d %b %Y, %I:%M %p'),
+            'link': shop_url,
+        })
+
+    popup_offers = PopupBanner.objects.filter(is_active=True).order_by('-created_at')[:10]
+    for popup in popup_offers:
+        link = popup.link_url or reverse('shop_all')
+        offers.append({
+            'id': f'popup-{popup.id}',
+            'title': popup.title or f'Offer #{popup.id}',
+            'description': popup.subtitle or 'A special store offer is available for you.',
+            'discount': '',
+            'valid_until': 'Limited time',
+            'link': absolute_url(link) if link.startswith('/') else link,
+        })
+
+    whatsapp_customers = []
+    for customer in customer_list:
+        customer_orders = orders_by_customer.get(customer.id, [])
+        latest_order = customer_orders[0] if customer_orders else None
+        try:
+            profile = customer.profile
+        except UserProfile.DoesNotExist:
+            profile = None
+        full_name = (customer.get_full_name() or '').strip()
+        if not full_name and latest_order:
+            full_name = latest_order.full_name
+        if not full_name:
+            full_name = customer.email.split('@')[0] if customer.email else f'Customer #{customer.id}'
+        phone = (getattr(profile, 'phone', '') or '').strip()
+        country = (getattr(profile, 'country', '') or '').strip() or 'India'
+        if not phone and latest_order:
+            phone = latest_order.phone
+            country = latest_order.country
+        whatsapp_customers.append({
+            'id': customer.id,
+            'name': full_name,
+            'email': customer.email,
+            'phone': phone,
+            'whatsappPhone': _whatsapp_phone_number(phone, country),
+            'orders': [
+                {
+                    'id': order.id,
+                    'number': str(order.id),
+                    'amount': str(order.total),
+                    'status': order.get_status_display(),
+                    'created_at': timezone.localtime(order.created_at).strftime('%d %b %Y, %I:%M %p'),
+                    'items': ', '.join(item.product_name for item in order.items.all()[:3]),
+                }
+                for order in customer_orders[:10]
+            ],
+        })
+
     return render(request, 'adminpanel/customers.html', {
-        'customers': customers,
+        'customers': customer_list,
+        'whatsapp_customers': whatsapp_customers,
+        'whatsapp_offers': offers,
+        'whatsapp_latest_products': latest_products,
+        'whatsapp_trending_products': trending_products,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'customers',
-        'customer_count': customers.count(),
+        'customer_count': len(customer_list),
         'filter_search': search,
     })
 

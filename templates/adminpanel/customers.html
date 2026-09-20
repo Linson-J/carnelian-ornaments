@@ -3,6 +3,195 @@
 {% block title %}Customers — Admin{% endblock %}
 {% block page_title %}Customers{% endblock %}
 
+{% block extra_css %}
+<style>
+  .customer-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-whatsapp {
+    border-color: rgba(52, 211, 153, 0.28);
+    color: var(--success);
+    background: rgba(52, 211, 153, 0.08);
+  }
+  .btn-whatsapp:hover {
+    border-color: var(--success);
+    color: #bbf7d0;
+  }
+  .whatsapp-modal {
+    width: min(860px, calc(100vw - 28px));
+    padding: 0;
+  }
+  .whatsapp-head,
+  .whatsapp-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .whatsapp-footer {
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+    justify-content: flex-end;
+  }
+  .whatsapp-title h3 { margin: 0; }
+  .whatsapp-title p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .whatsapp-body {
+    padding: 20px;
+    display: grid;
+    gap: 18px;
+  }
+  .whatsapp-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .whatsapp-option {
+    min-height: 82px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s, transform .15s;
+  }
+  .whatsapp-option:hover,
+  .whatsapp-option.active {
+    border-color: rgba(52, 211, 153, .55);
+    background: rgba(52, 211, 153, .08);
+    transform: translateY(-1px);
+  }
+  .whatsapp-option i {
+    font-size: 20px;
+    color: var(--success);
+  }
+  .whatsapp-option span {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .whatsapp-builder {
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .whatsapp-panel {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255,255,255,.02);
+    padding: 16px;
+  }
+  .whatsapp-panel h4 {
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .whatsapp-picker {
+    display: grid;
+    gap: 10px;
+  }
+  .whatsapp-check-list {
+    display: grid;
+    gap: 8px;
+    max-height: 230px;
+    overflow: auto;
+  }
+  .whatsapp-choice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .whatsapp-choice input {
+    margin-top: 2px;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--success);
+  }
+  .whatsapp-choice small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .whatsapp-empty,
+  .whatsapp-help {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  #whatsappPreview {
+    min-height: 280px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  #customTemplateWrap textarea { min-height: 140px; }
+  .placeholder-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .placeholder-chip {
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    background: var(--surface);
+  }
+  .whatsapp-open {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+  }
+  @media (max-width: 900px) {
+    .whatsapp-options,
+    .whatsapp-builder {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 560px) {
+    .whatsapp-head,
+    .whatsapp-footer,
+    .whatsapp-body {
+      padding: 14px;
+    }
+    .whatsapp-option {
+      min-height: 66px;
+    }
+    .customer-actions {
+      display: grid;
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
   <div class="card-hd">
@@ -48,7 +237,12 @@
             {% endif %}
           </td>
           <td>
-            <button class="btn-sm danger" onclick="confirmCustomerDelete({{ customer.id }}, '{{ customer.email|escapejs }}')">🗑 Delete Account</button>
+            <div class="customer-actions">
+              <button type="button" class="btn-sm btn-whatsapp" onclick="openWhatsappModal({{ customer.id }})" title="Message customer on WhatsApp">
+                <i class="ri-whatsapp-line"></i> WhatsApp
+              </button>
+              <button class="btn-sm danger" onclick="confirmCustomerDelete({{ customer.id }}, '{{ customer.email|escapejs }}')"><i class="ri-delete-bin-line"></i> Delete Account</button>
+            </div>
           </td>
         </tr>
         {% empty %}
@@ -65,6 +259,78 @@
 {% endblock %}
 
 {% block modals %}
+{{ whatsapp_customers|json_script:"whatsapp-customers-data" }}
+{{ whatsapp_offers|json_script:"whatsapp-offers-data" }}
+{{ whatsapp_latest_products|json_script:"whatsapp-latest-products-data" }}
+{{ whatsapp_trending_products|json_script:"whatsapp-trending-products-data" }}
+
+<div class="overlay" id="whatsappOverlay">
+  <div class="modal whatsapp-modal">
+    <div class="whatsapp-head">
+      <div class="whatsapp-title">
+        <h3>WhatsApp Customer Message</h3>
+        <p id="whatsappCustomerLine">Select a message type to begin.</p>
+      </div>
+      <button type="button" class="icon-close" onclick="closeWhatsappModal()" aria-label="Close WhatsApp message modal">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="whatsapp-body">
+      <div class="whatsapp-options" role="list">
+        <button type="button" class="whatsapp-option" data-message-type="new_order">
+          <i class="ri-shopping-cart-2-line"></i><span>New Order</span>
+        </button>
+        <button type="button" class="whatsapp-option" data-message-type="new_offer">
+          <i class="ri-gift-line"></i><span>New Offer</span>
+        </button>
+        <button type="button" class="whatsapp-option" data-message-type="latest_products">
+          <i class="ri-sparkling-2-line"></i><span>Latest Products</span>
+        </button>
+        <button type="button" class="whatsapp-option" data-message-type="trending_products">
+          <i class="ri-fire-line"></i><span>Trending Products</span>
+        </button>
+        <button type="button" class="whatsapp-option" data-message-type="custom_greeting">
+          <i class="ri-hand-heart-line"></i><span>Custom Greeting</span>
+        </button>
+        <button type="button" class="whatsapp-option" data-message-type="custom_message">
+          <i class="ri-edit-2-line"></i><span>Custom Message</span>
+        </button>
+      </div>
+
+      <div class="whatsapp-builder">
+        <div class="whatsapp-panel">
+          <h4 id="whatsappPickerTitle">Message details</h4>
+          <div id="whatsappPicker" class="whatsapp-picker">
+            <p class="whatsapp-help">Choose a message option above. You can edit the final message before opening WhatsApp.</p>
+          </div>
+        </div>
+
+        <div class="whatsapp-panel">
+          <h4>Message Preview</h4>
+          <textarea id="whatsappPreview" placeholder="Your message preview will appear here."></textarea>
+          <div class="placeholder-row" id="placeholderHelp" style="display:none;">
+            <span class="placeholder-chip">{% templatetag openvariable %}customer_name{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}phone{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}order_number{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}amount{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}product_name{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}product_url{% templatetag closevariable %}</span>
+            <span class="placeholder-chip">{% templatetag openvariable %}offer_title{% templatetag closevariable %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="whatsapp-footer">
+      <button type="button" class="btn-cancel" onclick="closeWhatsappModal()">Cancel</button>
+      <button type="button" class="btn-primary whatsapp-open" onclick="openWhatsappLink()">
+        <i class="ri-whatsapp-line"></i> Open WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="deleteOverlay">
   <div class="modal">
     <h3>Delete Customer Account</h3>
@@ -83,6 +349,252 @@
 
 {% block extra_js %}
 <script>
+  const whatsappState = {
+    customer: null,
+    type: null,
+  };
+
+  const whatsappCustomers = JSON.parse(document.getElementById('whatsapp-customers-data')?.textContent || '[]');
+  const whatsappOffers = JSON.parse(document.getElementById('whatsapp-offers-data')?.textContent || '[]');
+  const whatsappLatestProducts = JSON.parse(document.getElementById('whatsapp-latest-products-data')?.textContent || '[]');
+  const whatsappTrendingProducts = JSON.parse(document.getElementById('whatsapp-trending-products-data')?.textContent || '[]');
+  const whatsappCustomersById = new Map(whatsappCustomers.map(customer => [String(customer.id), customer]));
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function currency(value) {
+    return String(value || '0').replace(/\.00$/, '');
+  }
+
+  function selectedOrder() {
+    const orderId = document.querySelector('input[name="whatsappOrder"]:checked')?.value;
+    return whatsappState.customer?.orders?.find(order => String(order.id) === String(orderId)) || whatsappState.customer?.orders?.[0] || null;
+  }
+
+  function selectedOffer() {
+    const offerId = document.querySelector('select[name="whatsappOffer"]')?.value;
+    return whatsappOffers.find(offer => offer.id === offerId) || whatsappOffers[0] || null;
+  }
+
+  function selectedProducts(source) {
+    const checked = [...document.querySelectorAll('input[name="whatsappProducts"]:checked')].map(input => input.value);
+    const selected = source.filter(product => checked.includes(String(product.id)));
+    return selected.length ? selected : source.slice(0, 1);
+  }
+
+  function replacePlaceholders(template) {
+    const order = selectedOrder();
+    const offer = selectedOffer();
+    const product = selectedProducts([...whatsappLatestProducts, ...whatsappTrendingProducts])[0] || {};
+    const customer = whatsappState.customer || {};
+    const replacements = {
+      customer_name: customer.name || 'Customer',
+      phone: customer.phone || '',
+      order_number: order?.number || '',
+      amount: order?.amount || '',
+      product_name: product.name || '',
+      product_url: product.url || '',
+      offer_title: offer?.title || '',
+    };
+    return template.replace(/\{\{\s*(customer_name|phone|order_number|amount|product_name|product_url|offer_title)\s*\}\}/g, (_, key) => replacements[key] ?? '');
+  }
+
+  function buildNewOrderMessage() {
+    const order = selectedOrder();
+    if (!order) {
+      return `Hi ${whatsappState.customer.name} 👋\n\nThank you for shopping with us! ❤️`;
+    }
+    return `Hi ${whatsappState.customer.name} 👋\n\nThank you for your order! 🛍️\n\nYour order #${order.number} has been confirmed successfully.\n\nOrder Amount: ₹${currency(order.amount)}\n\nThank you for shopping with us! ❤️`;
+  }
+
+  function buildOfferMessage() {
+    const offer = selectedOffer();
+    if (!offer) {
+      return `Hi ${whatsappState.customer.name} 👋\n\n🎁 Special Offer Just for You!\n\nShop Now: ${window.location.origin}/shop/`;
+    }
+    const discountLine = offer.discount ? `\n\n🔥 ${offer.discount} OFF` : '';
+    return `Hi ${whatsappState.customer.name} 👋\n\n🎁 Special Offer Just for You!\n\n${offer.title}\n\n${offer.description}${discountLine}\n\n⏰ Valid until ${offer.valid_until}\n\nShop Now: ${offer.link}`;
+  }
+
+  function buildProductsMessage(products, heading, linkLabel) {
+    const lines = products.map(product => `🛍️ ${product.name}\n💰 ₹${currency(product.price)}\n${linkLabel}: ${product.url}`);
+    return `Hi ${whatsappState.customer.name} 👋\n\n${heading}\n\n${lines.join('\n\n')}`;
+  }
+
+  function buildCustomGreeting() {
+    return `Hi ${whatsappState.customer.name} 👋\n\nHope you're doing well! 😊\n\nThank you for being our valued customer. ❤️`;
+  }
+
+  function updatePreview() {
+    const preview = document.getElementById('whatsappPreview');
+    if (!preview || !whatsappState.customer) return;
+
+    if (whatsappState.type === 'new_order') {
+      preview.value = buildNewOrderMessage();
+    } else if (whatsappState.type === 'new_offer') {
+      preview.value = buildOfferMessage();
+    } else if (whatsappState.type === 'latest_products') {
+      preview.value = buildProductsMessage(selectedProducts(whatsappLatestProducts), '🆕 Check out our latest products!', 'View Product');
+    } else if (whatsappState.type === 'trending_products') {
+      preview.value = buildProductsMessage(selectedProducts(whatsappTrendingProducts), '🔥 Our Trending Products are here!', 'Check it out');
+    } else if (whatsappState.type === 'custom_greeting') {
+      preview.value = buildCustomGreeting();
+    } else if (whatsappState.type === 'custom_message') {
+      const customTemplate = document.getElementById('customWhatsappTemplate')?.value || '';
+      preview.value = replacePlaceholders(customTemplate);
+    }
+  }
+
+  function renderOrderPicker() {
+    const orders = whatsappState.customer.orders || [];
+    if (!orders.length) {
+      return '<p class="whatsapp-empty">No orders found for this customer. You can still edit the preview manually.</p>';
+    }
+    return orders.map((order, index) => `
+      <label class="whatsapp-choice">
+        <input type="radio" name="whatsappOrder" value="${order.id}" ${index === 0 ? 'checked' : ''}>
+        <span>
+          <strong>Order #${escapeHtml(order.number)}</strong> · ₹${escapeHtml(currency(order.amount))}
+          <small>${escapeHtml(order.status)} · ${escapeHtml(order.created_at)}${order.items ? ` · ${escapeHtml(order.items)}` : ''}</small>
+        </span>
+      </label>
+    `).join('');
+  }
+
+  function renderOfferPicker() {
+    if (!whatsappOffers.length) {
+      return '<p class="whatsapp-empty">No active coupons or popup offers found. You can edit the preview manually.</p>';
+    }
+    return `
+      <label for="whatsappOfferSelect">Select offer</label>
+      <select name="whatsappOffer" id="whatsappOfferSelect">
+        ${whatsappOffers.map(offer => `<option value="${escapeHtml(offer.id)}">${escapeHtml(offer.title)}${offer.discount ? ` - ${escapeHtml(offer.discount)}` : ''}</option>`).join('')}
+      </select>
+    `;
+  }
+
+  function renderProductPicker(products) {
+    if (!products.length) {
+      return '<p class="whatsapp-empty">No matching products found. You can edit the preview manually.</p>';
+    }
+    return `
+      <div class="whatsapp-check-list">
+        ${products.map((product, index) => `
+          <label class="whatsapp-choice">
+            <input type="checkbox" name="whatsappProducts" value="${product.id}" ${index === 0 ? 'checked' : ''}>
+            <span>
+              <strong>${escapeHtml(product.name)}</strong> · ₹${escapeHtml(currency(product.price))}
+              <small>${escapeHtml(product.url)}</small>
+            </span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderCustomMessagePicker() {
+    return `
+      <div id="customTemplateWrap">
+        <label for="customWhatsappTemplate">Custom message template</label>
+        <textarea id="customWhatsappTemplate" placeholder="Write your message. Use placeholders like {% templatetag openvariable %}customer_name{% templatetag closevariable %} or {% templatetag openvariable %}product_url{% templatetag closevariable %}.">Hi {% templatetag openvariable %}customer_name{% templatetag closevariable %} 👋
+
+I wanted to share this with you:
+
+{% templatetag openvariable %}offer_title{% templatetag closevariable %}
+
+Shop here: {% templatetag openvariable %}product_url{% templatetag closevariable %}</textarea>
+        <p class="whatsapp-help">Placeholders are replaced in the preview. You can then edit the final preview before opening WhatsApp.</p>
+      </div>
+    `;
+  }
+
+  function selectWhatsappType(type) {
+    whatsappState.type = type;
+    document.querySelectorAll('.whatsapp-option').forEach(button => {
+      button.classList.toggle('active', button.dataset.messageType === type);
+    });
+
+    const picker = document.getElementById('whatsappPicker');
+    const pickerTitle = document.getElementById('whatsappPickerTitle');
+    const placeholderHelp = document.getElementById('placeholderHelp');
+    placeholderHelp.style.display = type === 'custom_message' ? 'flex' : 'none';
+
+    if (type === 'new_order') {
+      pickerTitle.textContent = 'Choose order';
+      picker.innerHTML = renderOrderPicker();
+    } else if (type === 'new_offer') {
+      pickerTitle.textContent = 'Choose offer';
+      picker.innerHTML = renderOfferPicker();
+    } else if (type === 'latest_products') {
+      pickerTitle.textContent = 'Choose latest products';
+      picker.innerHTML = renderProductPicker(whatsappLatestProducts);
+    } else if (type === 'trending_products') {
+      pickerTitle.textContent = 'Choose trending products';
+      picker.innerHTML = renderProductPicker(whatsappTrendingProducts);
+    } else if (type === 'custom_greeting') {
+      pickerTitle.textContent = 'Greeting';
+      picker.innerHTML = '<p class="whatsapp-help">A simple greeting has been generated. Edit the preview before opening WhatsApp if needed.</p>';
+    } else if (type === 'custom_message') {
+      pickerTitle.textContent = 'Custom template';
+      picker.innerHTML = renderCustomMessagePicker();
+    }
+
+    picker.querySelectorAll('input, select, textarea').forEach(input => {
+      input.addEventListener('input', updatePreview);
+      input.addEventListener('change', updatePreview);
+    });
+    updatePreview();
+  }
+
+  function openWhatsappModal(customerId) {
+    const customer = whatsappCustomersById.get(String(customerId));
+    const overlay = document.getElementById('whatsappOverlay');
+    if (!customer || !overlay) return;
+
+    whatsappState.customer = customer;
+    document.getElementById('whatsappCustomerLine').textContent = `${customer.name} · ${customer.phone || customer.email || 'No phone saved'}`;
+    overlay.classList.add('open');
+    selectWhatsappType(customer.orders?.length ? 'new_order' : 'custom_greeting');
+
+    if (!customer.whatsappPhone) {
+      showToast('This customer does not have a usable phone number saved.', 'error');
+      hideToast(3500);
+    }
+  }
+
+  function closeWhatsappModal() {
+    const overlay = document.getElementById('whatsappOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  function openWhatsappLink() {
+    const message = document.getElementById('whatsappPreview')?.value || '';
+    const phone = whatsappState.customer?.whatsappPhone || '';
+    if (!phone) {
+      showToast('Add a valid customer phone number before opening WhatsApp.', 'error');
+      hideToast(3500);
+      return;
+    }
+    if (!message.trim()) {
+      showToast('Write a message before opening WhatsApp.', 'error');
+      hideToast(3500);
+      return;
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+  }
+
+  document.querySelectorAll('.whatsapp-option').forEach(button => {
+    button.addEventListener('click', () => selectWhatsappType(button.dataset.messageType));
+  });
+
   function confirmCustomerDelete(id, email) {
     const message = document.getElementById('deleteMsg');
     const form = document.getElementById('deleteForm');
@@ -98,5 +610,9 @@
     const overlay = document.getElementById('deleteOverlay');
     if (overlay) overlay.classList.remove('open');
   }
+
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeWhatsappModal();
+  });
 </script>
 {% endblock %}
