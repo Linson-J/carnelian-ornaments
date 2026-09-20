@@ -336,6 +336,53 @@
         <label for="sender_address">From Address</label>
         <textarea id="sender_address" rows="3" placeholder="Enter the sender/from address shown in address PDFs">{{ store_address_settings.sender_address }}</textarea>
       </div>
+      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;">
+        <h3 style="margin:0 0 14px;font-size:15px;">Customer Site Contact Details</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="contact_email">Contact Email</label>
+            <input type="email" id="contact_email" value="{{ store_address_settings.contact_email }}" placeholder="support@example.com">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="contact_phone">Contact Phone</label>
+            <input type="text" id="contact_phone" value="{{ store_address_settings.contact_phone }}" placeholder="+91 98765 43210">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="whatsapp_number">WhatsApp Number</label>
+            <input type="text" id="whatsapp_number" value="{{ store_address_settings.whatsapp_number }}" placeholder="+91 98765 43210">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="business_hours">Business Hours</label>
+            <input type="text" id="business_hours" value="{{ store_address_settings.business_hours }}" placeholder="Mon-Sat, 9:00 AM-6:00 PM">
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;">
+        <h3 style="margin:0 0 14px;font-size:15px;">Social Media Links</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="instagram_url">Instagram URL</label>
+            <input type="url" id="instagram_url" value="{{ store_address_settings.instagram_url }}" placeholder="https://instagram.com/yourstore">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="facebook_url">Facebook URL</label>
+            <input type="url" id="facebook_url" value="{{ store_address_settings.facebook_url }}" placeholder="https://facebook.com/yourstore">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="pinterest_url">Pinterest URL</label>
+            <input type="url" id="pinterest_url" value="{{ store_address_settings.pinterest_url }}" placeholder="https://pinterest.com/yourstore">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="youtube_url">YouTube URL</label>
+            <input type="url" id="youtube_url" value="{{ store_address_settings.youtube_url }}" placeholder="https://youtube.com/@yourstore">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="x_url">X / Twitter URL</label>
+            <input type="url" id="x_url" value="{{ store_address_settings.x_url }}" placeholder="https://x.com/yourstore">
+          </div>
+        </div>
+        <div class="muted-small" style="margin-top:10px;">Empty social links are hidden from the customer site.</div>
+      </div>
     </div>
   </form>
 
@@ -728,6 +775,15 @@ Customer pays Rs. 1000</div>
       sender_name: document.getElementById('sender_name').value.trim(),
       sender_phone: document.getElementById('sender_phone').value.trim(),
       sender_address: document.getElementById('sender_address').value.trim(),
+      contact_email: document.getElementById('contact_email').value.trim(),
+      contact_phone: document.getElementById('contact_phone').value.trim(),
+      whatsapp_number: document.getElementById('whatsapp_number').value.trim(),
+      business_hours: document.getElementById('business_hours').value.trim(),
+      instagram_url: document.getElementById('instagram_url').value.trim(),
+      facebook_url: document.getElementById('facebook_url').value.trim(),
+      pinterest_url: document.getElementById('pinterest_url').value.trim(),
+      youtube_url: document.getElementById('youtube_url').value.trim(),
+      x_url: document.getElementById('x_url').value.trim(),
       cod_enabled: document.getElementById('cod_enabled').checked,
       cod_extra_charge: document.getElementById('cod_extra_charge').value || '0'
     };

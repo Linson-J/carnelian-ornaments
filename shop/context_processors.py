@@ -1,4 +1,22 @@
-from .models import Category, PopupBanner
+import re
+
+from .models import Category, PopupBanner, StoreAddressSettings
+
+
+def _external_url(value):
+    value = (value or '').strip()
+    if not value:
+        return ''
+    if value.startswith(('http://', 'https://')):
+        return value
+    return f'https://{value}'
+
+
+def _whatsapp_url(value):
+    digits = re.sub(r'\D+', '', value or '')
+    if not digits:
+        return ''
+    return f'https://wa.me/{digits}'
 
 
 def footer_context(request):
@@ -19,11 +37,24 @@ def footer_context(request):
     # Get active popup banners configured to show on homepage
     homepage_popup_banners = PopupBanner.objects.filter(is_active=True, show_on_homepage=True).order_by('-created_at')
 
+    store_contact = StoreAddressSettings.current()
+    footer_social_links = [
+        {'name': 'Instagram', 'url': _external_url(store_contact.instagram_url), 'icon': 'ri-instagram-line'},
+        {'name': 'Facebook', 'url': _external_url(store_contact.facebook_url), 'icon': 'ri-facebook-circle-line'},
+        {'name': 'Pinterest', 'url': _external_url(store_contact.pinterest_url), 'icon': 'ri-pinterest-line'},
+        {'name': 'YouTube', 'url': _external_url(store_contact.youtube_url), 'icon': 'ri-youtube-line'},
+        {'name': 'X', 'url': _external_url(store_contact.x_url), 'icon': 'ri-twitter-x-line'},
+    ]
+    footer_social_links = [link for link in footer_social_links if link['url']]
+
     return {
         'footer_categories': categories,
         'all_categories': all_categories,
         'cart_count': cart_count,
         'active_popup_banner': active_popup_banner,
         'homepage_popup_banners': homepage_popup_banners,
+        'store_contact': store_contact,
+        'store_whatsapp_url': _whatsapp_url(store_contact.whatsapp_number),
+        'footer_social_links': footer_social_links,
     }
 

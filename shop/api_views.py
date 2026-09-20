@@ -19,6 +19,7 @@ from .models import (
     GSTRate,
     Product,
     ProductImage,
+    Review,
 )
 from .serializers import (
     CarouselItemSerializer,
@@ -660,6 +661,44 @@ class HomeSectionDetailView(APIView):
         section = get_object_or_404(HomeSection, pk=pk)
         section.delete()
         return success(msg='Home section deleted')
+
+
+class TopReviewsAPIView(APIView):
+    """
+    Public endpoint for customer-facing homepage reviews.
+    GET /api/reviews/top/
+    """
+    def get(self, request):
+        reviews = (
+            Review.objects.filter(
+                rating=5,
+                product__status=Product.Status.AVAILABLE,
+            )
+            .select_related('user', 'product')
+            .order_by('-created_at')[:5]
+        )
+
+        items = []
+        for review in reviews:
+            full_name = review.user.get_full_name().strip()
+            username = review.user.username or ''
+            customer_name = full_name or (
+                username.split('@')[0] if '@' in username else username
+            ) or review.user.email.split('@')[0]
+            items.append({
+                'id': review.id,
+                'rating': review.rating,
+                'comment': review.comment,
+                'customer_name': customer_name,
+                'product_name': review.product.name,
+                'product_slug': review.product.slug,
+                'created_at': review.created_at,
+            })
+
+        return success({
+            'count': len(items),
+            'reviews': items,
+        })
 
 
 class CustomerSearchAPIView(APIView):

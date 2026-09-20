@@ -160,7 +160,7 @@ class GSTConfigAdmin(admin.ModelAdmin):
 
 @admin.register(StoreAddressSettings)
 class StoreAddressSettingsAdmin(admin.ModelAdmin):
-    list_display = ('sender_name', 'sender_phone', 'cod_enabled', 'cod_extra_charge', 'updated_at')
+    list_display = ('sender_name', 'contact_email', 'contact_phone', 'whatsapp_number', 'cod_enabled', 'cod_extra_charge', 'updated_at')
 
 
 class OrderItemInline(admin.TabularInline):

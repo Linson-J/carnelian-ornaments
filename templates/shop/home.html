@@ -27,16 +27,12 @@
             {% include 'shop/includes/homepage_promo_banner.html' %}
         </div>
 
-        <section class="story-section" aria-labelledby="story-title">
-            <h2 id="story-title">Client Stories</h2>
-            <article class="story-card">
-                <div class="story-stars" aria-label="5 star rating">*****</div>
-                <blockquote>"Carmelian is my go-to for pieces that feel both timeless and incredibly modern. The quality is unmatched."</blockquote>
-                <div class="story-author">
-                    <img src="https://i.pravatar.cc/80?img=47" alt="">
-                    <span><strong>Elena R.</strong><small>Interior Designer</small></span>
-                </div>
-            </article>
+        <section class="story-section" aria-labelledby="story-title" data-review-stories hidden>
+            <div class="story-heading">
+                <p class="section-kicker">Verified Voices</p>
+                <h2 id="story-title">Client Stories</h2>
+            </div>
+            <div class="story-grid" data-review-stories-grid></div>
         </section>
 
         {% include 'shop/includes/popup_modal.html' %}
@@ -49,6 +45,7 @@
         const api = {
             carousel: '/api/carousel/',
             homeSections: '/api/home-sections/',
+            reviews: '/api/reviews/top/',
             theme: '/api/theme/'
         };
 
@@ -56,6 +53,7 @@
             activeSlide: 0,
             timer: null,
             touchStart: 0,
+            touchStartY: 0,
             slides: [],
             dots: []
         };
@@ -63,6 +61,8 @@
         const track = document.querySelector('[data-carousel-track]');
         const dotsWrap = document.querySelector('[data-carousel-dots]');
         const homeSectionsWrap = document.querySelector('[data-home-sections]');
+        const reviewStories = document.querySelector('[data-review-stories]');
+        const reviewStoriesGrid = document.querySelector('[data-review-stories-grid]');
 
         function imageOfProduct(product) {
             return product.primary_image?.image_url || product.images?.[0]?.image_url || '';
@@ -205,6 +205,38 @@
             }).join('');
         }
 
+        function renderReviewStories(reviews) {
+            const items = (reviews || []).filter(review => review.comment).slice(0, 5);
+            if (!items.length) {
+                reviewStories.hidden = true;
+                reviewStoriesGrid.innerHTML = '';
+                return;
+            }
+
+            reviewStoriesGrid.innerHTML = items.map(review => {
+                const productUrl = `/products/${encodeURIComponent(review.product_slug || '')}/`;
+                return `
+                    <article class="story-card">
+                        <div class="story-card-top">
+                            <div class="story-stars" aria-label="${Number(review.rating || 5)} star rating">
+                                ${Array.from({length: 5}, (_, index) => `<i class="${index < Number(review.rating || 0) ? 'ri-star-fill' : 'ri-star-line'}"></i>`).join('')}
+                            </div>
+                            <span class="story-rating-pill">5.0</span>
+                        </div>
+                        <blockquote>${escapeHtml(review.comment)}</blockquote>
+                        <div class="story-author">
+                            <span class="story-avatar" aria-hidden="true">${escapeHtml(String(review.customer_name || 'C').trim().charAt(0).toUpperCase() || 'C')}</span>
+                            <span>
+                                <strong>${escapeHtml(review.customer_name || 'Customer')}</strong>
+                                <small><a href="${productUrl}">${escapeHtml(review.product_name || 'Reviewed product')}</a></small>
+                            </span>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+            reviewStories.hidden = false;
+        }
+
         function renderMixedSection(section, slug) {
             const categories = (section.items || []).filter(item => item.item_type === 'category');
             const products = (section.items || []).filter(item => item.item_type === 'product');
@@ -289,10 +321,11 @@
 
         async function bootHome() {
             try {
-                const [theme, carousel, homeSections] = await Promise.all([
+                const [theme, carousel, homeSections, topReviews] = await Promise.all([
                     getJson(api.theme),
                     getJson(api.carousel),
-                    getJson(api.homeSections)
+                    getJson(api.homeSections),
+                    getJson(api.reviews)
                 ]);
                 applyTheme(theme.data);
                 const carouselItems = carousel.data?.items || [];
@@ -300,6 +333,7 @@
 
                 renderCarousel(carouselItems);
                 renderHomeSections(sections);
+                renderReviewStories(topReviews.data?.reviews || []);
                 setInterval(() => {
                     getJson(api.homeSections).then(response => renderHomeSections(response.data?.sections || [])).catch(() => {});
                 }, 5000);
@@ -309,14 +343,22 @@
             }
         }
 
+        const carousel = document.querySelector('.hero-carousel');
+        const carouselTrack = document.querySelector('[data-carousel-track]');
         document.querySelector('[data-carousel-prev]').addEventListener('click', () => showSlide(state.activeSlide - 1));
         document.querySelector('[data-carousel-next]').addEventListener('click', () => showSlide(state.activeSlide + 1));
-        document.querySelector('.hero-carousel').addEventListener('mouseenter', () => clearInterval(state.timer));
-        document.querySelector('.hero-carousel').addEventListener('mouseleave', restartTimer);
-        document.querySelector('.hero-carousel').addEventListener('touchstart', event => state.touchStart = event.changedTouches[0].clientX, {passive:true});
-        document.querySelector('.hero-carousel').addEventListener('touchend', event => {
-            const distance = event.changedTouches[0].clientX - state.touchStart;
-            if (Math.abs(distance) > 50) showSlide(state.activeSlide + (distance < 0 ? 1 : -1));
+        carousel.addEventListener('mouseenter', () => clearInterval(state.timer));
+        carousel.addEventListener('mouseleave', restartTimer);
+        carouselTrack.addEventListener('touchstart', event => {
+            state.touchStart = event.changedTouches[0].clientX;
+            state.touchStartY = event.changedTouches[0].clientY;
+        }, {passive:true});
+        carouselTrack.addEventListener('touchend', event => {
+            const distanceX = event.changedTouches[0].clientX - state.touchStart;
+            const distanceY = event.changedTouches[0].clientY - state.touchStartY;
+            if (Math.abs(distanceX) > 40 && Math.abs(distanceX) > Math.abs(distanceY)) {
+                showSlide(state.activeSlide + (distanceX < 0 ? 1 : -1));
+            }
         }, {passive:true});
 
         bootHome();

@@ -436,6 +436,15 @@ def admin_settings(request):
                 sender_name = data.get('sender_name', '').strip() or 'Carmelian'
                 sender_phone = data.get('sender_phone', '').strip()
                 sender_address = data.get('sender_address', '').strip()
+                contact_email = data.get('contact_email', '').strip()
+                contact_phone = data.get('contact_phone', '').strip()
+                whatsapp_number = data.get('whatsapp_number', '').strip()
+                business_hours = data.get('business_hours', '').strip()
+                instagram_url = data.get('instagram_url', '').strip()
+                facebook_url = data.get('facebook_url', '').strip()
+                pinterest_url = data.get('pinterest_url', '').strip()
+                youtube_url = data.get('youtube_url', '').strip()
+                x_url = data.get('x_url', '').strip()
                 cod_enabled = bool(data.get('cod_enabled', True))
                 try:
                     cod_extra_charge = Decimal(str(data.get('cod_extra_charge', 0) or 0))
@@ -446,16 +455,34 @@ def admin_settings(request):
                 store_address_settings.sender_name = sender_name
                 store_address_settings.sender_phone = sender_phone
                 store_address_settings.sender_address = sender_address
+                store_address_settings.contact_email = contact_email
+                store_address_settings.contact_phone = contact_phone
+                store_address_settings.whatsapp_number = whatsapp_number
+                store_address_settings.business_hours = business_hours
+                store_address_settings.instagram_url = instagram_url
+                store_address_settings.facebook_url = facebook_url
+                store_address_settings.pinterest_url = pinterest_url
+                store_address_settings.youtube_url = youtube_url
+                store_address_settings.x_url = x_url
                 store_address_settings.cod_enabled = cod_enabled
                 store_address_settings.cod_extra_charge = cod_extra_charge
                 store_address_settings.save()
                 return JsonResponse({
                     'success': True,
-                    'message': 'Store sender address and COD settings updated.',
+                    'message': 'Store contact, social, and COD settings updated.',
                     'store_address_settings': {
                         'sender_name': store_address_settings.sender_name,
                         'sender_phone': store_address_settings.sender_phone,
                         'sender_address': store_address_settings.sender_address,
+                        'contact_email': store_address_settings.contact_email,
+                        'contact_phone': store_address_settings.contact_phone,
+                        'whatsapp_number': store_address_settings.whatsapp_number,
+                        'business_hours': store_address_settings.business_hours,
+                        'instagram_url': store_address_settings.instagram_url,
+                        'facebook_url': store_address_settings.facebook_url,
+                        'pinterest_url': store_address_settings.pinterest_url,
+                        'youtube_url': store_address_settings.youtube_url,
+                        'x_url': store_address_settings.x_url,
                         'cod_enabled': store_address_settings.cod_enabled,
                         'cod_extra_charge': float(store_address_settings.cod_extra_charge),
                     }

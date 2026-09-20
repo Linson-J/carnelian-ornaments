@@ -1,14 +1,30 @@
 <footer class="global-footer" aria-labelledby="global-footer-title">
     <div class="global-footer__inner">
         <section class="global-footer__brand">
-            <a href="/" class="global-footer__logo" id="global-footer-title">Carmelian</a>
+            <a href="/" class="global-footer__logo" id="global-footer-title">{{ store_contact.sender_name|default:"Carmelian" }}</a>
             <p>Timeless pieces and curated essentials designed with soft minimalism, craft, and everyday elegance in mind.</p>
+            {% if footer_social_links %}
             <div class="global-footer__social" aria-label="Social media links">
-                <a href="#" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
-                <a href="#" aria-label="Facebook"><i class="ri-facebook-circle-line"></i></a>
-                <a href="#" aria-label="Pinterest"><i class="ri-pinterest-line"></i></a>
-                <a href="#" aria-label="Email"><i class="ri-mail-line"></i></a>
+                {% for link in footer_social_links %}
+                    <a href="{{ link.url }}" aria-label="{{ link.name }}" target="_blank" rel="noopener noreferrer"><i class="{{ link.icon }}"></i></a>
+                {% endfor %}
+                {% if store_contact.contact_email %}
+                    <a href="mailto:{{ store_contact.contact_email }}" aria-label="Email"><i class="ri-mail-line"></i></a>
+                {% endif %}
+                {% if store_whatsapp_url %}
+                    <a href="{{ store_whatsapp_url }}" aria-label="WhatsApp" target="_blank" rel="noopener noreferrer"><i class="ri-whatsapp-line"></i></a>
+                {% endif %}
             </div>
+            {% elif store_contact.contact_email or store_whatsapp_url %}
+            <div class="global-footer__social" aria-label="Contact links">
+                {% if store_contact.contact_email %}
+                    <a href="mailto:{{ store_contact.contact_email }}" aria-label="Email"><i class="ri-mail-line"></i></a>
+                {% endif %}
+                {% if store_whatsapp_url %}
+                    <a href="{{ store_whatsapp_url }}" aria-label="WhatsApp" target="_blank" rel="noopener noreferrer"><i class="ri-whatsapp-line"></i></a>
+                {% endif %}
+            </div>
+            {% endif %}
         </section>
 
         <nav class="global-footer__nav" aria-label="Quick links">
@@ -28,12 +44,26 @@
             {% endfor %}
         </nav>
 
+        {% if store_contact.contact_email or store_contact.contact_phone or store_whatsapp_url or store_contact.sender_address or store_contact.business_hours %}
         <section class="global-footer__contact">
             <h2>Contact</h2>
-            <p>support@carmelian.com</p>
-            <p>+1 (555) 014-2840</p>
-            <p>Mon-Fri, 9:00 AM-6:00 PM</p>
+            {% if store_contact.contact_email %}
+                <p><a href="mailto:{{ store_contact.contact_email }}">{{ store_contact.contact_email }}</a></p>
+            {% endif %}
+            {% if store_contact.contact_phone %}
+                <p><a href="tel:{{ store_contact.contact_phone }}">{{ store_contact.contact_phone }}</a></p>
+            {% endif %}
+            {% if store_whatsapp_url %}
+                <p><a href="{{ store_whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp: {{ store_contact.whatsapp_number }}</a></p>
+            {% endif %}
+            {% if store_contact.sender_address %}
+                <p>{{ store_contact.sender_address|linebreaksbr }}</p>
+            {% endif %}
+            {% if store_contact.business_hours %}
+                <p>{{ store_contact.business_hours }}</p>
+            {% endif %}
         </section>
+        {% endif %}
 
         <section class="global-footer__newsletter">
             <h2>Newsletter</h2>
@@ -51,7 +81,7 @@
     </div>
 
     <div class="global-footer__bottom">
-        <p>&copy; 2026 Carmelian. All rights reserved.</p>
+        <p>&copy; 2026 {{ store_contact.sender_name|default:"Carmelian" }}. All rights reserved.</p>
         <nav aria-label="Legal links">
             <a href="#">Privacy Policy</a>
             <a href="#">Terms &amp; Conditions</a>

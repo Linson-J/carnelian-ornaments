@@ -18,6 +18,7 @@ from .api_views import (
     ProductDetailView,
     ProductImageView,
     ProductListCreateView,
+    TopReviewsAPIView,
 )
 
 urlpatterns = [
@@ -40,4 +41,5 @@ urlpatterns = [
     path('home-sections/', HomeSectionListCreateView.as_view()),
     path('home-sections/reorder/', HomeSectionReorderView.as_view()),
     path('home-sections/<int:pk>/', HomeSectionDetailView.as_view()),
+    path('reviews/top/', TopReviewsAPIView.as_view(), name='top_reviews_api'),
 ]
