@@ -23,6 +23,8 @@ from .models import (
     DeliveryConfig,
     Order,
     OrderItem,
+    PaymentTransaction,
+    PaymentWebhookEvent,
     UserProfile,
     ContactMessage,
     Coupon,
@@ -158,7 +160,7 @@ class GSTConfigAdmin(admin.ModelAdmin):
 
 @admin.register(StoreAddressSettings)
 class StoreAddressSettingsAdmin(admin.ModelAdmin):
-    list_display = ('sender_name', 'sender_phone', 'updated_at')
+    list_display = ('sender_name', 'sender_phone', 'cod_enabled', 'cod_extra_charge', 'updated_at')
 
 
 class OrderItemInline(admin.TabularInline):
@@ -168,10 +170,46 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'full_name', 'total', 'status', 'payment_method', 'payment_status', 'created_at')
+    list_display = ('id', 'user', 'full_name', 'total', 'cod_extra_charge', 'status', 'payment_method', 'payment_status', 'phonepe_transaction_id', 'created_at')
     list_filter = ('status', 'payment_method', 'payment_status', 'created_at')
-    search_fields = ('full_name', 'phone', 'street_address', 'city')
+    search_fields = ('full_name', 'phone', 'street_address', 'city', 'phonepe_merchant_order_id', 'phonepe_transaction_id')
     inlines = (OrderItemInline,)
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.payment_method.lower() == 'phonepe' and obj.payment_status == Order.PaymentStatus.PAID:
+            readonly.extend([
+                'payment_status',
+                'payment_method',
+                'payment_id',
+                'phonepe_merchant_order_id',
+                'phonepe_order_id',
+                'phonepe_transaction_id',
+                'phonepe_payment_state',
+                'phonepe_response_code',
+            ])
+        return readonly
+
+
+@admin.register(PaymentTransaction)
+class PaymentTransactionAdmin(admin.ModelAdmin):
+    list_display = ('merchant_order_id', 'order', 'provider', 'amount_paise', 'status', 'provider_state', 'provider_transaction_id', 'created_at')
+    list_filter = ('provider', 'status', 'provider_state', 'created_at')
+    search_fields = ('merchant_order_id', 'provider_order_id', 'provider_transaction_id', 'order__id', 'order__full_name')
+    readonly_fields = ('request_payload', 'response_payload', 'created_at', 'updated_at', 'verified_at')
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.provider == PaymentTransaction.Provider.PHONEPE and obj.status == PaymentTransaction.Status.SUCCESS:
+            return [field.name for field in self.model._meta.fields]
+        return super().get_readonly_fields(request, obj)
+
+
+@admin.register(PaymentWebhookEvent)
+class PaymentWebhookEventAdmin(admin.ModelAdmin):
+    list_display = ('provider', 'merchant_order_id', 'event_id', 'processed', 'received_at', 'processed_at')
+    list_filter = ('provider', 'processed', 'received_at')
+    search_fields = ('merchant_order_id', 'event_id', 'payload_hash')
+    readonly_fields = ('payload', 'payload_hash', 'received_at', 'processed_at')
 
 
 @admin.register(UserProfile)

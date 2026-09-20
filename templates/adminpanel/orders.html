@@ -339,6 +339,7 @@
           <th>Customer Info</th>
           <th>Placed On</th>
           <th>Total Amount</th>
+          <th>Payment</th>
           <th>Order Status</th>
           <th>Actions</th>
         </tr>
@@ -360,6 +361,18 @@
             <span style="font-size:0.8rem; color:var(--muted); text-transform:uppercase;">{{ order.payment_method }}</span>
           </td>
           <td>
+            <strong>{{ order.get_payment_status_display }}</strong><br>
+            {% if order.phonepe_transaction_id %}
+              <span style="font-size:0.75rem; color:var(--muted);">Txn: {{ order.phonepe_transaction_id }}</span>
+            {% elif order.phonepe_payment_state %}
+              <span style="font-size:0.75rem; color:var(--muted);">PhonePe: {{ order.phonepe_payment_state }}</span>
+            {% elif order.phonepe_merchant_order_id %}
+              <span style="font-size:0.75rem; color:var(--muted);">PhonePe pending</span>
+            {% else %}
+              <span style="font-size:0.75rem; color:var(--muted);">-</span>
+            {% endif %}
+          </td>
+          <td>
             {% if order.status == 'cancelled' %}
               <span class="status-select status-cancelled" style="display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:8px; font-weight:600; font-size:0.85rem; background:rgba(239, 68, 68, 0.15); color:#fca5a5; border:1px solid rgba(239, 68, 68, 0.3);">
                 🚫 Cancelled (Locked)
@@ -369,7 +382,10 @@
                 {% csrf_token %}
                 <select name="status" onchange="this.form.submit()" class="status-select status-{{ order.status|slugify }}">
                   {% for status_val, status_lbl in choices %}
-                    <option value="{{ status_val }}" {% if order.status == status_val %}selected{% endif %}>{{ status_lbl }}</option>
+                    {% if order.payment_method == 'PhonePe' and order.payment_status == 'paid' and status_val == 'pending' %}
+                    {% else %}
+                      <option value="{{ status_val }}" {% if order.status == status_val %}selected{% endif %}>{{ status_lbl }}</option>
+                    {% endif %}
                   {% endfor %}
                 </select>
               </form>
@@ -399,7 +415,7 @@
 
         <!-- Expanded Details Row -->
         <tr class="order-details-row" id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
-          <td colspan="7" style="padding: 15px 30px;">
+          <td colspan="8" style="padding: 15px 30px;">
             <div class="order-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
               <div>
                 <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Shipping Address & Action Details</div>
@@ -407,6 +423,13 @@
                 <p style="margin: 0 0 5px 0;"><strong>Phone:</strong> {{ order.phone }}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Address:</strong> {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Payment Method:</strong> {{ order.payment_method }}</p>
+                <p style="margin: 0 0 5px 0;"><strong>Payment Status:</strong> {{ order.get_payment_status_display }}</p>
+                {% if order.phonepe_merchant_order_id %}
+                <p style="margin: 0 0 5px 0;"><strong>PhonePe Merchant Order:</strong> {{ order.phonepe_merchant_order_id }}</p>
+                {% endif %}
+                {% if order.phonepe_transaction_id %}
+                <p style="margin: 0 0 5px 0;"><strong>PhonePe Transaction:</strong> {{ order.phonepe_transaction_id }}</p>
+                {% endif %}
                 
                 {% if order.cancellation_reason %}
                 <div class="cancel-alert-box" style="margin-top: 15px; padding: 12px 15px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
@@ -419,7 +442,7 @@
                   </div>
                   <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
                     💳 <strong>Refund Info:</strong> 
-                    {% if order.payment_method|lower in 'card,online,upi,netbanking,credit_card,debit_card' %}
+                    {% if order.payment_method|lower in 'phonepe,card,online,upi,netbanking,credit_card,debit_card' %}
                       Paid via {{ order.payment_method }}. Refund of ₹{{ order.total }} to be credited within 2 to 5 working days.
                     {% else %}
                       Paid via {{ order.payment_method }} (Cash on Delivery). No online refund required.
@@ -455,6 +478,12 @@
                     <span>Delivery Fee</span>
                     <span>₹{{ order.delivery_fee }}</span>
                   </div>
+                  {% if order.cod_extra_charge > 0 %}
+                  <div class="summary-line">
+                    <span>COD Extra Charge</span>
+                    <span>₹{{ order.cod_extra_charge }}</span>
+                  </div>
+                  {% endif %}
                   {% if order.discount > 0 %}
                   <div class="summary-line" style="color:var(--success);">
                     <span>Discount Applied</span>
@@ -492,7 +521,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" style="text-align:center; color:var(--muted); padding:30px;">
+          <td colspan="8" style="text-align:center; color:var(--muted); padding:30px;">
             No orders matching the criteria.
           </td>
         </tr>

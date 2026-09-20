@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 import re
 from textwrap import wrap
 from urllib.parse import quote
@@ -434,17 +435,28 @@ def admin_settings(request):
                 sender_name = data.get('sender_name', '').strip() or 'Carmelian'
                 sender_phone = data.get('sender_phone', '').strip()
                 sender_address = data.get('sender_address', '').strip()
+                cod_enabled = bool(data.get('cod_enabled', True))
+                try:
+                    cod_extra_charge = Decimal(str(data.get('cod_extra_charge', 0) or 0))
+                except (InvalidOperation, TypeError, ValueError):
+                    return JsonResponse({'success': False, 'message': 'Enter a valid COD extra charge.'}, status=400)
+                if cod_extra_charge < 0:
+                    return JsonResponse({'success': False, 'message': 'COD extra charge cannot be negative.'}, status=400)
                 store_address_settings.sender_name = sender_name
                 store_address_settings.sender_phone = sender_phone
                 store_address_settings.sender_address = sender_address
+                store_address_settings.cod_enabled = cod_enabled
+                store_address_settings.cod_extra_charge = cod_extra_charge
                 store_address_settings.save()
                 return JsonResponse({
                     'success': True,
-                    'message': 'Store sender address updated.',
+                    'message': 'Store sender address and COD settings updated.',
                     'store_address_settings': {
                         'sender_name': store_address_settings.sender_name,
                         'sender_phone': store_address_settings.sender_phone,
                         'sender_address': store_address_settings.sender_address,
+                        'cod_enabled': store_address_settings.cod_enabled,
+                        'cod_extra_charge': float(store_address_settings.cod_extra_charge),
                     }
                 })
 
@@ -876,7 +888,19 @@ def _build_order_whatsapp_url(order, store_address_settings):
 
 @admin_login_required
 def admin_orders(request):
-    orders = Order.objects.prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')
+    orders = (
+        Order.objects.exclude(
+            payment_method='PhonePe',
+            payment_status__in=[
+                Order.PaymentStatus.PENDING,
+                Order.PaymentStatus.FAILED,
+                Order.PaymentStatus.CANCELLED,
+                Order.PaymentStatus.TIMEOUT,
+            ],
+        )
+        .prefetch_related('items', 'items__product', 'items__product__images')
+        .order_by('-created_at')
+    )
     
     status_filter = request.GET.get('status', '').strip()
     if status_filter:
@@ -990,6 +1014,18 @@ def _apply_order_status_change(order, new_status):
     old_status = order.status
     if new_status == old_status:
         return False
+    if (
+        order.payment_method.lower() == 'phonepe'
+        and order.payment_status == Order.PaymentStatus.PAID
+        and new_status == Order.Status.PENDING
+    ):
+        return False
+    if (
+        order.payment_method.lower() == 'phonepe'
+        and order.payment_status != Order.PaymentStatus.PAID
+        and new_status not in [Order.Status.PENDING, Order.Status.CANCELLED]
+    ):
+        return False
 
     order.status = new_status
     if new_status == Order.Status.DELIVERED and not order.delivered_at:
@@ -1052,6 +1088,26 @@ def bulk_update_order_status(request):
         messages.error(request, 'Cancelled orders are locked and cannot be changed.')
         return redirect(redirect_to)
 
+    paid_online_to_pending = [
+        order for order in orders
+        if order.payment_method.lower() == 'phonepe'
+        and order.payment_status == Order.PaymentStatus.PAID
+        and new_status == Order.Status.PENDING
+    ]
+    if paid_online_to_pending:
+        messages.error(request, 'Paid online orders cannot be changed back to Pending Payment.')
+        return redirect(redirect_to)
+
+    blocked_unpaid_online = [
+        order for order in orders
+        if order.payment_method.lower() == 'phonepe'
+        and order.payment_status != Order.PaymentStatus.PAID
+        and new_status not in [Order.Status.PENDING, Order.Status.CANCELLED]
+    ]
+    if blocked_unpaid_online:
+        messages.error(request, 'Unpaid PhonePe orders cannot be moved forward before verified payment success.')
+        return redirect(redirect_to)
+
     updated_count = 0
     for order in orders:
         if _apply_order_status_change(order, new_status):
@@ -1074,6 +1130,22 @@ def update_order_status(request, pk):
     # Once an order is cancelled, disallow status updates
     if order.status == Order.Status.CANCELLED:
         messages.warning(request, f"Order #{order.id} is already cancelled and cannot be changed.")
+        return redirect('admin_orders')
+
+    if (
+        order.payment_method.lower() == 'phonepe'
+        and order.payment_status == Order.PaymentStatus.PAID
+        and new_status == Order.Status.PENDING
+    ):
+        messages.error(request, f"Order #{order.id} is already paid online and cannot be changed back to Pending Payment.")
+        return redirect('admin_orders')
+
+    if (
+        order.payment_method.lower() == 'phonepe'
+        and order.payment_status != Order.PaymentStatus.PAID
+        and new_status not in [Order.Status.PENDING, Order.Status.CANCELLED]
+    ):
+        messages.error(request, f"Order #{order.id} is waiting for PhonePe payment verification and cannot be processed yet.")
         return redirect('admin_orders')
 
     if new_status in dict(Order.Status.choices):

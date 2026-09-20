@@ -156,11 +156,31 @@
 {% block content %}
 <div class="success-container">
   <div class="success-card">
-    <div class="success-icon-wrap">
-      <i class="ri-checkbox-circle-fill"></i>
+    <div class="success-icon-wrap" {% if order.payment_method == 'PhonePe' and order.payment_status != 'paid' %}style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.22); color: #dc2626;"{% endif %}>
+      {% if order.payment_method == 'PhonePe' and order.payment_status != 'paid' %}
+        <i class="ri-close-circle-fill"></i>
+      {% else %}
+        <i class="ri-checkbox-circle-fill"></i>
+      {% endif %}
     </div>
-    <h1 class="success-title">Thank You For Your Order!</h1>
-    <p class="success-sub">Your payment has been accepted and order #{{ order.id }} is being processed.</p>
+    {% if order.payment_method == 'PhonePe' and order.payment_status != 'paid' %}
+      <h1 class="success-title">Payment Not Completed</h1>
+    {% else %}
+      <h1 class="success-title">Thank You For Your Order!</h1>
+    {% endif %}
+    {% if order.payment_status == 'paid' %}
+      <p class="success-sub">Your payment has been verified and order #{{ order.id }} is being processed.</p>
+    {% elif order.payment_status == 'failed' %}
+      <p class="success-sub">Payment failed. Your order has not been placed. You can retry online payment or continue shopping.</p>
+    {% elif order.payment_status == 'cancelled' %}
+      <p class="success-sub">Payment was cancelled. Your order has not been placed.</p>
+    {% elif order.payment_status == 'timeout' %}
+      <p class="success-sub">Payment expired before completion. Your order has not been placed.</p>
+    {% elif order.payment_method == 'COD' %}
+      <p class="success-sub">Order #{{ order.id }} has been placed with Cash on Delivery.</p>
+    {% else %}
+      <p class="success-sub">Order #{{ order.id }} is pending payment confirmation.</p>
+    {% endif %}
     
     <div class="order-details-box">
       <div class="details-title">Order Information</div>
@@ -180,10 +200,11 @@
         <div>
           <span class="detail-lbl">Payment Status</span>
           <div class="detail-val">
-            {% if order.payment_method == 'Card' %}
-              Paid (via Card)
-            {% else %}
-              Pending COD Verification
+            {{ order.get_payment_status_display }}{% if order.payment_method %} ({{ order.payment_method }}){% endif %}
+            {% if order.phonepe_transaction_id %}
+              <br><span style="font-size:0.82rem;color:var(--text-muted,#504444);">Txn: {{ order.phonepe_transaction_id }}</span>
+            {% elif order.phonepe_payment_state %}
+              <br><span style="font-size:0.82rem;color:var(--text-muted,#504444);">Payment status: {{ order.phonepe_payment_state }}</span>
             {% endif %}
           </div>
         </div>
@@ -258,6 +279,12 @@
           <span>Delivery Fee</span>
           <span>Rs. {{ order.delivery_fee }}</span>
         </div>
+        {% if order.cod_extra_charge > 0 %}
+        <div class="totals-row">
+          <span>COD Extra Charge</span>
+          <span>Rs. {{ order.cod_extra_charge }}</span>
+        </div>
+        {% endif %}
         <div class="totals-row grand">
           <span>Grand Total</span>
           <span>Rs. {{ order.total }}</span>
@@ -266,6 +293,12 @@
     </div>
     
     <div class="btn-row">
+      {% if order.payment_method == 'PhonePe' and order.payment_status != 'paid' %}
+      <a href="{% url 'phonepe_payment_retry' order.id %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">Retry Online Payment</a>
+      {% endif %}
+      {% if order.payment_method == 'COD' and order.payment_status != 'paid' and order.status != 'delivered' and order.status != 'cancelled' %}
+      <a href="{% url 'cod_pay_online' order.id %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">Pay Online / UPI Now</a>
+      {% endif %}
       <a href="{% url 'shop_all' %}" class="hero-btn primary" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block;">Continue Shopping</a>
       <a href="{% url 'home' %}" class="hero-btn" style="padding: 1rem 2rem; font-family: inherit; font-size: 0.95rem; text-decoration: none; display: inline-block; border: 1px solid rgba(0,0,0,0.15);">Back to Home</a>
     </div>

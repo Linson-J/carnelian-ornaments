@@ -28,6 +28,15 @@ SECRET_KEY = os.environ.get(
 )
 DEBUG = env_bool('DJANGO_DEBUG', True)
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', ['localhost', '127.0.0.1'])
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS', [])
+
+if env_bool('ENABLE_NGROK', DEBUG):
+    for host in ['.ngrok-free.app', '.ngrok.app']:
+        if host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host)
+    for origin in ['https://*.ngrok-free.app', 'https://*.ngrok.app']:
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
 
 
 INSTALLED_APPS = [
@@ -202,4 +211,32 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 # Fallback email backend to console for development if settings aren't in env
 if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# --- PhonePe Payment Gateway ---
+PHONEPE_ENV = os.environ.get('PHONEPE_ENV', 'sandbox').strip().lower()
+PHONEPE_CLIENT_ID = os.environ.get('PHONEPE_CLIENT_ID', '')
+PHONEPE_CLIENT_SECRET = os.environ.get('PHONEPE_CLIENT_SECRET', '')
+PHONEPE_CLIENT_VERSION = os.environ.get('PHONEPE_CLIENT_VERSION', '1')
+PHONEPE_WEBHOOK_USERNAME = os.environ.get('PHONEPE_WEBHOOK_USERNAME', '')
+PHONEPE_WEBHOOK_PASSWORD = os.environ.get('PHONEPE_WEBHOOK_PASSWORD', '')
+PHONEPE_REQUEST_TIMEOUT = int(os.environ.get('PHONEPE_REQUEST_TIMEOUT', '20'))
+
+if PHONEPE_ENV == 'production':
+    PHONEPE_AUTH_URL = os.environ.get(
+        'PHONEPE_AUTH_URL',
+        'https://api.phonepe.com/apis/identity-manager/v1/oauth/token',
+    )
+    PHONEPE_BASE_URL = os.environ.get(
+        'PHONEPE_BASE_URL',
+        'https://api.phonepe.com/apis/pg',
+    )
+else:
+    PHONEPE_AUTH_URL = os.environ.get(
+        'PHONEPE_AUTH_URL',
+        'https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token',
+    )
+    PHONEPE_BASE_URL = os.environ.get(
+        'PHONEPE_BASE_URL',
+        'https://api-preprod.phonepe.com/apis/pg-sandbox',
+    )
 

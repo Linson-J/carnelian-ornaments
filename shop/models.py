@@ -241,6 +241,8 @@ class StoreAddressSettings(models.Model):
     sender_name = models.CharField(max_length=150, default='Carmelian')
     sender_phone = models.CharField(max_length=20, blank=True, default='')
     sender_address = models.TextField(blank=True, default='')
+    cod_enabled = models.BooleanField(default=True)
+    cod_extra_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -645,6 +647,8 @@ class Order(models.Model):
         PENDING = 'pending', 'Pending'
         PAID = 'paid', 'Paid'
         FAILED = 'failed', 'Failed'
+        CANCELLED = 'cancelled', 'Cancelled'
+        TIMEOUT = 'timeout', 'Timeout'
         REFUNDED = 'refunded', 'Refunded'
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -666,6 +670,7 @@ class Order(models.Model):
     # Pricing fields
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    cod_extra_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     taxable_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -681,6 +686,11 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=50, default='Card')
     payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
     payment_id = models.CharField(max_length=100, blank=True, default='')
+    phonepe_merchant_order_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    phonepe_order_id = models.CharField(max_length=100, blank=True, default='')
+    phonepe_transaction_id = models.CharField(max_length=100, blank=True, default='')
+    phonepe_payment_state = models.CharField(max_length=50, blank=True, default='')
+    phonepe_response_code = models.CharField(max_length=80, blank=True, default='')
 
     # Cancellation & Return details
     cancellation_reason = models.TextField(blank=True, default='')
@@ -745,6 +755,67 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product_name}"
+
+
+class PaymentTransaction(models.Model):
+    class Provider(models.TextChoices):
+        PHONEPE = 'phonepe', 'PhonePe'
+
+    class Status(models.TextChoices):
+        INITIATED = 'initiated', 'Initiated'
+        PENDING = 'pending', 'Pending'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+        CANCELLED = 'cancelled', 'Cancelled'
+        TIMEOUT = 'timeout', 'Timeout'
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payment_transactions')
+    provider = models.CharField(max_length=30, choices=Provider.choices, default=Provider.PHONEPE)
+    merchant_order_id = models.CharField(max_length=100, unique=True)
+    provider_order_id = models.CharField(max_length=100, blank=True, default='')
+    provider_transaction_id = models.CharField(max_length=100, blank=True, default='')
+    amount_paise = models.PositiveBigIntegerField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIATED)
+    provider_state = models.CharField(max_length=50, blank=True, default='')
+    response_code = models.CharField(max_length=80, blank=True, default='')
+    redirect_url = models.URLField(max_length=1000, blank=True, default='')
+    request_payload = models.JSONField(default=dict, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_payment_transactions'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.provider} {self.merchant_order_id} ({self.status})"
+
+
+class PaymentWebhookEvent(models.Model):
+    provider = models.CharField(max_length=30, default=PaymentTransaction.Provider.PHONEPE)
+    event_id = models.CharField(max_length=150, blank=True, default='')
+    payload_hash = models.CharField(max_length=64, unique=True)
+    transaction = models.ForeignKey(
+        PaymentTransaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='webhook_events',
+    )
+    merchant_order_id = models.CharField(max_length=100, blank=True, default='')
+    processed = models.BooleanField(default=False)
+    payload = models.JSONField(default=dict, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'shop_payment_webhook_events'
+        ordering = ['-received_at']
+
+    def __str__(self):
+        return f"{self.provider} webhook {self.event_id or self.payload_hash[:10]}"
 
 
 class Review(models.Model):

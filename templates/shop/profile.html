@@ -389,6 +389,18 @@
     color: white;
   }
 
+  .order-action-btn.pay-online-btn {
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    text-decoration: none;
+  }
+
+  .order-action-btn.pay-online-btn:hover {
+    background: #2563eb;
+    color: white;
+  }
+
   /* Modal overlay */
   .custom-modal-overlay {
     position: fixed;
@@ -896,6 +908,12 @@
                   <span>Delivery Fee</span>
                   <span>Rs. {{ order.delivery_fee }}</span>
                 </div>
+                {% if order.cod_extra_charge > 0 %}
+                <div class="summary-line">
+                  <span>COD Extra Charge</span>
+                  <span>Rs. {{ order.cod_extra_charge }}</span>
+                </div>
+                {% endif %}
                 {% if order.discount > 0 %}
                 <div class="summary-line" style="color: #16a34a;">
                   <span>Discount</span>
@@ -944,13 +962,23 @@
                   <span>Payment Method</span>
                   <span style="text-transform: uppercase;">{{ order.payment_method }}</span>
                 </div>
+                <div class="summary-line">
+                  <span>Payment Status</span>
+                  <span>{{ order.get_payment_status_display }}</span>
+                </div>
                 <div class="summary-line total-line">
-                  <span>Total Paid</span>
+                  <span>{% if order.payment_status == 'paid' %}Total Paid{% else %}Total Amount{% endif %}</span>
                   <span>Rs. {{ order.total }}</span>
                 </div>
               </div>
 
               <!-- Cancel / Return Action Buttons & Status Display -->
+              {% if order.payment_method == 'COD' and order.payment_status != 'paid' and order.status != 'delivered' and order.status != 'cancelled' and not order.cancel_requested %}
+              <a class="order-action-btn pay-online-btn" href="{% url 'cod_pay_online' order.id %}">
+                <i class="ri-smartphone-line"></i> Pay Online / UPI Now
+              </a>
+              {% endif %}
+
               {% if order.status == 'pending' or order.status == 'processing' %}
               {% if not order.cancel_requested %}
               <button class="order-action-btn cancel-btn"

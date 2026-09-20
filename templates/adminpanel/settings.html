@@ -339,6 +339,38 @@
     </div>
   </form>
 
+  <form class="card" id="codSettingsForm">
+    {% csrf_token %}
+    <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="hd-icon" style="background: rgba(245, 158, 11, 0.12); color: #fbbf24;">
+          <i class="ri-coins-line"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:15px;font-weight:600;">Cash on Delivery Settings</h3>
+          <p class="muted-small" style="margin-top:2px;">Control COD availability and the extra COD charge shown at checkout.</p>
+        </div>
+      </div>
+      <button class="btn-primary" type="submit" id="btnSaveCodSettings"><i class="ri-save-3-line"></i> Save COD Settings</button>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+        <div class="field" style="margin-bottom:0;">
+          <label class="check-label" for="cod_enabled">
+            <input type="checkbox" id="cod_enabled" {% if store_address_settings.cod_enabled %}checked{% endif %}>
+            Enable Cash on Delivery
+          </label>
+          <div class="muted-small">When disabled, COD will be hidden from checkout and rejected by the server.</div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="cod_extra_charge">COD Extra Charge</label>
+          <input type="number" id="cod_extra_charge" min="0" step="0.01" value="{{ store_address_settings.cod_extra_charge }}" placeholder="0.00">
+          <div class="muted-small">Added only when the customer selects Cash on Delivery.</div>
+        </div>
+      </div>
+    </div>
+  </form>
+
   <form class="card" id="gstSettingsForm">
     {% csrf_token %}
     <div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -686,11 +718,7 @@ Customer pays Rs. 1000</div>
     }
   });
 
-  // --- Store Sender Address Handler ---
-  const storeAddressForm = document.getElementById('storeAddressForm');
-  storeAddressForm.addEventListener('submit', async event => {
-    event.preventDefault();
-    const btn = document.getElementById('btnSaveStoreAddress');
+  async function saveStoreAndCodSettings(btn, successMessage, errorMessage) {
     const original = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving...';
@@ -699,7 +727,9 @@ Customer pays Rs. 1000</div>
       form_type: 'store_address_settings',
       sender_name: document.getElementById('sender_name').value.trim(),
       sender_phone: document.getElementById('sender_phone').value.trim(),
-      sender_address: document.getElementById('sender_address').value.trim()
+      sender_address: document.getElementById('sender_address').value.trim(),
+      cod_enabled: document.getElementById('cod_enabled').checked,
+      cod_extra_charge: document.getElementById('cod_extra_charge').value || '0'
     };
 
     try {
@@ -713,19 +743,41 @@ Customer pays Rs. 1000</div>
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        showToast(data.message || 'Store sender address saved', 'success');
+        showToast(data.message || successMessage, 'success');
         hideToast();
       } else {
-        showToast(data.message || 'Could not save store sender address', 'danger');
+        showToast(data.message || errorMessage, 'danger');
         hideToast();
       }
     } catch (error) {
-      showToast(error.message || 'Network error updating sender address', 'danger');
+      showToast(error.message || errorMessage, 'danger');
       hideToast();
     } finally {
       btn.disabled = false;
       btn.innerHTML = original;
     }
+  }
+
+  // --- Store Sender Address Handler ---
+  const storeAddressForm = document.getElementById('storeAddressForm');
+  storeAddressForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    await saveStoreAndCodSettings(
+      document.getElementById('btnSaveStoreAddress'),
+      'Store sender address saved',
+      'Could not save store sender address'
+    );
+  });
+
+  // --- COD Settings Handler ---
+  const codSettingsForm = document.getElementById('codSettingsForm');
+  codSettingsForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    await saveStoreAndCodSettings(
+      document.getElementById('btnSaveCodSettings'),
+      'COD settings saved',
+      'Could not save COD settings'
+    );
   });
 
   // --- GST Settings Handler ---

@@ -784,67 +784,35 @@
     <!-- STEP 2 FORM: Payment -->
     <div class="form-sec" id="paymentStepSec">
       <div class="payment-methods">
-        <div class="pay-method-btn active" id="btnCardPay" onclick="setPaymentMethod('Card')">
-          <i class="ri-bank-card-line"></i> Credit / Debit Card
+        {% if cod_enabled %}
+        <div class="pay-method-btn active" id="btnCodPay" onclick="setPaymentMethod('COD')">
+          <i class="ri-coins-line"></i> Cash on Delivery
         </div>
-        <div class="pay-method-btn" id="btnCodPay" onclick="setPaymentMethod('COD')">
-          <i class="ri-coins-line"></i> Cash on Delivery (COD)
-        </div>
-      </div>
-      
-      <div id="cardPaymentDetails">
-        <!-- Interactive Card Preview -->
-        <div class="card-wrapper">
-          <div class="credit-card">
-            <div class="card-top">
-              <div class="card-chip"></div>
-              <div class="card-logo">Carmelian</div>
-            </div>
-            <div class="card-number-view" id="cardNumPreview">•••• •••• •••• ••••</div>
-            <div class="card-bottom">
-              <div class="card-holder-view">
-                <span class="card-lbl">Card Holder</span>
-                <span class="card-val" id="cardHolderPreview">Your Name</span>
-              </div>
-              <div class="card-expiry-view">
-                <span class="card-lbl">Expires</span>
-                <span class="card-val" id="cardExpiryPreview">MM/YY</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="cardNum">Card Number</label>
-          <input type="text" id="cardNum" placeholder="4111 2222 3333 4444" maxlength="19" oninput="formatCardNum(this)">
-        </div>
-        
-        <div class="form-grid-3">
-          <div class="form-group" style="grid-column: span 1;">
-            <label for="cardExpiry">Expiration Date</label>
-            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" oninput="formatCardExpiry(this)">
-          </div>
-          <div class="form-group" style="grid-column: span 1;">
-            <label for="cardCvv">CVV Code</label>
-            <input type="password" id="cardCvv" placeholder="•••" maxlength="3" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="cardName">Cardholder Name</label>
-          <input type="text" id="cardName" placeholder="JOHN DOE" oninput="document.getElementById('cardHolderPreview').textContent = this.value.toUpperCase() || 'YOUR NAME'">
+        {% endif %}
+        <div class="pay-method-btn {% if not cod_enabled %}active{% endif %}" id="btnPhonePePay" onclick="setPaymentMethod('PhonePe')">
+          <i class="ri-secure-payment-line"></i> Pay Online
         </div>
       </div>
       
-      <div id="codPaymentDetails" style="display: none; padding: 10px 0 25px 0;">
+      <div id="phonepePaymentDetails" style="{% if cod_enabled %}display: none;{% endif %} padding: 10px 0 25px 0;">
         <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #504444);">
-          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i> You can pay in cash or via mobile scanner when our delivery agent arrives at your shipping address.
+          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i>
+          Pay securely using UPI, cards, wallets, or net banking. Your order will be placed only after payment is verified.
         </p>
       </div>
       
+      {% if cod_enabled %}
+      <div id="codPaymentDetails" style="padding: 10px 0 25px 0;">
+        <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted, #504444);">
+          <i class="ri-information-line" style="color: var(--primary, #7c5357);"></i> You can pay in cash or via mobile scanner when our delivery agent arrives at your shipping address.
+          {% if cod_extra_charge > 0 %}<br><strong>COD extra charge: Rs. {{ cod_extra_charge }}</strong>{% endif %}
+        </p>
+      </div>
+      {% endif %}
+      
       <div style="display: flex; gap: 15px; margin-top: 20px;">
         <button class="hero-btn" onclick="backToAddress()" style="flex: 1; background: none; border: 1px solid rgba(0,0,0,0.15); color: var(--text-dark, #1a1c1a); padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Back</button>
-        <button class="hero-btn primary" id="btnPlaceOrder" onclick="submitOrder()" style="flex: 2; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">Place Order</button>
+        <button class="hero-btn primary" id="btnPlaceOrder" onclick="submitOrder()" style="flex: 2; border: none; padding: 1rem; font-family: inherit; font-size: 1rem; cursor: pointer; text-align: center;">{% if cod_enabled %}Place COD Order{% else %}Pay Online{% endif %}</button>
       </div>
     </div>
   </div>
@@ -989,6 +957,12 @@
         <span>Delivery Fee</span>
         <span id="deliveryFeeVal">Rs. {{ default_shipping }}</span>
       </div>
+      {% if cod_enabled %}
+      <div class="calc-row" id="codChargeRow" style="{% if not cod_extra_charge %}display:none;{% endif %}">
+        <span>COD Extra Charge</span>
+        <span id="codChargeVal">Rs. {{ cod_extra_charge }}</span>
+      </div>
+      {% endif %}
       <div class="calc-row total">
         <span>Total Amount</span>
         <span id="grandTotalVal">Rs. {{ grand_total }}</span>
@@ -1003,29 +977,39 @@
 {% block extra_js %}
 <script>
   let addressVerified = false;
-  let paymentMethod = 'Card';
+  let paymentMethod = "{% if cod_enabled %}COD{% else %}PhonePe{% endif %}";
   const subtotal = parseFloat("{{ subtotal }}");
   let currentCouponDiscount = parseFloat("{{ coupon_discount|default:0 }}");
   let currentDeliveryFee = parseFloat("{{ default_shipping|default:0 }}");
+  let currentBaseGrandTotal = parseFloat("{{ base_grand_total|default:grand_total }}");
+  let currentCodExtraCharge = parseFloat("{{ cod_extra_charge|default:0 }}");
 
   function recalculateGrandTotal() {
-    let grandTotal = subtotal - currentCouponDiscount + currentDeliveryFee;
+    let grandTotal = currentBaseGrandTotal + (paymentMethod === 'COD' ? currentCodExtraCharge : 0);
     if (grandTotal < 0) grandTotal = 0;
     document.getElementById('grandTotalVal').textContent = `Rs. ${grandTotal.toFixed(2)}`;
+    const codChargeRow = document.getElementById('codChargeRow');
+    if (codChargeRow) {
+      codChargeRow.style.display = paymentMethod === 'COD' && currentCodExtraCharge > 0 ? 'flex' : 'none';
+    }
   }
 
   function updateServerTotals(data) {
+    currentBaseGrandTotal = parseFloat(data.grand_total || 0);
+    currentCodExtraCharge = parseFloat(data.cod_extra_charge || 0);
     const map = {
       taxableAmountVal: data.taxable_amount,
       cgstAmountVal: data.cgst_amount,
       sgstAmountVal: data.sgst_amount,
-      igstAmountVal: data.igst_amount,
-      grandTotalVal: data.grand_total
+      igstAmountVal: data.igst_amount
     };
     Object.entries(map).forEach(([id, value]) => {
       const el = document.getElementById(id);
       if (el && typeof value === 'number') el.textContent = `Rs. ${value.toFixed(2)}`;
     });
+    const codVal = document.getElementById('codChargeVal');
+    if (codVal) codVal.textContent = `Rs. ${currentCodExtraCharge.toFixed(2)}`;
+    recalculateGrandTotal();
   }
 
   function toggleOffersList() {
@@ -1169,35 +1153,6 @@
     document.getElementById('checkoutStatusPanel').style.display = 'none';
   }
 
-  // Formatting helpers
-  function formatCardNum(el) {
-    let val = el.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    let matches = val.match(/\d{4,16}/g);
-    let match = matches && matches[0] || '';
-    let parts = [];
-
-    for (let i=0, len=match.length; i<len; i+=4) {
-      parts.push(match.substring(i, i+4));
-    }
-
-    if (parts.length > 0) {
-      el.value = parts.join(' ');
-    } else {
-      el.value = val;
-    }
-    document.getElementById('cardNumPreview').textContent = el.value || '•••• •••• •••• ••••';
-  }
-
-  function formatCardExpiry(el) {
-    let val = el.value.replace(/\D/g, '');
-    if (val.length >= 2) {
-      el.value = val.substring(0, 2) + '/' + val.substring(2, 4);
-    } else {
-      el.value = val;
-    }
-    document.getElementById('cardExpiryPreview').textContent = el.value || 'MM/YY';
-  }
-
   // Address steps toggling
   function backToAddress() {
     document.getElementById('step2-indicator').classList.remove('active');
@@ -1209,22 +1164,26 @@
 
   function setPaymentMethod(method) {
     paymentMethod = method;
-    const cardBtn = document.getElementById('btnCardPay');
+    const phonepeBtn = document.getElementById('btnPhonePePay');
     const codBtn = document.getElementById('btnCodPay');
-    const cardDetails = document.getElementById('cardPaymentDetails');
+    const phonepeDetails = document.getElementById('phonepePaymentDetails');
     const codDetails = document.getElementById('codPaymentDetails');
+    const submitBtn = document.getElementById('btnPlaceOrder');
     
-    if (method === 'Card') {
-      cardBtn.classList.add('active');
-      codBtn.classList.remove('active');
-      cardDetails.style.display = 'block';
-      codDetails.style.display = 'none';
+    if (method === 'PhonePe') {
+      phonepeBtn.classList.add('active');
+      if (codBtn) codBtn.classList.remove('active');
+      phonepeDetails.style.display = 'block';
+      if (codDetails) codDetails.style.display = 'none';
+      if (submitBtn) submitBtn.textContent = 'Pay Online';
     } else {
-      cardBtn.classList.remove('active');
-      codBtn.classList.add('active');
-      cardDetails.style.display = 'none';
-      codDetails.style.display = 'block';
+      phonepeBtn.classList.remove('active');
+      if (codBtn) codBtn.classList.add('active');
+      phonepeDetails.style.display = 'none';
+      if (codDetails) codDetails.style.display = 'block';
+      if (submitBtn) submitBtn.textContent = 'Place COD Order';
     }
+    recalculateGrandTotal();
   }
 
   // DELIVERY VERIFICATION & FEE CALCULATION
@@ -1311,28 +1270,16 @@
     const streetAddress = document.getElementById('streetAddress').value.trim();
     const postalCode = document.getElementById('postalCode').value.trim();
     
-    if (paymentMethod === 'Card') {
-      const cardNum = document.getElementById('cardNum').value.trim();
-      const cardExpiry = document.getElementById('cardExpiry').value.trim();
-      const cardCvv = document.getElementById('cardCvv').value.trim();
-      const cardName = document.getElementById('cardName').value.trim();
-      
-      if (!cardNum || !cardExpiry || !cardCvv || !cardName) {
-        showStatus("Please fill in card payment details.", "error");
-        return;
-      }
-    }
-    
     const btnOrder = document.getElementById('btnPlaceOrder');
     if (btnOrder) {
       btnOrder.classList.add('btn-loading-shimmer');
       btnOrder.disabled = true;
-      btnOrder.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Placing Order...';
+      btnOrder.innerHTML = paymentMethod === 'PhonePe' ? '<i class="ri-loader-4-line ri-spin"></i> Redirecting...' : '<i class="ri-loader-4-line ri-spin"></i> Placing Order...';
     }
     if (window.showGlobalLoader) {
-      window.showGlobalLoader('Verifying payment & placing your order...');
+      window.showGlobalLoader(paymentMethod === 'PhonePe' ? 'Starting secure online payment...' : 'Placing your order...');
     }
-    showStatus("Processing checkout and placing order...", "loading");
+    showStatus(paymentMethod === 'PhonePe' ? "Opening secure online payment..." : "Processing checkout and placing order...", "loading");
     
     try {
       const response = await fetch('/checkout/place-order/', {
@@ -1350,13 +1297,16 @@
           county: county,
           street_address: streetAddress,
           postal_code: postalCode,
-          payment_method: paymentMethod,
-          payment_id: paymentMethod === 'Card' ? 'MOCK_PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase() : ''
+          payment_method: paymentMethod
         })
       });
       const data = await response.json();
       
       if (response.ok && data.success) {
+        if (data.redirect_url) {
+          window.location.href = data.redirect_url;
+          return;
+        }
         showStatus("Order placed successfully! Redirecting...", "success");
         setTimeout(() => {
           window.location.href = `/checkout/order-success/${data.order_id}/`;
@@ -1366,7 +1316,7 @@
         if (btnOrder) {
           btnOrder.classList.remove('btn-loading-shimmer');
           btnOrder.disabled = false;
-          btnOrder.innerHTML = 'Place Order';
+          btnOrder.innerHTML = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
         }
         showStatus(data.message || "Failed to submit checkout.", "error");
       }
@@ -1375,7 +1325,7 @@
       if (btnOrder) {
         btnOrder.classList.remove('btn-loading-shimmer');
         btnOrder.disabled = false;
-        btnOrder.innerHTML = 'Place Order';
+        btnOrder.innerHTML = paymentMethod === 'PhonePe' ? 'Pay Online' : 'Place COD Order';
       }
       showStatus("Connection error while submitting order.", "error");
     }

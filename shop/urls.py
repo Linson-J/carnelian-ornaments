@@ -51,6 +51,11 @@ urlpatterns = [
     path('checkout/remove-coupon/', views.remove_coupon, name='remove_coupon'),
     path('checkout/place-order/', views.place_order, name='place_order'),
     path('checkout/order-success/<int:order_id>/', views.order_success, name='order_success'),
+    path('payments/phonepe/return/<str:merchant_order_id>/', views.phonepe_payment_return, name='phonepe_payment_return'),
+    path('payments/phonepe/retry/<int:order_id>/', views.phonepe_payment_retry, name='phonepe_payment_retry'),
+    path('payments/cod/pay-online/<int:order_id>/', views.cod_pay_online, name='cod_pay_online'),
+    path('payments/phonepe/status/<int:order_id>/', views.phonepe_payment_status, name='phonepe_payment_status'),
+    path('payments/phonepe/webhook/', views.phonepe_webhook, name='phonepe_webhook'),
     
     # User Profile & Saved Address
     path('profile/', views.profile_page, name='profile_page'),

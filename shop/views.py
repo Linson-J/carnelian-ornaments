@@ -1,18 +1,28 @@
+from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
+import base64
+import hashlib
+import secrets
+import uuid
 import json
 import random
 import re
+import requests
 import string
 
 from .forms import NewsletterSubscriptionForm
-from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, UserProfile, Review, OTPSettings, ContactMessage
+from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, PaymentTransaction, PaymentWebhookEvent, StoreAddressSettings, UserProfile, Review, OTPSettings, ContactMessage
 from .decorators import login_required_ajax
 from .email_utils import send_order_status_email
 from .tax import calculate_cart_totals, calculate_order_totals, calculate_shipping, money
@@ -728,9 +738,35 @@ def _haversine_distance(lat1, lon1, lat2, lon2):
         return 0.0
 
 
+def _cod_enabled():
+    try:
+        settings_obj = StoreAddressSettings.current()
+    except Exception:
+        return False
+    return bool(getattr(settings_obj, 'cod_enabled', False))
+
+
+def _cod_extra_charge():
+    try:
+        settings_obj = StoreAddressSettings.current()
+    except Exception:
+        return money(0)
+    return money(getattr(settings_obj, 'cod_extra_charge', 0))
+
+
 def checkout_page(request):
     if not request.user.is_authenticated:
         return redirect('/?login_required=1')
+
+    pending_order_id = request.session.pop('pending_phonepe_order_id', None)
+    if pending_order_id:
+        pending_order = Order.objects.filter(
+            id=pending_order_id,
+            user=request.user,
+            payment_method='PhonePe',
+        ).first()
+        if pending_order and pending_order.payment_status != Order.PaymentStatus.PAID:
+            _discard_unpaid_phonepe_order(pending_order)
         
     cart = request.session.get('cart', {})
     if not cart:
@@ -792,9 +828,12 @@ def checkout_page(request):
     
     profile = None
     last_order = None
+    cod_enabled = _cod_enabled()
+    cod_extra_charge = _cod_extra_charge() if cod_enabled else money(0)
+    display_grand_total = money(totals['grand_total'] + cod_extra_charge) if cod_enabled else totals['grand_total']
     if request.user.is_authenticated:
         profile = UserProfile.objects.filter(user=request.user).first()
-        last_order = Order.objects.filter(user=request.user).order_by('-created_at').first()
+        last_order = _customer_visible_orders(request.user).order_by('-created_at').first()
         
     return render(request, 'shop/checkout.html', {
         'cart_items': calculation['items'],
@@ -811,10 +850,13 @@ def checkout_page(request):
         'applied_coupon': applied_coupon,
         'available_coupons': available_coupons,
         'default_shipping': totals['shipping'],
-        'grand_total': totals['grand_total'],
+        'base_grand_total': totals['grand_total'],
+        'grand_total': display_grand_total,
         'config': calculation['config'],
         'profile': profile,
         'last_order': last_order,
+        'cod_enabled': cod_enabled,
+        'cod_extra_charge': cod_extra_charge,
     })
 
 
@@ -933,6 +975,7 @@ def verify_checkout_address(request):
     return JsonResponse({
         'available': True,
         'delivery_fee': float(delivery_fee),
+        'cod_extra_charge': float(_cod_extra_charge() if _cod_enabled() else money(0)),
         'distance_km': 0.0,
         'is_free': is_free,
         'taxable_amount': float(totals['taxable_amount']),
@@ -944,6 +987,369 @@ def verify_checkout_address(request):
         'tax_type': totals['tax_type'],
         'message': 'Delivery is available for your address!'
     })
+
+
+def _phonepe_enabled():
+    return all([
+        settings.PHONEPE_CLIENT_ID,
+        settings.PHONEPE_CLIENT_SECRET,
+        settings.PHONEPE_CLIENT_VERSION,
+    ])
+
+
+def _money_to_paise(value):
+    amount = Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def _phonepe_access_token():
+    response = requests.post(
+        settings.PHONEPE_AUTH_URL,
+        data={
+            'client_id': settings.PHONEPE_CLIENT_ID,
+            'client_version': settings.PHONEPE_CLIENT_VERSION,
+            'client_secret': settings.PHONEPE_CLIENT_SECRET,
+            'grant_type': 'client_credentials',
+        },
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        timeout=settings.PHONEPE_REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    token = payload.get('access_token')
+    if not token:
+        raise ValueError('PhonePe auth response did not include access_token.')
+    return token
+
+
+def _phonepe_headers():
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': f'O-Bearer {_phonepe_access_token()}',
+    }
+
+
+def _phonepe_create_checkout(transaction_obj, request):
+    redirect_url = request.build_absolute_uri(
+        reverse('phonepe_payment_return', kwargs={'merchant_order_id': transaction_obj.merchant_order_id})
+    )
+    payload = {
+        'merchantOrderId': transaction_obj.merchant_order_id,
+        'amount': transaction_obj.amount_paise,
+        'expireAfter': 1200,
+        'metaInfo': {
+            'udf1': f'order:{transaction_obj.order_id}',
+            'udf2': transaction_obj.order.user.email[:256],
+        },
+        'paymentFlow': {
+            'type': 'PG_CHECKOUT',
+            'message': f'Payment for Order #{transaction_obj.order_id}',
+            'merchantUrls': {
+                'redirectUrl': redirect_url,
+            },
+        },
+    }
+    response = requests.post(
+        f"{settings.PHONEPE_BASE_URL}/checkout/v2/pay",
+        json=payload,
+        headers=_phonepe_headers(),
+        timeout=settings.PHONEPE_REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    result = response.json()
+    checkout_url = result.get('redirectUrl') or result.get('data', {}).get('redirectUrl')
+    if not checkout_url:
+        raise ValueError('PhonePe create order response did not include redirectUrl.')
+
+    transaction_obj.request_payload = payload
+    transaction_obj.response_payload = result
+    transaction_obj.redirect_url = checkout_url
+    transaction_obj.provider_order_id = result.get('orderId') or result.get('data', {}).get('orderId', '')
+    transaction_obj.provider_state = result.get('state') or result.get('data', {}).get('state', '')
+    transaction_obj.status = PaymentTransaction.Status.PENDING
+    transaction_obj.save(update_fields=[
+        'request_payload',
+        'response_payload',
+        'redirect_url',
+        'provider_order_id',
+        'provider_state',
+        'status',
+        'updated_at',
+    ])
+    return checkout_url
+
+
+def _phonepe_order_status(merchant_order_id):
+    response = requests.get(
+        f"{settings.PHONEPE_BASE_URL}/checkout/v2/order/{merchant_order_id}/status",
+        headers=_phonepe_headers(),
+        timeout=settings.PHONEPE_REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _extract_phonepe_payment_details(payload):
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else payload
+    payment_details = data.get('paymentDetails') or []
+    first_payment = payment_details[0] if payment_details else {}
+    return {
+        'merchant_order_id': data.get('merchantOrderId') or data.get('merchantTransactionId') or '',
+        'provider_order_id': data.get('orderId') or '',
+        'state': data.get('state') or first_payment.get('state') or '',
+        'response_code': data.get('responseCode') or first_payment.get('responseCode') or '',
+        'amount': data.get('amount') or first_payment.get('amount'),
+        'transaction_id': first_payment.get('transactionId') or data.get('transactionId') or '',
+    }
+
+
+def _phonepe_status_to_local(state, response_code=''):
+    normalized_state = (state or '').upper()
+    normalized_code = (response_code or '').upper()
+    if normalized_state == 'COMPLETED' or normalized_code in {'SUCCESS', 'PAYMENT_SUCCESS'}:
+        return PaymentTransaction.Status.SUCCESS, Order.PaymentStatus.PAID, Order.Status.PROCESSING
+    if normalized_state in {'FAILED'} or normalized_code in {'PAYMENT_ERROR', 'PAYMENT_DECLINED', 'AUTHORIZATION_FAILED'}:
+        return PaymentTransaction.Status.FAILED, Order.PaymentStatus.FAILED, Order.Status.CANCELLED
+    if normalized_state in {'CANCELLED', 'CANCELED'} or normalized_code in {'PAYMENT_CANCELLED', 'PAYMENT_CANCELED'}:
+        return PaymentTransaction.Status.CANCELLED, Order.PaymentStatus.CANCELLED, Order.Status.CANCELLED
+    if normalized_state == 'TIMED_OUT' or normalized_code in {'PAYMENT_TIMEOUT', 'TIMED_OUT'}:
+        return PaymentTransaction.Status.TIMEOUT, Order.PaymentStatus.TIMEOUT, Order.Status.CANCELLED
+    return PaymentTransaction.Status.PENDING, Order.PaymentStatus.PENDING, Order.Status.PENDING
+
+
+def _reconcile_phonepe_order(merchant_order_id):
+    with transaction.atomic():
+        payment_txn = (
+            PaymentTransaction.objects.select_for_update()
+            .select_related('order')
+            .get(merchant_order_id=merchant_order_id)
+        )
+
+    status_payload = _phonepe_order_status(merchant_order_id)
+    details = _extract_phonepe_payment_details(status_payload)
+    state = details['state']
+    response_code = details['response_code']
+    provider_amount = details['amount']
+    local_status, order_payment_status, order_status = _phonepe_status_to_local(state, response_code)
+
+    if provider_amount is not None and int(provider_amount) != payment_txn.amount_paise:
+        local_status = PaymentTransaction.Status.FAILED
+        order_payment_status = Order.PaymentStatus.FAILED
+        response_code = response_code or 'AMOUNT_MISMATCH'
+
+    if details['merchant_order_id'] and details['merchant_order_id'] != payment_txn.merchant_order_id:
+        local_status = PaymentTransaction.Status.FAILED
+        order_payment_status = Order.PaymentStatus.FAILED
+        response_code = response_code or 'ORDER_ID_MISMATCH'
+
+    with transaction.atomic():
+        payment_txn = (
+            PaymentTransaction.objects.select_for_update()
+            .select_related('order')
+            .get(pk=payment_txn.pk)
+        )
+        order = payment_txn.order
+        was_paid = order.payment_status == Order.PaymentStatus.PAID
+        was_cod_order = order.payment_method.upper() == 'COD'
+
+        payment_txn.status = local_status
+        payment_txn.provider_state = state
+        payment_txn.response_code = response_code
+        payment_txn.provider_order_id = details['provider_order_id'] or payment_txn.provider_order_id
+        payment_txn.provider_transaction_id = details['transaction_id'] or payment_txn.provider_transaction_id
+        payment_txn.response_payload = status_payload
+        payment_txn.verified_at = timezone.now()
+        payment_txn.save()
+
+        order.phonepe_payment_state = state
+        order.phonepe_response_code = response_code
+        order.phonepe_order_id = payment_txn.provider_order_id
+        order.phonepe_transaction_id = payment_txn.provider_transaction_id
+        if local_status == PaymentTransaction.Status.SUCCESS:
+            order.payment_status = order_payment_status
+            order.payment_method = 'PhonePe'
+            if not was_paid and not was_cod_order:
+                _finalize_paid_order(order)
+            if not was_cod_order or order.status in [Order.Status.PENDING, Order.Status.PROCESSING]:
+                order.status = order_status
+            order.payment_id = payment_txn.provider_transaction_id or payment_txn.provider_order_id
+        elif local_status in [
+            PaymentTransaction.Status.FAILED,
+            PaymentTransaction.Status.CANCELLED,
+            PaymentTransaction.Status.TIMEOUT,
+        ]:
+            if was_cod_order:
+                order.payment_status = Order.PaymentStatus.PENDING
+            else:
+                order.payment_status = order_payment_status
+                order.status = order_status
+            if not was_cod_order and not order.cancelled_at:
+                order.cancelled_at = timezone.now()
+        else:
+            order.payment_status = order_payment_status
+        order.save(update_fields=[
+            'payment_method',
+            'payment_status',
+            'phonepe_payment_state',
+            'phonepe_response_code',
+            'phonepe_order_id',
+            'phonepe_transaction_id',
+            'status',
+            'payment_id',
+            'cancelled_at',
+            'updated_at',
+        ])
+
+    return payment_txn
+
+
+def _phonepe_webhook_authorized(request):
+    expected_user = settings.PHONEPE_WEBHOOK_USERNAME
+    expected_password = settings.PHONEPE_WEBHOOK_PASSWORD
+    if not expected_user or not expected_password:
+        return False
+    header = request.META.get('HTTP_AUTHORIZATION', '')
+    if not header.lower().startswith('basic '):
+        return False
+    try:
+        decoded = base64.b64decode(header.split(' ', 1)[1]).decode('utf-8')
+    except Exception:
+        return False
+    username, separator, password = decoded.partition(':')
+    return bool(separator) and secrets.compare_digest(username, expected_user) and secrets.compare_digest(password, expected_password)
+
+
+def _extract_webhook_merchant_order_id(payload):
+    candidates = [payload]
+    if isinstance(payload.get('payload'), dict):
+        candidates.append(payload['payload'])
+    if isinstance(payload.get('data'), dict):
+        candidates.append(payload['data'])
+    for item in candidates:
+        merchant_order_id = item.get('merchantOrderId') or item.get('merchantTransactionId') or item.get('orderId')
+        if merchant_order_id:
+            return merchant_order_id
+    return ''
+
+
+def _finalize_paid_order(order):
+    if order.coupon_id:
+        order.coupon.used_count += 1
+        order.coupon.save(update_fields=['used_count'])
+
+    for item in order.items.select_related('product'):
+        prod = item.product
+        if not prod:
+            continue
+        prod.stock -= item.quantity
+        if prod.stock <= 0:
+            prod.status = Product.Status.OUT_OF_STOCK
+        prod.save()
+
+    send_order_status_email(order, 'placed')
+
+
+def _discard_unpaid_phonepe_order(order):
+    if order.payment_method.lower() != 'phonepe' or order.payment_status == Order.PaymentStatus.PAID:
+        return False
+    order.delete()
+    return True
+
+
+def _order_can_pay_online_before_delivery(order):
+    return (
+        order.payment_method.upper() == 'COD'
+        and order.payment_status != Order.PaymentStatus.PAID
+        and order.status in [Order.Status.PENDING, Order.Status.PROCESSING, Order.Status.SHIPPED]
+        and not order.cancel_requested
+    )
+
+
+def _customer_visible_orders(user):
+    return (
+        Order.objects.filter(user=user)
+        .exclude(
+            payment_method='PhonePe',
+            payment_status__in=[
+                Order.PaymentStatus.PENDING,
+                Order.PaymentStatus.FAILED,
+                Order.PaymentStatus.CANCELLED,
+                Order.PaymentStatus.TIMEOUT,
+            ],
+        )
+    )
+
+
+def _create_order_from_checkout(request, cart, data, totals, calculation, applied_coupon):
+    payment_method = data.get('payment_method', 'PhonePe').strip() or 'PhonePe'
+    is_phonepe = payment_method.lower() in {'phonepe', 'online', 'card', 'upi'}
+    is_cod = payment_method.upper() == 'COD'
+    cod_extra_charge = money(totals.get('cod_extra_charge', 0)) if is_cod else money(0)
+    merchant_order_id = f"ORD-{uuid.uuid4().hex[:24].upper()}" if is_phonepe else ''
+    payment_status = Order.PaymentStatus.PENDING
+    order_status = Order.Status.PENDING
+
+    order = Order.objects.create(
+        user=request.user,
+        full_name=data['full_name'],
+        phone=data['phone'],
+        country=data['country'],
+        state=data['state'],
+        city=data['city'],
+        county=data['county'],
+        street_address=data['street_address'],
+        postal_code=data['postal_code'],
+        subtotal=totals['subtotal'],
+        delivery_fee=totals['shipping'],
+        cod_extra_charge=cod_extra_charge,
+        discount=totals['coupon_discount'],
+        taxable_amount=totals['taxable_amount'],
+        gst_amount=totals['gst_amount'],
+        cgst_amount=totals['cgst_amount'],
+        sgst_amount=totals['sgst_amount'],
+        igst_amount=totals['igst_amount'],
+        tax_type=totals['tax_type'],
+        gst_enabled_snapshot=totals['gst_enabled'],
+        seller_state_snapshot=totals['seller_state'],
+        coupon=applied_coupon,
+        coupon_code=applied_coupon.code if applied_coupon else '',
+        total=money(totals['grand_total'] + cod_extra_charge),
+        status=order_status,
+        payment_method='PhonePe' if is_phonepe else payment_method,
+        payment_status=payment_status,
+        phonepe_merchant_order_id=merchant_order_id,
+    )
+
+    if applied_coupon and not is_phonepe:
+        applied_coupon.used_count += 1
+        applied_coupon.save(update_fields=['used_count'])
+        request.session.pop('applied_coupon_id', None)
+
+    for item in calculation['items']:
+        prod = item['product']
+        qty = item['quantity']
+        OrderItem.objects.create(
+            order=order,
+            product=prod,
+            product_name=prod.name,
+            price=item['unit_price'],
+            quantity=qty,
+            taxable_amount=item['taxable_amount'],
+            gst_percentage=item['gst_percentage'],
+            gst_amount=item['gst_amount'],
+            cgst_amount=item['cgst_amount'],
+            sgst_amount=item['sgst_amount'],
+            igst_amount=item['igst_amount'],
+            hsn_sac_code=item['hsn_sac_code'],
+            final_amount=item['final_amount'],
+        )
+        if not is_phonepe:
+            prod.stock -= qty
+            if prod.stock <= 0:
+                prod.status = Product.Status.OUT_OF_STOCK
+            prod.save()
+
+    return order, is_phonepe
 
 
 @require_POST
@@ -965,14 +1371,16 @@ def place_order(request):
         county = data.get('county', '').strip()
         street_address = data.get('street_address', '').strip()
         postal_code = data.get('postal_code', '').strip()
-        
-        payment_method = data.get('payment_method', 'Card').strip()
-        payment_id = data.get('payment_id', '').strip()
+        payment_method = data.get('payment_method', 'PhonePe').strip() or 'PhonePe'
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid checkout data.'}, status=400)
         
     if not (full_name and phone and country and state and city and street_address and postal_code):
         return JsonResponse({'success': False, 'message': 'Please fill all required address fields.'}, status=400)
+    if payment_method.upper() == 'COD' and not _cod_enabled():
+        return JsonResponse({'success': False, 'message': 'Cash on Delivery is currently unavailable.'}, status=400)
+    if payment_method.lower() in {'phonepe', 'online', 'card', 'upi'} and not _phonepe_enabled():
+        return JsonResponse({'success': False, 'message': 'PhonePe sandbox credentials are not configured.'}, status=503)
         
     # Re-verify delivery availability and calculate fee securely
     matching_zone = None
@@ -1027,71 +1435,61 @@ def place_order(request):
         shipping=delivery_fee,
     )
     totals = calculation['totals']
-    
-    payment_status = Order.PaymentStatus.PAID if payment_method == 'Card' else Order.PaymentStatus.PENDING
+    if payment_method.upper() == 'COD':
+        totals['cod_extra_charge'] = _cod_extra_charge()
 
-    # Create the Order
-    order = Order.objects.create(
-        user=request.user,
-        full_name=full_name,
-        phone=phone,
-        country=country,
-        state=state,
-        city=city,
-        county=county,
-        street_address=street_address,
-        postal_code=postal_code,
-        subtotal=totals['subtotal'],
-        delivery_fee=totals['shipping'],
-        discount=totals['coupon_discount'],
-        taxable_amount=totals['taxable_amount'],
-        gst_amount=totals['gst_amount'],
-        cgst_amount=totals['cgst_amount'],
-        sgst_amount=totals['sgst_amount'],
-        igst_amount=totals['igst_amount'],
-        tax_type=totals['tax_type'],
-        gst_enabled_snapshot=totals['gst_enabled'],
-        seller_state_snapshot=totals['seller_state'],
-        coupon=applied_coupon,
-        coupon_code=applied_coupon.code if applied_coupon else '',
-        total=totals['grand_total'],
-        status=Order.Status.PROCESSING if payment_method == 'Card' else Order.Status.PENDING,
-        payment_method=payment_method,
-        payment_status=payment_status,
-        payment_id=payment_id
-    )
+    checkout_data = {
+        'full_name': full_name,
+        'phone': phone,
+        'country': country,
+        'state': state,
+        'city': city,
+        'county': county,
+        'street_address': street_address,
+        'postal_code': postal_code,
+        'payment_method': payment_method,
+    }
 
-    if applied_coupon:
-        applied_coupon.used_count += 1
-        applied_coupon.save(update_fields=['used_count'])
-        request.session.pop('applied_coupon_id', None)
-
-    
-    # Create order items and deduct stock
-    for item in calculation['items']:
-        prod = item['product']
-        qty = item['quantity']
-        OrderItem.objects.create(
-            order=order,
-            product=prod,
-            product_name=prod.name,
-            price=item['unit_price'],
-            quantity=qty,
-            taxable_amount=item['taxable_amount'],
-            gst_percentage=item['gst_percentage'],
-            gst_amount=item['gst_amount'],
-            cgst_amount=item['cgst_amount'],
-            sgst_amount=item['sgst_amount'],
-            igst_amount=item['igst_amount'],
-            hsn_sac_code=item['hsn_sac_code'],
-            final_amount=item['final_amount'],
+    with transaction.atomic():
+        order, is_phonepe = _create_order_from_checkout(
+            request,
+            cart,
+            checkout_data,
+            totals,
+            calculation,
+            applied_coupon,
         )
-        prod.stock -= qty
-        if prod.stock <= 0:
-            prod.status = Product.Status.OUT_OF_STOCK
-        prod.save()
-        
-    # Clear the cart session
+        payment_txn = None
+        if is_phonepe:
+            payment_txn = PaymentTransaction.objects.create(
+                order=order,
+                merchant_order_id=order.phonepe_merchant_order_id,
+                amount_paise=_money_to_paise(order.total),
+            )
+
+    if is_phonepe:
+        try:
+            redirect_url = _phonepe_create_checkout(payment_txn, request)
+        except Exception as exc:
+            payment_txn.status = PaymentTransaction.Status.FAILED
+            payment_txn.response_code = 'CREATE_ORDER_FAILED'
+            payment_txn.response_payload = {'error': str(exc)}
+            payment_txn.save(update_fields=['status', 'response_code', 'response_payload', 'updated_at'])
+            order.payment_status = Order.PaymentStatus.FAILED
+            order.phonepe_response_code = 'CREATE_ORDER_FAILED'
+            order.save(update_fields=['payment_status', 'phonepe_response_code', 'updated_at'])
+            _discard_unpaid_phonepe_order(order)
+            return JsonResponse({'success': False, 'message': 'Could not start PhonePe payment. Please try again.'}, status=502)
+
+        request.session['pending_phonepe_order_id'] = order.id
+        return JsonResponse({
+            'success': True,
+            'message': 'Redirecting to PhonePe checkout.',
+            'order_id': order.id,
+            'redirect_url': redirect_url,
+            'merchant_order_id': payment_txn.merchant_order_id,
+        })
+
     request.session['cart'] = {}
 
     # Send Order Placed Email to customer
@@ -1112,12 +1510,219 @@ def order_success(request, order_id):
     return render(request, 'shop/order_success.html', {'order': order})
 
 
+def phonepe_payment_return(request, merchant_order_id):
+    if not request.user.is_authenticated:
+        return redirect('/?login_required=1')
+
+    payment_txn = get_object_or_404(
+        PaymentTransaction.objects.select_related('order'),
+        merchant_order_id=merchant_order_id,
+        order__user=request.user,
+    )
+    try:
+        payment_txn = _reconcile_phonepe_order(merchant_order_id)
+    except Exception:
+        payment_txn.order.phonepe_response_code = payment_txn.order.phonepe_response_code or 'VERIFY_FAILED'
+        payment_txn.order.save(update_fields=['phonepe_response_code', 'updated_at'])
+    else:
+        if payment_txn.order.payment_status == Order.PaymentStatus.PAID:
+            if request.session.get('pending_phonepe_order_id') == payment_txn.order_id:
+                request.session['cart'] = {}
+                request.session.pop('applied_coupon_id', None)
+                request.session.pop('pending_phonepe_order_id', None)
+        else:
+            if payment_txn.order.payment_method.upper() == 'COD':
+                return redirect('profile_page')
+            _discard_unpaid_phonepe_order(payment_txn.order)
+            request.session.pop('pending_phonepe_order_id', None)
+            return redirect('/checkout/')
+
+    return redirect('order_success', order_id=payment_txn.order_id)
+
+
+def phonepe_payment_retry(request, order_id):
+    if not request.user.is_authenticated:
+        return redirect('/?login_required=1')
+    if not _phonepe_enabled():
+        return redirect('order_success', order_id=order_id)
+
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if order.payment_status == Order.PaymentStatus.PAID:
+        return redirect('order_success', order_id=order.id)
+
+    existing = (
+        order.payment_transactions
+        .filter(status__in=[PaymentTransaction.Status.INITIATED, PaymentTransaction.Status.PENDING])
+        .order_by('-created_at')
+        .first()
+    )
+    if existing and existing.redirect_url:
+        return redirect(existing.redirect_url)
+
+    merchant_order_id = f"ORD-{uuid.uuid4().hex[:24].upper()}"
+    order.phonepe_merchant_order_id = merchant_order_id
+    order.payment_method = 'PhonePe'
+    order.payment_status = Order.PaymentStatus.PENDING
+    order.status = Order.Status.PENDING
+    order.cancelled_at = None
+    order.phonepe_payment_state = ''
+    order.phonepe_response_code = ''
+    order.save(update_fields=[
+        'phonepe_merchant_order_id',
+        'payment_method',
+        'payment_status',
+        'status',
+        'cancelled_at',
+        'phonepe_payment_state',
+        'phonepe_response_code',
+        'updated_at',
+    ])
+    payment_txn = PaymentTransaction.objects.create(
+        order=order,
+        merchant_order_id=merchant_order_id,
+        amount_paise=_money_to_paise(order.total),
+    )
+    try:
+        redirect_url = _phonepe_create_checkout(payment_txn, request)
+    except Exception:
+        payment_txn.status = PaymentTransaction.Status.FAILED
+        payment_txn.response_code = 'CREATE_ORDER_FAILED'
+        payment_txn.save(update_fields=['status', 'response_code', 'updated_at'])
+        order.payment_status = Order.PaymentStatus.FAILED
+        order.phonepe_response_code = 'CREATE_ORDER_FAILED'
+        order.save(update_fields=['payment_status', 'phonepe_response_code', 'updated_at'])
+        return redirect('order_success', order_id=order.id)
+
+    return redirect(redirect_url)
+
+
+def cod_pay_online(request, order_id):
+    if not request.user.is_authenticated:
+        return redirect('/?login_required=1')
+    if not _phonepe_enabled():
+        return redirect('profile_page')
+
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if not _order_can_pay_online_before_delivery(order):
+        return redirect('profile_page')
+
+    existing = (
+        order.payment_transactions
+        .filter(status__in=[PaymentTransaction.Status.INITIATED, PaymentTransaction.Status.PENDING])
+        .order_by('-created_at')
+        .first()
+    )
+    if existing and existing.redirect_url:
+        return redirect(existing.redirect_url)
+
+    merchant_order_id = f"ORD-{uuid.uuid4().hex[:24].upper()}"
+    order.phonepe_merchant_order_id = merchant_order_id
+    order.phonepe_payment_state = ''
+    order.phonepe_response_code = ''
+    order.save(update_fields=[
+        'phonepe_merchant_order_id',
+        'phonepe_payment_state',
+        'phonepe_response_code',
+        'updated_at',
+    ])
+    payment_txn = PaymentTransaction.objects.create(
+        order=order,
+        merchant_order_id=merchant_order_id,
+        amount_paise=_money_to_paise(order.total),
+    )
+    try:
+        redirect_url = _phonepe_create_checkout(payment_txn, request)
+    except Exception:
+        payment_txn.status = PaymentTransaction.Status.FAILED
+        payment_txn.response_code = 'CREATE_ORDER_FAILED'
+        payment_txn.save(update_fields=['status', 'response_code', 'updated_at'])
+        order.phonepe_response_code = 'CREATE_ORDER_FAILED'
+        order.save(update_fields=['phonepe_response_code', 'updated_at'])
+        return redirect('profile_page')
+
+    return redirect(redirect_url)
+
+
+@require_POST
+def phonepe_payment_status(request, order_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if not order.phonepe_merchant_order_id:
+        return JsonResponse({'success': False, 'message': 'This order does not have a PhonePe payment.'}, status=400)
+
+    try:
+        payment_txn = _reconcile_phonepe_order(order.phonepe_merchant_order_id)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Unable to verify PhonePe status right now.'}, status=502)
+
+    return JsonResponse({
+        'success': True,
+        'order_id': order.id,
+        'payment_status': payment_txn.order.payment_status,
+        'phonepe_state': payment_txn.provider_state,
+        'transaction_id': payment_txn.provider_transaction_id,
+    })
+
+
+@csrf_exempt
+@require_POST
+def phonepe_webhook(request):
+    if not _phonepe_webhook_authorized(request):
+        return JsonResponse({'success': False, 'message': 'Unauthorized webhook.'}, status=401)
+
+    raw_body = request.body or b''
+    payload_hash = hashlib.sha256(raw_body).hexdigest()
+    try:
+        payload = json.loads(raw_body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid webhook JSON.'}, status=400)
+
+    merchant_order_id = _extract_webhook_merchant_order_id(payload)
+    event_id = str(payload.get('eventId') or payload.get('event') or payload.get('transactionId') or '')
+    try:
+        webhook_event = PaymentWebhookEvent.objects.create(
+            event_id=event_id,
+            payload_hash=payload_hash,
+            merchant_order_id=merchant_order_id,
+            payload=payload,
+        )
+    except IntegrityError:
+        return JsonResponse({'success': True, 'message': 'Duplicate webhook ignored.'})
+
+    if not merchant_order_id:
+        webhook_event.processed = True
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=['processed', 'processed_at'])
+        return JsonResponse({'success': True, 'message': 'Webhook received without merchant order ID.'})
+
+    payment_txn = PaymentTransaction.objects.filter(merchant_order_id=merchant_order_id).first()
+    webhook_event.transaction = payment_txn
+    webhook_event.save(update_fields=['transaction'])
+    if not payment_txn:
+        webhook_event.processed = True
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=['processed', 'processed_at'])
+        return JsonResponse({'success': True, 'message': 'Webhook received for unknown order.'})
+
+    _reconcile_phonepe_order(merchant_order_id)
+    webhook_event.processed = True
+    webhook_event.processed_at = timezone.now()
+    webhook_event.save(update_fields=['processed', 'processed_at'])
+    return JsonResponse({'success': True})
+
+
 def profile_page(request):
     if not request.user.is_authenticated:
         return redirect('/?login_required=1')
         
     profile, created = UserProfile.objects.get_or_create(user=request.user)
-    orders = Order.objects.filter(user=request.user).prefetch_related('items', 'items__product', 'items__product__images').order_by('-created_at')
+    orders = (
+        _customer_visible_orders(request.user)
+        .prefetch_related('items', 'items__product', 'items__product__images')
+        .order_by('-created_at')
+    )
     
     return render(request, 'shop/profile.html', {
         'profile': profile,
@@ -1209,7 +1814,7 @@ def cancel_order(request, order_id):
     send_order_status_email(order, 'cancelled')
 
     # Refund message for Online / Card payment
-    is_online_payment = order.payment_method.lower() in ['card', 'online', 'upi', 'netbanking', 'credit_card', 'debit_card']
+    is_online_payment = order.payment_method.lower() in ['phonepe', 'card', 'online', 'upi', 'netbanking', 'credit_card', 'debit_card']
     if is_online_payment:
         refund_notice = f"Your order #{order.id} has been cancelled. Since you paid via {order.payment_method}, your refund of ₹{order.total} will be processed within 2 to 5 working days."
     else:
