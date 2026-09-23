@@ -1,4 +1,4 @@
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
   <div class="sidebar-brand">
     <div class="brand-logo"><i class="ri-store-2-line"></i></div>
     <div>
@@ -50,11 +50,15 @@
     </a>
     <a href="{% url 'admin_popups' %}" class="nav-item{% if active_nav == 'popups' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-image-2-line"></i></span> Promo Popups
-      {% if active_popup_count %}<span class="nav-badge" style="background:#27ae60;">{{ active_popup_count }}</span>{% endif %}
+      {% if active_popup_count %}<span class="nav-badge success">{{ active_popup_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_home_sections' %}" class="nav-item{% if active_nav == 'home_sections' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-layout-grid-line"></i></span> Homepage Lists
       {% if section_count %}<span class="nav-badge">{{ section_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'admin_news_tickers' %}" class="nav-item{% if active_nav == 'news_tickers' %} active{% endif %}">
+      <span class="nav-icon"><i class="ri-megaphone-line"></i></span> News Ticker
+      {% if active_ticker_count %}<span class="nav-badge success">{{ active_ticker_count }}</span>{% endif %}
     </a>
     <a href="{% url 'admin_subscriptions' %}" class="nav-item{% if active_nav == 'subscriptions' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-mail-line"></i></span> Newsletter Emails
@@ -65,7 +69,7 @@
     </a>
     <a href="{% url 'admin_messages' %}" class="nav-item{% if active_nav == 'messages' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-chat-3-line"></i></span> Customer Messages
-      {% if unread_count %}<span class="nav-badge" style="background:#e74c3c;">{{ unread_count }}</span>{% endif %}
+      {% if unread_count %}<span class="nav-badge danger">{{ unread_count }}</span>{% endif %}
     </a>
   </div>
 

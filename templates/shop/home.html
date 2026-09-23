@@ -4,6 +4,22 @@
 {% block body_class %}home-page{% endblock %}
 
 {% block content %}
+    {% if news_tickers %}
+        <section class="home-news-ticker" aria-label="Store news">
+            <div class="home-news-ticker__viewport">
+                <div class="home-news-ticker__track">
+                    {% for ticker in news_tickers %}
+                        {% if ticker.link_url %}
+                            <a class="home-news-ticker__item" href="{{ ticker.link_url }}">{{ ticker.message }}</a>
+                        {% else %}
+                            <span class="home-news-ticker__item">{{ ticker.message }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
     <main>
         <section class="hero-carousel" aria-label="Featured collections">
             <div class="hero-track" data-carousel-track>

@@ -25,6 +25,7 @@ from .models import (
     CarouselItem,
     Category,
     CategoryTag,
+    HomeNewsTicker,
     HomeSection,
     GSTConfig,
     GSTRate,
@@ -628,6 +629,142 @@ def admin_home_sections(request):
         'active_nav': 'home_sections',
         'section_count': HomeSection.objects.count(),
     })
+
+
+@admin_login_required
+def admin_news_tickers(request):
+    search = request.GET.get('search', '').strip()
+    tickers = HomeNewsTicker.objects.all().order_by('display_order', 'id')
+    if search:
+        tickers = tickers.filter(message__icontains=search)
+    tickers = list(tickers)
+    product_slugs = [
+        ticker.link_url.strip('/').split('/')[-1]
+        for ticker in tickers
+        if ticker.link_url.startswith('/products/') and ticker.link_url.endswith('/')
+    ]
+    products_by_slug = {
+        product.slug: product.name
+        for product in Product.objects.filter(slug__in=product_slugs)
+    }
+    for ticker in tickers:
+        ticker.target_product_name = ''
+        if ticker.link_url.startswith('/products/') and ticker.link_url.endswith('/'):
+            ticker.target_product_name = products_by_slug.get(ticker.link_url.strip('/').split('/')[-1], '')
+    return render(request, 'adminpanel/news_tickers.html', {
+        'tickers': tickers,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'news_tickers',
+        'ticker_count': HomeNewsTicker.objects.count(),
+        'active_ticker_count': HomeNewsTicker.objects.filter(is_active=True).count(),
+        'filter_search': search,
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def add_news_ticker(request):
+    if request.method == 'POST':
+        message_text = request.POST.get('message', '').strip()
+        link_url = request.POST.get('link_url', '').strip()
+        is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+
+        if not message_text:
+            messages.error(request, 'Ticker message is required.')
+            return redirect('add_news_ticker')
+
+        next_order = (HomeNewsTicker.objects.order_by('-display_order').values_list('display_order', flat=True).first() or 0) + 10
+        HomeNewsTicker.objects.create(
+            message=message_text,
+            link_url=link_url,
+            display_order=next_order,
+            is_active=is_active,
+        )
+        messages.success(request, 'News ticker created.')
+        return redirect('admin_news_tickers')
+
+    return render(request, 'adminpanel/news_ticker_form.html', {
+        'form_title': 'Add News Ticker',
+        'submit_text': 'Create Ticker',
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'news_tickers',
+        'products': Product.objects.filter(status=Product.Status.AVAILABLE).order_by('name'),
+    })
+
+
+@admin_login_required
+@require_http_methods(['GET', 'POST'])
+def edit_news_ticker(request, pk):
+    ticker = get_object_or_404(HomeNewsTicker, pk=pk)
+    if request.method == 'POST':
+        message_text = request.POST.get('message', '').strip()
+        link_url = request.POST.get('link_url', '').strip()
+        is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == '1'
+
+        if not message_text:
+            messages.error(request, 'Ticker message is required.')
+            return redirect('edit_news_ticker', pk=pk)
+
+        ticker.message = message_text
+        ticker.link_url = link_url
+        ticker.is_active = is_active
+        ticker.save()
+        messages.success(request, 'News ticker updated.')
+        return redirect('admin_news_tickers')
+
+    selected_product = None
+    product_slug = ''
+    if ticker.link_url.startswith('/products/') and ticker.link_url.endswith('/'):
+        product_slug = ticker.link_url.strip('/').split('/')[-1]
+        selected_product = Product.objects.filter(slug=product_slug).first()
+
+    return render(request, 'adminpanel/news_ticker_form.html', {
+        'ticker': ticker,
+        'form_title': 'Edit News Ticker',
+        'submit_text': 'Save Changes',
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'news_tickers',
+        'products': Product.objects.filter(status=Product.Status.AVAILABLE).order_by('name'),
+        'selected_product': selected_product,
+    })
+
+
+@admin_login_required
+@require_POST
+def delete_news_ticker(request, pk):
+    ticker = get_object_or_404(HomeNewsTicker, pk=pk)
+    ticker.delete()
+    messages.success(request, 'News ticker deleted.')
+    return redirect('admin_news_tickers')
+
+
+@admin_login_required
+@require_POST
+def toggle_news_ticker(request, pk):
+    ticker = get_object_or_404(HomeNewsTicker, pk=pk)
+    ticker.is_active = not ticker.is_active
+    ticker.save(update_fields=['is_active', 'updated_at'])
+    messages.success(request, f"News ticker {'enabled' if ticker.is_active else 'disabled'}.")
+    return redirect('admin_news_tickers')
+
+
+@admin_login_required
+@require_POST
+def move_news_ticker(request, pk, direction):
+    ticker = get_object_or_404(HomeNewsTicker, pk=pk)
+    ordered = list(HomeNewsTicker.objects.order_by('display_order', 'id'))
+    index = next((idx for idx, item in enumerate(ordered) if item.pk == ticker.pk), None)
+    if index is None:
+        return redirect('admin_news_tickers')
+
+    swap_index = index - 1 if direction == 'up' else index + 1
+    if 0 <= swap_index < len(ordered):
+        other = ordered[swap_index]
+        ticker.display_order, other.display_order = other.display_order, ticker.display_order
+        ticker.save(update_fields=['display_order', 'updated_at'])
+        other.save(update_fields=['display_order', 'updated_at'])
+        messages.success(request, 'Ticker order updated.')
+    return redirect('admin_news_tickers')
 
 
 @admin_login_required

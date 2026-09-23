@@ -48,7 +48,7 @@
     margin-bottom: 6px;
   }
   .report-range-value {
-    color: #ffffff;
+    color: var(--text);
     font-size: 15px;
     font-weight: 700;
   }
@@ -70,7 +70,7 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 3px;
-    background: var(--card-color, #64748b);
+    background: var(--card-color, var(--border));
   }
   .summary-label {
     color: var(--muted);
@@ -82,28 +82,28 @@
   .summary-value {
     font-size: 24px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text);
   }
   .summary-note {
     color: var(--muted);
     font-size: 12px;
     margin-top: 6px;
   }
-  .summary-card.good { --card-color: #22c55e; }
-  .summary-card.bad { --card-color: #ef4444; }
-  .summary-card.warn { --card-color: #f59e0b; }
-  .summary-card.info { --card-color: #38bdf8; }
-  .summary-card.good .summary-value { color: #86efac; }
-  .summary-card.bad .summary-value { color: #fca5a5; }
-  .summary-card.warn .summary-value { color: #fcd34d; }
-  .summary-card.info .summary-value { color: #7dd3fc; }
+  .summary-card.good { --card-color: var(--success); }
+  .summary-card.bad { --card-color: var(--danger); }
+  .summary-card.warn { --card-color: var(--warning); }
+  .summary-card.info { --card-color: var(--info); }
+  .summary-card.good .summary-value { color: var(--success); }
+  .summary-card.bad .summary-value { color: var(--danger); }
+  .summary-card.warn .summary-value { color: var(--warning); }
+  .summary-card.info .summary-value { color: var(--info); }
   .section-title {
     display: flex;
     align-items: center;
     gap: 8px;
   }
   .section-title i {
-    color: var(--accent);
+    color: var(--primary);
     font-size: 18px;
   }
   .filter-actions {
@@ -112,9 +112,9 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  .money-good { color: #86efac; font-weight: 700; }
-  .money-bad { color: #fca5a5; font-weight: 700; }
-  .money-muted { color: #cbd5e1; font-weight: 600; }
+  .money-good { color: var(--success); font-weight: 700; }
+  .money-bad { color: var(--danger); font-weight: 700; }
+  .money-muted { color: var(--text-muted); font-weight: 600; }
   .period-hint {
     color: var(--muted);
     font-size: 12px;
@@ -137,15 +137,15 @@
     color: var(--text);
     text-decoration: none;
     border: 1px solid var(--border);
-    background: var(--surface2);
+    background: var(--surface-2);
     padding: 7px 10px;
     border-radius: 8px;
     font-size: 13px;
   }
   .page-link.current {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--on-primary);
   }
   .revenue-table th {
     white-space: nowrap;
@@ -164,19 +164,19 @@
     border: 1px solid transparent;
   }
   .status-pill.sale {
-    color: #bbf7d0;
-    background: rgba(34, 197, 94, .12);
-    border-color: rgba(34, 197, 94, .28);
+    color: var(--success);
+    background: var(--success-soft);
+    border-color: var(--success);
   }
   .status-pill.pending {
-    color: #fde68a;
-    background: rgba(245, 158, 11, .12);
-    border-color: rgba(245, 158, 11, .28);
+    color: var(--warning);
+    background: var(--warning-soft);
+    border-color: var(--warning);
   }
   .status-pill.loss {
-    color: #fecaca;
-    background: rgba(239, 68, 68, .12);
-    border-color: rgba(239, 68, 68, .28);
+    color: var(--danger);
+    background: var(--danger-soft);
+    border-color: var(--danger);
   }
   .amount-stack {
     display: grid;
@@ -196,30 +196,33 @@
     gap: 5px;
   }
   .date-field label {
-    color: #cbd5e1;
+    color: var(--text-muted);
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .4px;
   }
   .filters input[type="date"] {
-    color-scheme: dark;
-    color: #f8fafc;
+    color-scheme: light dark;
+    color: var(--text);
     background: var(--inp);
     border-color: var(--border);
     min-width: 150px;
   }
   .filters input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: brightness(0) invert(1);
+    filter: none;
     opacity: 1;
     cursor: pointer;
   }
   .filters input[type="date"]:disabled {
     opacity: 1;
-    color: #f8fafc;
+    color: var(--text-muted);
     background: var(--inp);
     border-color: var(--border);
     cursor: not-allowed;
+  }
+  [data-theme="dark"] .filters input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: brightness(0) invert(1);
   }
   .filters .filter-actions .btn-sm {
     min-height: 38px;

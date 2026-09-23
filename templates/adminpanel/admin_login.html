@@ -1,89 +1,78 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Login</title>
-  <link rel="stylesheet" href="{% static 'adminpanel/css/theme.css' %}"/>
-  <link rel="stylesheet" href="{% static 'adminpanel/css/auth.css' %}"/>
-</head>
-<body class="auth-page">
+{% extends 'adminpanel/base.html' %}
 
-<div class="auth-glow"></div>
+{% block title %}Admin Login{% endblock %}
+{% block body_class %}auth-page{% endblock %}
 
-<div class="auth-card">
-  <div class="auth-brand">
-    <div class="auth-logo">🛡️</div>
-    <div>
-      <h1>Admin Control Panel</h1>
-      <p>Restricted — Authorised Personnel Only</p>
-    </div>
-  </div>
-
-  <div class="status-pill">
-    <div class="pulse"></div>
-    API verification active
-  </div>
-
-  <h2>Sign in</h2>
-  <p class="auth-sub">Your session is protected by server-side<br>HTTP header token verification.</p>
-
-  {% if messages %}
-    {% for msg in messages %}
-      <div class="alert {% if 'error' in msg.tags %}err{% else %}warn{% endif %}">
-        <span class="alert-icon">{% if 'error' in msg.tags %}⛔{% else %}⚠️{% endif %}</span>
-        {{ msg }}
-      </div>
-    {% endfor %}
-  {% endif %}
-
-  {% if locked %}
-    <div class="alert warn">
-      <span class="alert-icon">🔒</span>
-      Account temporarily locked. Please try again in 15 minutes.
-    </div>
-  {% endif %}
-
-  <form method="POST" action="{% url 'admin_login' %}" autocomplete="off" novalidate>
-    {% csrf_token %}
-    <div class="field">
-      <label for="id_username">Username</label>
-      <div class="inp-wrap">
-        <span class="inp-icon">👤</span>
-        <input type="text" id="id_username" name="username" placeholder="Enter your username" required autofocus autocomplete="off"/>
+{% block layout %}
+<main class="auth-shell">
+  <section class="auth-card" aria-labelledby="admin-login-title">
+    <div class="auth-brand">
+      <div class="auth-logo"><i class="ri-shield-keyhole-line"></i></div>
+      <div>
+        <h1>Store Admin</h1>
+        <p>Restricted access</p>
       </div>
     </div>
-    <div class="field">
-      <label for="id_password">Password</label>
-      <div class="inp-wrap">
-        <span class="inp-icon">🔑</span>
-        <input type="password" id="id_password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
-        <button type="button" class="eye-btn" id="eye" aria-label="Toggle password visibility">👁</button>
-      </div>
+
+    <div class="status-pill">
+      <span class="pulse"></span>
+      API verification active
     </div>
-    <button type="submit" class="btn-auth">
-      <span>🚀</span> Sign in to Panel
-    </button>
-  </form>
 
-  <hr class="auth-divider"/>
-  <p class="auth-foot">
-    No account? <strong>Contact your system administrator.</strong><br>
-    Self-registration is permanently disabled.
-  </p>
-  <div class="shield-badge">
-    <span>🔐</span> Verified via HTTP Header
-  </div>
-</div>
+    <h2 id="admin-login-title">Sign in</h2>
+    <p class="auth-sub">Use your administrator credentials to continue.</p>
 
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert {% if 'error' in msg.tags %}err{% elif 'warning' in msg.tags %}warn{% else %}info{% endif %}">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if locked %}
+      <div class="alert warn">Account temporarily locked. Please try again in 15 minutes.</div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'admin_login' %}" autocomplete="off" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_username">Username</label>
+        <div class="inp-wrap">
+          <span class="inp-icon"><i class="ri-user-line"></i></span>
+          <input type="text" id="id_username" name="username" placeholder="Enter your username" required autofocus autocomplete="off"/>
+        </div>
+      </div>
+      <div class="field">
+        <label for="id_password">Password</label>
+        <div class="inp-wrap">
+          <span class="inp-icon"><i class="ri-lock-password-line"></i></span>
+          <input type="password" id="id_password" name="password" placeholder="Enter your password" required autocomplete="current-password"/>
+          <button type="button" class="eye-btn" id="eye" aria-label="Toggle password visibility">
+            <i class="ri-eye-line"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn-auth">
+        <i class="ri-login-circle-line"></i>
+        Sign in
+      </button>
+    </form>
+
+    <hr class="auth-divider"/>
+    <p class="auth-foot">Self-registration is disabled. Contact your system administrator for access.</p>
+  </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-  document.getElementById('eye').addEventListener('click', function() {
-    var p = document.getElementById('id_password');
-    var show = p.type === 'password';
-    p.type = show ? 'text' : 'password';
-    this.textContent = show ? '🙈' : '👁';
+  document.getElementById('eye')?.addEventListener('click', function () {
+    var password = document.getElementById('id_password');
+    var icon = this.querySelector('i');
+    var show = password.type === 'password';
+    password.type = show ? 'text' : 'password';
+    icon.className = show ? 'ri-eye-off-line' : 'ri-eye-line';
   });
 </script>
-</body>
-</html>
+{% endblock %}

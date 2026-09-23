@@ -1,15 +1,31 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}Admin{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'adminpanel/css/theme.css' %}"/>
+  <script>
+    (function () {
+      var saved = localStorage.getItem('admin-theme');
+      var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = saved || (systemDark ? 'dark' : 'light');
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="{% static 'css/admin.css' %}"/>
   {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/admin-compat.css' %}"/>
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+{% block layout %}
+<button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open menu" aria-controls="adminSidebar" aria-expanded="false">
+  <i class="ri-menu-line"></i>
+</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
 {% include 'adminpanel/includes/sidebar.html' %}
 
@@ -27,20 +43,24 @@
         </span>
       </a>
       {% block topbar_right %}{% endblock %}
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
+        <i class="ri-sun-line theme-toggle-sun"></i>
+        <i class="ri-moon-line theme-toggle-moon"></i>
+      </button>
     </div>
     {% endblock %}
   </div>
 
-  <div class="content">
+  <main class="content">
     {% if messages %}
       {% for msg in messages %}
-        <div class="alert {% if 'error' in msg.tags %}err{% else %}succ{% endif %}">
-          {% if 'error' in msg.tags %}Error:{% else %}Success:{% endif %} {{ msg }}
+        <div class="alert {% if 'error' in msg.tags %}err{% elif 'warning' in msg.tags %}warn{% elif 'info' in msg.tags %}info{% else %}succ{% endif %}">
+          {% if 'error' in msg.tags %}Error:{% elif 'warning' in msg.tags %}Warning:{% elif 'info' in msg.tags %}Info:{% else %}Success:{% endif %} {{ msg }}
         </div>
       {% endfor %}
     {% endif %}
     {% block content %}{% endblock %}
-  </div>
+  </main>
 
   {% block footer_bar %}{% endblock %}
 </div>
@@ -59,9 +79,10 @@
     <a href="{% url 'admin_orders' %}" class="order-popup-action" id="adminOrderPopupAction">View Orders</a>
   </div>
 </div>
+{% endblock %}
 
 <script src="{% static 'adminpanel/js/api.js' %}"></script>
-<script src="{% static 'adminpanel/js/theme.js' %}"></script>
+<script src="{% static 'js/theme.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

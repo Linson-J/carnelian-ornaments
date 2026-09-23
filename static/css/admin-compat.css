@@ -1,0 +1,169 @@
+/* Compatibility fixes for older admin templates that still contain dark-only
+   inline styles or page-level CSS. Keep this file loaded after page CSS. */
+
+[data-theme="light"] .content [style*="color: #ffffff"]:not(.btn-primary):not(.btn-submit):not(.btn-auth),
+[data-theme="light"] .content [style*="color:#ffffff"]:not(.btn-primary):not(.btn-submit):not(.btn-auth),
+[data-theme="light"] .content [style*="color: #fff"]:not(.btn-primary):not(.btn-submit):not(.btn-auth),
+[data-theme="light"] .content [style*="color:#fff"]:not(.btn-primary):not(.btn-submit):not(.btn-auth),
+[data-theme="light"] .content [style*="color: #f8fafc"],
+[data-theme="light"] .content [style*="color:#f8fafc"],
+[data-theme="light"] .content [style*="color: #e2e8f0"],
+[data-theme="light"] .content [style*="color:#e2e8f0"],
+[data-theme="light"] .content [style*="color: #e5e7eb"],
+[data-theme="light"] .content [style*="color:#e5e7eb"],
+[data-theme="light"] .content [style*="color: #dbeafe"],
+[data-theme="light"] .content [style*="color:#dbeafe"],
+[data-theme="light"] .content [style*="color: #cbd5e1"],
+[data-theme="light"] .content [style*="color:#cbd5e1"] {
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content [style*="color: #94a3b8"],
+[data-theme="light"] .content [style*="color:#94a3b8"],
+[data-theme="light"] .content [style*="color: #888"],
+[data-theme="light"] .content [style*="color:#888"],
+[data-theme="light"] .content [style*="color: #666"],
+[data-theme="light"] .content [style*="color:#666"] {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .content .detail-card,
+[data-theme="light"] .content .item-row,
+[data-theme="light"] .content .order-summary-box,
+[data-theme="light"] .content .bulk-order-bar {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .detail-title,
+[data-theme="light"] .content .summary-line.total {
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .content .summary-line,
+[data-theme="light"] .content .bulk-order-summary {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .content .filter-input,
+[data-theme="light"] .content .filter-select {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .filter-input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .content .filter-select option,
+[data-theme="light"] .content .status-select option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .btn-view-details,
+[data-theme="light"] .content .order-action-toggle {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .btn-view-details:hover,
+[data-theme="light"] .content .order-action-toggle:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+[data-theme="light"] .content .order-action-dropdown {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-strong) !important;
+}
+
+[data-theme="light"] .content .order-action-item {
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .order-action-item:hover {
+  background: var(--surface-2) !important;
+  color: var(--primary) !important;
+}
+
+[data-theme="light"] .content .status-select.status-pending-payment,
+[data-theme="light"] .content .status-select.status-pending,
+[data-theme="light"] .content .filter-select.status-pending-payment,
+[data-theme="light"] .content .filter-select.status-pending {
+  color: var(--warning) !important;
+  background: var(--warning-soft) !important;
+  border-color: var(--warning) !important;
+}
+
+[data-theme="light"] .content .status-select.status-processing,
+[data-theme="light"] .content .filter-select.status-processing {
+  color: var(--info) !important;
+  background: var(--info-soft) !important;
+  border-color: var(--info) !important;
+}
+
+[data-theme="light"] .content .status-select.status-shipped,
+[data-theme="light"] .content .status-select.status-returned,
+[data-theme="light"] .content .filter-select.status-shipped,
+[data-theme="light"] .content .filter-select.status-returned {
+  color: var(--primary) !important;
+  background: var(--primary-soft) !important;
+  border-color: var(--primary) !important;
+}
+
+[data-theme="light"] .content .status-select.status-delivered,
+[data-theme="light"] .content .filter-select.status-delivered {
+  color: var(--success) !important;
+  background: var(--success-soft) !important;
+  border-color: var(--success) !important;
+}
+
+[data-theme="light"] .content .status-select.status-cancelled,
+[data-theme="light"] .content .filter-select.status-cancelled {
+  color: var(--danger) !important;
+  background: var(--danger-soft) !important;
+  border-color: var(--danger) !important;
+}
+
+[data-theme="light"] .content .status-select.status-return-requested,
+[data-theme="light"] .content .filter-select.status-return-requested {
+  color: var(--warning) !important;
+  background: var(--warning-soft) !important;
+  border-color: var(--warning) !important;
+}
+
+[data-theme="light"] .content .gst-help-btn,
+[data-theme="light"] .content #toggleSmtpPassword {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .gst-help-panel,
+[data-theme="light"] .content .gst-help-head,
+[data-theme="light"] .content .gst-help-section,
+[data-theme="light"] .content .gst-help-example {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .gst-help-head h2,
+[data-theme="light"] .content .gst-help-section h3,
+[data-theme="light"] .content .gst-help-section p,
+[data-theme="light"] .content .gst-help-section li {
+  color: var(--text) !important;
+}
+
+[data-theme="light"] .content .gst-help-close {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}

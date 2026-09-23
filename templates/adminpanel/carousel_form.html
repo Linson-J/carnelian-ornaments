@@ -1,55 +1,149 @@
 {% extends 'adminpanel/base.html' %}
 {% block title %}{{ form_title }} - Admin{% endblock %}
+
 {% block topbar %}
 <div class="topbar-left">
-  <a href="{% url 'admin_carousel' %}" class="back-btn">Back</a>
-  <div><h1>{{ form_title }}</h1><div class="breadcrumb"><a href="{% url 'admin_dashboard' %}">Dashboard</a> / <a href="{% url 'admin_carousel' %}">Carousel</a></div></div>
+  <a href="{% url 'admin_carousel' %}" class="back-btn"><i class="ri-arrow-left-line"></i> Back</a>
+  <div>
+    <h1>{{ form_title }}</h1>
+    <div class="breadcrumb">
+      <a href="{% url 'admin_dashboard' %}">Dashboard</a> /
+      <a href="{% url 'admin_carousel' %}">Homepage Slider</a>
+    </div>
+  </div>
+</div>
+<div class="topbar-right">
+  <a href="{% url 'admin_orders' %}" class="order-notification-link" id="adminOrderNav" data-notification-url="{% url 'admin_order_notifications' %}" data-latest-order-id="{{ admin_latest_order_id|default:0 }}" title="Orders waiting">
+    <i class="ri-notification-3-line"></i>
+    <span class="order-notification-count admin-waiting-order-badge{% if not admin_waiting_order_count %} hidden{% endif %}" id="adminWaitingOrderBadge">
+      <span class="admin-waiting-order-count" id="adminWaitingOrderCount">{{ admin_waiting_order_count|default:0 }}</span>
+    </span>
+  </a>
+  <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
+    <i class="ri-sun-line theme-toggle-sun"></i>
+    <i class="ri-moon-line theme-toggle-moon"></i>
+  </button>
 </div>
 {% endblock %}
+
 {% block content %}
 <div id="api-error" class="alert err" style="display:none"></div>
+
 <form method="post" enctype="multipart/form-data" id="carousel-form">
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="alert err">{{ form.non_field_errors }}</div>{% endif %}
-  <div class="form-grid">
-    <div>
+
+  <div class="slider-form-grid">
+    <div class="slider-editor">
       <div class="card">
-        <div class="card-hd"><h3>Carousel content</h3></div>
+        <div class="card-hd">
+          <div class="section-title">
+            <span class="hd-icon"><i class="ri-text"></i></span>
+            <h3>Slide content</h3>
+          </div>
+        </div>
         <div class="card-body">
-          <div class="field"><label for="{{ form.title.id_for_label }}">Title</label>{{ form.title }}<div class="field-err">{{ form.title.errors|striptags }}</div></div>
-          <div class="field"><label for="{{ form.description.id_for_label }}">Description</label>{{ form.description }}<div class="field-err">{{ form.description.errors|striptags }}</div></div>
-          <div class="field"><label for="{{ form.button_text.id_for_label }}">Button text</label>{{ form.button_text }}<div class="field-err">{{ form.button_text.errors|striptags }}</div></div>
+          <div class="field">
+            <label for="{{ form.title.id_for_label }}">Title</label>
+            {{ form.title }}
+            <div class="field-err">{{ form.title.errors|striptags }}</div>
+          </div>
+          <div class="field">
+            <label for="{{ form.description.id_for_label }}">Description</label>
+            {{ form.description }}
+            <div class="field-err">{{ form.description.errors|striptags }}</div>
+          </div>
+          <div class="field">
+            <label for="{{ form.button_text.id_for_label }}">Button text</label>
+            {{ form.button_text }}
+            <div class="field-err">{{ form.button_text.errors|striptags }}</div>
+          </div>
         </div>
       </div>
+
       <div class="card">
-        <div class="card-hd"><h3>Button redirection</h3></div>
+        <div class="card-hd">
+          <div class="section-title">
+            <span class="hd-icon"><i class="ri-links-line"></i></span>
+            <h3>Button redirect</h3>
+          </div>
+        </div>
         <div class="card-body">
-          <div class="field"><label for="{{ form.redirect_type.id_for_label }}">Redirect type</label>{{ form.redirect_type }}<div class="field-err">{{ form.redirect_type.errors|striptags }}</div></div>
-          <div class="field" id="page-field"><label for="{{ form.customer_page.id_for_label }}">Customer page</label>{{ form.customer_page }}<div class="field-err">{{ form.customer_page.errors|striptags }}</div></div>
-          <div class="field" id="product-field"><label for="{{ form.product.id_for_label }}">Product</label>{{ form.product }}<div class="field-err">{{ form.product.errors|striptags }}</div></div>
+          <div class="field">
+            <label for="{{ form.redirect_type.id_for_label }}">Redirect type</label>
+            {{ form.redirect_type }}
+            <div class="field-err">{{ form.redirect_type.errors|striptags }}</div>
+          </div>
+          <div class="field" id="page-field">
+            <label for="{{ form.customer_page.id_for_label }}">Customer page</label>
+            {{ form.customer_page }}
+            <div class="field-err">{{ form.customer_page.errors|striptags }}</div>
+          </div>
+          <div class="field" id="product-field">
+            <label for="{{ form.product.id_for_label }}">Product</label>
+            {{ form.product }}
+            <div class="field-err">{{ form.product.errors|striptags }}</div>
+          </div>
         </div>
       </div>
     </div>
-    <div>
-      <div class="card">
-        <div class="card-hd"><h3>Carousel images</h3></div>
+
+    <aside class="slider-side">
+      <div class="card slider-preview-card">
+        <div class="card-hd">
+          <div class="section-title">
+            <span class="hd-icon"><i class="ri-image-add-line"></i></span>
+            <h3>Slide image</h3>
+          </div>
+        </div>
         <div class="card-body">
-          {% if item and item.image %}<img src="{{ item.image.url }}" class="carousel-form-preview" id="image-preview" alt="{{ item.title|default:'Desktop preview' }}">{% else %}<img class="carousel-form-preview" id="image-preview" alt="" style="display:none">{% endif %}
-          <div class="field"><label for="{{ form.image.id_for_label }}">Desktop image (PC view) {% if not item %}<span class="req">*</span>{% endif %}</label>{{ form.image }}<div style="font-size:11px;color:var(--muted);margin-top:7px">Landscape image recommended for desktop. Maximum 8MB.</div><div class="field-err">{{ form.image.errors|striptags }}</div></div>
+          <div class="slider-preview-frame">
+            {% if item and item.image %}
+              <img src="{{ item.image.url }}" class="carousel-form-preview" id="image-preview" alt="{{ item.title|default:'Desktop preview' }}">
+            {% else %}
+              <img class="carousel-form-preview" id="image-preview" alt="" style="display:none">
+              <div class="slider-preview-empty" id="image-empty">
+                <i class="ri-image-line"></i>
+                <span>No image selected</span>
+              </div>
+            {% endif %}
+          </div>
+          <div class="field">
+            <label for="{{ form.image.id_for_label }}">Desktop image {% if not item %}<span class="req">*</span>{% endif %}</label>
+            {{ form.image }}
+            <div class="help-text">Use a wide landscape image for best storefront results. Maximum 8MB.</div>
+            <div class="field-err">{{ form.image.errors|striptags }}</div>
+          </div>
         </div>
       </div>
+
       <div class="card">
-        <div class="card-hd"><h3>Display settings</h3></div>
+        <div class="card-hd">
+          <div class="section-title">
+            <span class="hd-icon"><i class="ri-settings-3-line"></i></span>
+            <h3>Display settings</h3>
+          </div>
+        </div>
         <div class="card-body">
-          <div class="field"><label for="{{ form.order.id_for_label }}">Display order</label>{{ form.order }}<div class="field-err">{{ form.order.errors|striptags }}</div></div>
-          <label class="check-label">{{ form.is_active }} Show this item on the home page</label>
+          <div class="field">
+            <label for="{{ form.order.id_for_label }}">Display order</label>
+            {{ form.order }}
+            <div class="help-text">Lower numbers appear first.</div>
+            <div class="field-err">{{ form.order.errors|striptags }}</div>
+          </div>
+          <label class="check-label slider-toggle-row">{{ form.is_active }} Show this item on the home page</label>
         </div>
       </div>
-    </div>
+    </aside>
   </div>
-  <div class="submit-bar"><a href="{% url 'admin_carousel' %}" class="btn-cancel">Cancel</a><button type="submit" class="btn-submit">{{ submit_text }}</button></div>
+
+  <div class="submit-bar">
+    <a href="{% url 'admin_carousel' %}" class="btn-cancel">Cancel</a>
+    <button type="submit" class="btn-submit"><i class="ri-save-3-line"></i> {{ submit_text }}</button>
+  </div>
 </form>
 {% endblock %}
+
 {% block extra_js %}
 <script>
   const redirectType = document.getElementById('{{ form.redirect_type.id_for_label }}');
@@ -57,6 +151,7 @@
   const productField = document.getElementById('product-field');
   const imageInput = document.getElementById('{{ form.image.id_for_label }}');
   const preview = document.getElementById('image-preview');
+  const emptyPreview = document.getElementById('image-empty');
   const form = document.getElementById('carousel-form');
   const errorBanner = document.getElementById('api-error');
   const itemId = {% if item %}{{ item.id }}{% else %}null{% endif %};
@@ -65,14 +160,17 @@
     pageField.style.display = redirectType.value === 'page' ? 'block' : 'none';
     productField.style.display = redirectType.value === 'product' ? 'block' : 'none';
   }
+
   function bindImagePreview(input, previewEl) {
     input.addEventListener('change', () => {
       const file = input.files[0];
       if (!file) return;
       previewEl.src = URL.createObjectURL(file);
       previewEl.style.display = 'block';
+      if (emptyPreview) emptyPreview.style.display = 'none';
     });
   }
+
   redirectType.addEventListener('change', updateRedirectFields);
   bindImagePreview(imageInput, preview);
   updateRedirectFields();

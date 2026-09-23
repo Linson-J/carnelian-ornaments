@@ -38,6 +38,15 @@ def footer_context(request):
     homepage_popup_banners = PopupBanner.objects.filter(is_active=True, show_on_homepage=True).order_by('-created_at')
 
     store_contact = StoreAddressSettings.current()
+    announcement_messages = [
+        message.strip()
+        for message in [
+            store_contact.announcement_message_1,
+            store_contact.announcement_message_2,
+            store_contact.announcement_message_3,
+        ]
+        if message and message.strip()
+    ]
     footer_social_links = [
         {'name': 'Instagram', 'url': _external_url(store_contact.instagram_url), 'icon': 'ri-instagram-line'},
         {'name': 'Facebook', 'url': _external_url(store_contact.facebook_url), 'icon': 'ri-facebook-circle-line'},
@@ -54,6 +63,7 @@ def footer_context(request):
         'active_popup_banner': active_popup_banner,
         'homepage_popup_banners': homepage_popup_banners,
         'store_contact': store_contact,
+        'announcement_messages': announcement_messages if store_contact.announcement_enabled else [],
         'store_whatsapp_url': _whatsapp_url(store_contact.whatsapp_number),
         'footer_social_links': footer_social_links,
     }

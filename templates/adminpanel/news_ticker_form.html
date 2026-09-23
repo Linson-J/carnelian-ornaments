@@ -1,0 +1,78 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}{{ form_title }} - AdminPanel{% endblock %}
+{% block page_title %}{{ form_title }}{% endblock %}
+
+{% block topbar %}
+<div class="topbar-left">
+  <a href="{% url 'admin_news_tickers' %}" class="back-btn"><i class="ri-arrow-left-line"></i> Back to News Ticker</a>
+  <div>
+    <h1 style="font-size:1.25rem;font-weight:700;color:var(--text,#e8edf5);margin:0;">{{ form_title }}</h1>
+    <div class="breadcrumb" style="font-size:.8rem;color:var(--muted,#8896a8);margin-top:2px;">
+      <a href="{% url 'admin_dashboard' %}">Dashboard</a> / <a href="{% url 'admin_news_tickers' %}">News Ticker</a> / {{ form_title }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;">
+  <form method="POST" action="{% if ticker %}{% url 'edit_news_ticker' ticker.pk %}{% else %}{% url 'add_news_ticker' %}{% endif %}">
+    {% csrf_token %}
+    <div class="card" style="background:var(--surface,#0f1623);border:1px solid var(--border,#1a2438);border-radius:12px;margin-bottom:20px;overflow:hidden;">
+      <div class="card-hd" style="padding:16px 20px;border-bottom:1px solid var(--border,#1a2438);background:rgba(255,255,255,.02);">
+        <h3 style="margin:0;font-size:1rem;font-weight:600;color:var(--text,#e8edf5);display:flex;align-items:center;gap:8px;">
+          <i class="ri-megaphone-line" style="color:var(--accent,#4f8ef7);"></i> Ticker Message
+        </h3>
+      </div>
+      <div class="card-body" style="padding:20px;">
+        <div class="field" style="margin-bottom:18px;">
+          <label for="tickerMessage" style="display:block;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text,#e8edf5);margin-bottom:8px;">Message <span style="color:var(--danger,#f87171);">*</span></label>
+          <input type="text" id="tickerMessage" name="message" maxlength="180" value="{{ ticker.message|default:'' }}" placeholder="New arrivals are live" required style="width:100%;padding:11px 14px;background:var(--inp,#080c18);border:1px solid var(--border,#1a2438);color:var(--text,#e8edf5);border-radius:8px;font-size:.95rem;outline:none;">
+          <div style="font-size:.8rem;color:var(--muted,#8896a8);margin-top:8px;">Keep it short. Active messages scroll across the customer homepage.</div>
+        </div>
+
+        <div class="field" style="margin-bottom:18px;">
+          <label for="productSearch" style="display:block;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text,#e8edf5);margin-bottom:8px;">Product Target</label>
+          <input type="text" id="productSearch" list="tickerProductOptions" value="{% if selected_product %}{{ selected_product.name }}{% endif %}" placeholder="Type product name..." autocomplete="off" style="width:100%;padding:11px 14px;background:var(--inp,#080c18);border:1px solid var(--border,#1a2438);color:var(--text,#e8edf5);border-radius:8px;font-size:.95rem;outline:none;">
+          <input type="hidden" id="tickerLink" name="link_url" value="{{ ticker.link_url|default:'' }}">
+          <datalist id="tickerProductOptions">
+            {% for product in products %}
+              <option value="{{ product.name }}"></option>
+            {% endfor %}
+          </datalist>
+          <div style="font-size:.8rem;color:var(--muted,#8896a8);margin-top:8px;">Start typing to pick a product. Leave empty if this ticker line should not link anywhere.</div>
+        </div>
+
+        <div style="background:var(--surface2,#131d2e);padding:14px 18px;border-radius:8px;border:1px solid var(--border,#1a2438);">
+          <label class="check-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text,#e8edf5);font-size:.92rem;font-weight:600;margin:0;">
+            <input type="checkbox" name="is_active" {% if ticker and ticker.is_active %}checked{% elif not ticker %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--accent,#4f8ef7);">
+            Show this message on the customer homepage
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="submit-bar" style="border-radius:12px;background:var(--surface,#0f1623);border:1px solid var(--border,#1a2438);padding:16px 20px;display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+      <a href="{% url 'admin_news_tickers' %}" class="btn-cancel" style="padding:10px 20px;border-radius:8px;text-decoration:none;color:var(--muted,#8896a8);border:1px solid var(--border,#1a2438);">Cancel</a>
+      <button type="submit" class="btn-submit" style="padding:11px 26px;border-radius:8px;cursor:pointer;font-weight:600;background:linear-gradient(135deg,var(--accent2,#7c5cfc),var(--accent,#4f8ef7));color:#fff;border:0;">{{ submit_text }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const productSearch = document.getElementById('productSearch');
+  const tickerLink = document.getElementById('tickerLink');
+  const productTargets = {
+    {% for product in products %}
+      "{{ product.name|escapejs }}": "/products/{{ product.slug }}/"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+
+  productSearch?.addEventListener('input', () => {
+    tickerLink.value = productTargets[productSearch.value.trim()] || '';
+  });
+</script>
+{% endblock %}

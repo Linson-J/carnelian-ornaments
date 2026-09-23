@@ -1,3 +1,27 @@
+{% if homepage_popup_banners or announcement_messages %}
+{% if announcement_messages %}
+<section class="homepage-news-ticker" aria-label="Store announcements">
+  <div class="homepage-news-ticker__shell">
+    <div class="homepage-news-ticker__label">
+      <i class="ri-megaphone-line"></i>
+      <span>News</span>
+    </div>
+    <div class="homepage-news-ticker__viewport">
+      <div class="homepage-news-ticker__track">
+        {% for message in announcement_messages %}
+          <span class="homepage-news-ticker__item">{{ message }}</span>
+          <span class="homepage-news-ticker__emoji" aria-hidden="true">&#10022;</span>
+        {% endfor %}
+        {% for message in announcement_messages %}
+          <span class="homepage-news-ticker__item">{{ message }}</span>
+          <span class="homepage-news-ticker__emoji" aria-hidden="true">&#10022;</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% if homepage_popup_banners %}
 <div class="homepage-promo-banners-container">
   {% for banner in homepage_popup_banners %}
@@ -39,8 +63,89 @@
   </section>
   {% endfor %}
 </div>
+{% endif %}
 
 <style>
+  .homepage-news-ticker {
+    width: 100%;
+    max-width: 1240px;
+    margin: 2.25rem auto 0;
+    padding: 0 1.25rem;
+    box-sizing: border-box;
+  }
+
+  .homepage-news-ticker__shell {
+    display: flex;
+    align-items: center;
+    min-height: 54px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--primary, #7c5357) 22%, transparent);
+    border-radius: 999px;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--primary, #7c5357) 11%, #ffffff) 0%, #ffffff 48%, color-mix(in srgb, var(--home-sale-bg, #e8b2bb) 18%, #ffffff) 100%);
+    box-shadow: 0 10px 26px rgba(124, 83, 87, 0.1);
+  }
+
+  .homepage-news-ticker__label {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: stretch;
+    padding: 0 18px 0 20px;
+    background: var(--primary, #7c5357);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .homepage-news-ticker__label i {
+    font-size: 1rem;
+  }
+
+  .homepage-news-ticker__viewport {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+
+  .homepage-news-ticker__track {
+    display: inline-flex;
+    align-items: center;
+    gap: 18px;
+    width: max-content;
+    padding-left: 100%;
+    animation: homepage-news-scroll 28s linear infinite;
+    white-space: nowrap;
+  }
+
+  .homepage-news-ticker__item {
+    color: var(--text-dark, #1a1c1a);
+    font-size: 0.96rem;
+    font-weight: 700;
+  }
+
+  .homepage-news-ticker__emoji {
+    color: var(--primary, #7c5357);
+    font-size: 1rem;
+  }
+
+  .homepage-news-ticker:hover .homepage-news-ticker__track {
+    animation-play-state: paused;
+  }
+
+  @keyframes homepage-news-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
   .homepage-promo-banners-container {
     width: 100%;
     max-width: 1240px;
@@ -207,6 +312,31 @@
 
   /* Mobile Phone & Tablet Responsiveness */
   @media (max-width: 900px) {
+    .homepage-news-ticker {
+      margin-top: 1.4rem;
+      padding: 0 1rem;
+    }
+
+    .homepage-news-ticker__shell {
+      min-height: 48px;
+      border-radius: 14px;
+    }
+
+    .homepage-news-ticker__label {
+      padding: 0 12px;
+      font-size: 0.68rem;
+      letter-spacing: 0.05em;
+    }
+
+    .homepage-news-ticker__track {
+      gap: 14px;
+      animation-duration: 22s;
+    }
+
+    .homepage-news-ticker__item {
+      font-size: 0.86rem;
+    }
+
     .promo-banner-grid {
       grid-template-columns: 1fr;
     }

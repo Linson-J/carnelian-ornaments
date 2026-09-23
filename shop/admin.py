@@ -8,6 +8,7 @@ from .models import (
     CarouselItem,
     Category,
     CategoryTag,
+    HomeNewsTicker,
     HomeSection,
     HomeSectionCategory,
     HomeSectionProduct,
@@ -71,6 +72,13 @@ class CarouselItemAdmin(admin.ModelAdmin):
 @admin.register(HomeTheme)
 class HomeThemeAdmin(admin.ModelAdmin):
     list_display = ('id', 'primary_color', 'background_color', 'updated_at')
+
+
+@admin.register(HomeNewsTicker)
+class HomeNewsTickerAdmin(admin.ModelAdmin):
+    list_display = ('message', 'link_url', 'display_order', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('message', 'link_url')
 
 
 class HomeSectionCategoryInline(admin.TabularInline):
@@ -233,6 +241,5 @@ class CouponAdmin(admin.ModelAdmin):
     list_filter = ('discount_type', 'is_active', 'created_at')
     search_fields = ('code',)
     ordering = ('-created_at',)
-
 
 

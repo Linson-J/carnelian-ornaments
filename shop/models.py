@@ -250,6 +250,10 @@ class StoreAddressSettings(models.Model):
     pinterest_url = models.URLField(max_length=500, blank=True, default='')
     youtube_url = models.URLField(max_length=500, blank=True, default='')
     x_url = models.URLField(max_length=500, blank=True, default='')
+    announcement_enabled = models.BooleanField(default=False)
+    announcement_message_1 = models.CharField(max_length=180, blank=True, default='')
+    announcement_message_2 = models.CharField(max_length=180, blank=True, default='')
+    announcement_message_3 = models.CharField(max_length=180, blank=True, default='')
     cod_enabled = models.BooleanField(default=True)
     cod_extra_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     updated_at = models.DateTimeField(auto_now=True)
@@ -418,6 +422,22 @@ class HomeTheme(models.Model):
     def current(cls):
         theme, _ = cls.objects.get_or_create(pk=1)
         return theme
+
+
+class HomeNewsTicker(models.Model):
+    message = models.CharField(max_length=180)
+    link_url = models.CharField(max_length=255, blank=True, default='')
+    display_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shop_home_news_tickers'
+        ordering = ['display_order', 'id']
+
+    def __str__(self):
+        return self.message
 
 
 class HomeSection(models.Model):

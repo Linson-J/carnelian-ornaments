@@ -1,32 +1,89 @@
 {% extends 'adminpanel/base.html' %}
-{% block title %}Carousel Management - Admin{% endblock %}
-{% block page_title %}Carousel Management{% endblock %}
-{% block topbar_right %}<a href="{% url 'add_carousel_item' %}" class="btn-primary">+ Add carousel item</a>{% endblock %}
+{% block title %}Homepage Slider - Admin{% endblock %}
+{% block page_title %}Homepage Slider{% endblock %}
+
+{% block topbar_right %}
+<a href="{% url 'add_carousel_item' %}" class="btn-primary"><i class="ri-add-line"></i> Add slide</a>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-  <div class="card-hd"><h3>Carousel items ({{ items|length }})</h3><span style="font-size:12px;color:var(--muted)">Lower order numbers display first</span></div>
-  <div style="overflow-x:auto">
-    <table>
-      <thead><tr><th>Images</th><th>Content</th><th>Redirect</th><th>Order</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for item in items %}
-        <tr>
-          <td>
-            <img src="{{ item.image.url }}" class="carousel-admin-thumb" alt="{{ item.title|default:'Desktop image' }}">
-          </td>
-          <td><strong>{{ item.title|default:"Image only" }}</strong><div style="color:var(--muted);font-size:12px;margin-top:4px">{% if item.description %}{{ item.description|truncatechars:80 }}{% else %}—{% endif %}</div>{% if item.button_text %}<div style="color:var(--accent);font-size:11px;margin-top:4px">Button: {{ item.button_text }}</div>{% endif %}</td>
-          <td>{% if item.redirect_type %}<span class="badge {% if item.redirect_type == 'product' %}warning{% else %}success{% endif %}">{{ item.get_redirect_type_display }}</span><div style="font-size:12px;color:var(--muted);margin-top:5px">{% if item.redirect_type == 'product' %}{{ item.product.name|default:"Product unavailable" }}{% else %}{{ item.get_customer_page_display }}{% endif %}</div>{% else %}<span style="color:var(--muted);font-size:12px">No redirect</span>{% endif %}</td>
-          <td>{{ item.order }}</td>
-          <td>{% if item.is_active %}<span class="badge success">Active</span>{% else %}<span class="badge danger">Inactive</span>{% endif %}</td>
-          <td style="white-space:nowrap"><a href="{% url 'edit_carousel_item' item.id %}" class="btn-sm">Edit</a> <form method="post" action="{% url 'delete_carousel_item' item.id %}" style="display:inline" onsubmit="deleteCarouselItem(event, {{ item.id }})">{% csrf_token %}<button type="submit" class="btn-sm danger">Delete</button></form></td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:36px">No carousel items yet. <a href="{% url 'add_carousel_item' %}" style="color:var(--accent)">Add the first item</a>.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="slider-toolbar">
+  <div>
+    <h2>Homepage slider</h2>
+    <p>Manage the image slides shown at the top of the storefront homepage.</p>
+  </div>
+  <div class="slider-count">
+    <strong>{{ items|length }}</strong>
+    <span>slides</span>
   </div>
 </div>
+
+{% if items %}
+<div class="slider-grid">
+  {% for item in items %}
+  <article class="slider-card">
+    <div class="slider-preview">
+      <img src="{{ item.image.url }}" alt="{{ item.title|default:'Homepage slide' }}">
+      <div class="slider-preview-top">
+        <span class="badge {% if item.is_active %}success{% else %}danger{% endif %}">
+          {% if item.is_active %}Active{% else %}Inactive{% endif %}
+        </span>
+        <span class="slider-order">#{{ item.order }}</span>
+      </div>
+    </div>
+    <div class="slider-body">
+      <div class="slider-card-head">
+        <div>
+          <h3>{{ item.title|default:"Image only slide" }}</h3>
+          <p>{% if item.description %}{{ item.description|truncatechars:120 }}{% else %}No supporting copy added.{% endif %}</p>
+        </div>
+      </div>
+
+      <div class="slider-meta">
+        <div>
+          <span class="meta-label">Action</span>
+          {% if item.button_text %}
+            <strong>{{ item.button_text }}</strong>
+          {% else %}
+            <strong>No button</strong>
+          {% endif %}
+        </div>
+        <div>
+          <span class="meta-label">Redirect</span>
+          {% if item.redirect_type %}
+            <strong>{{ item.get_redirect_type_display }}</strong>
+            <span class="meta-sub">
+              {% if item.redirect_type == 'product' %}
+                {{ item.product.name|default:"Product unavailable" }}
+              {% else %}
+                {{ item.get_customer_page_display }}
+              {% endif %}
+            </span>
+          {% else %}
+            <strong>No redirect</strong>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="slider-actions">
+        <a href="{% url 'edit_carousel_item' item.id %}" class="btn-sm"><i class="ri-edit-line"></i> Edit</a>
+        <form method="post" action="{% url 'delete_carousel_item' item.id %}" onsubmit="deleteCarouselItem(event, {{ item.id }})">
+          {% csrf_token %}
+          <button type="submit" class="btn-sm danger"><i class="ri-delete-bin-line"></i> Delete</button>
+        </form>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon"><i class="ri-slideshow-3-line"></i></div>
+  <h2>No slides yet</h2>
+  <p>Create your first homepage slider item to feature campaigns, products, or store pages.</p>
+  <a href="{% url 'add_carousel_item' %}" class="btn-primary"><i class="ri-add-line"></i> Add first slide</a>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

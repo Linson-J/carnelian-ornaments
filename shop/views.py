@@ -24,7 +24,7 @@ import string
 from django.core import signing
 from django.core.signing import BadSignature, SignatureExpired
 from .forms import NewsletterSubscriptionForm
-from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, PaymentTransaction, PaymentWebhookEvent, StoreAddressSettings, UserProfile, Review, OTPSettings, ContactMessage, GSTConfig
+from .models import CarouselItem, Category, CategoryTag, Product, PasswordResetOTP, Favorite, DeliveryZone, DeliveryConfig, Order, OrderItem, PaymentTransaction, PaymentWebhookEvent, StoreAddressSettings, UserProfile, Review, OTPSettings, ContactMessage, GSTConfig, HomeNewsTicker
 from .decorators import login_required_ajax
 from .email_utils import send_order_status_email
 from .tax import calculate_cart_totals, calculate_order_totals, calculate_shipping, money
@@ -33,7 +33,11 @@ from .tax import calculate_cart_totals, calculate_order_totals, calculate_shippi
 
 def home(request):
     carousel_items = CarouselItem.objects.filter(is_active=True).select_related('product')
-    return render(request, 'shop/home.html', {'carousel_items': carousel_items})
+    news_tickers = HomeNewsTicker.objects.filter(is_active=True).order_by('display_order', 'id')
+    return render(request, 'shop/home.html', {
+        'carousel_items': carousel_items,
+        'news_tickers': news_tickers,
+    })
 
 
 def shop_all(request):
