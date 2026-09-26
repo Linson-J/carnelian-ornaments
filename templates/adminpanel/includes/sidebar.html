@@ -27,6 +27,9 @@
         <span class="admin-waiting-order-count">{{ admin_waiting_order_count|default:0 }}</span>
       </span>
     </a>
+    <a href="{% url 'admin_billing' %}" class="nav-item{% if active_nav == 'billing' %} active{% endif %}">
+      <span class="nav-icon"><i class="ri-bill-line"></i></span> Admin Billing
+    </a>
     <a href="{% url 'admin_revenue' %}" class="nav-item{% if active_nav == 'revenue' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-line-chart-line"></i></span> Revenue
     </a>

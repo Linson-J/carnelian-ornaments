@@ -3,6 +3,10 @@
 {% block title %}Orders — Admin{% endblock %}
 {% block page_title %}Orders{% endblock %}
 
+{% block topbar_right %}
+<a href="{% url 'admin_billing' %}" class="btn-primary"><i class="ri-bill-line"></i> New Admin Bill</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
   .detail-card {
@@ -289,13 +293,34 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  .source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .source-badge.admin-source {
+    color: var(--primary);
+    background: var(--primary-soft);
+    border: 1px solid var(--primary);
+  }
+  .source-badge.website-source {
+    color: var(--info);
+    background: var(--info-soft);
+    border: 1px solid var(--info);
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="card">
   <div class="card-hd">
-    <h3>Manage Orders ({{ orders.count }} Total)</h3>
+    <h3>Manage Orders ({{ order_count }} Active)</h3>
   </div>
 
   <form class="filters" method="get" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:15px;">
@@ -337,6 +362,7 @@
           </th>
           <th>Order ID</th>
           <th>Customer Info</th>
+          <th>Source</th>
           <th>Placed On</th>
           <th>Total Amount</th>
           <th>Payment</th>
@@ -355,6 +381,13 @@
             <strong>{{ order.full_name }}</strong><br>
             <span style="font-size:0.8rem; color:var(--muted)">{{ order.user.email }}</span>
           </td>
+          <td>
+            {% if order.payment_method == 'Cash' or order.payment_method == 'UPI' %}
+              <span class="source-badge admin-source"><i class="ri-bill-line"></i> Admin Bill</span>
+            {% else %}
+              <span class="source-badge website-source"><i class="ri-global-line"></i> Website Order</span>
+            {% endif %}
+          </td>
           <td>{{ order.created_at|date:"Y-m-d h:i A" }}</td>
           <td>
             <strong>₹{{ order.total }}</strong><br>
@@ -364,6 +397,8 @@
             <strong>{{ order.get_payment_status_display }}</strong><br>
             {% if order.phonepe_transaction_id %}
               <span style="font-size:0.75rem; color:var(--muted);">Txn: {{ order.phonepe_transaction_id }}</span>
+            {% elif order.payment_id %}
+              <span style="font-size:0.75rem; color:var(--muted);">Ref: {{ order.payment_id }}</span>
             {% elif order.phonepe_payment_state %}
               <span style="font-size:0.75rem; color:var(--muted);">PhonePe: {{ order.phonepe_payment_state }}</span>
             {% elif order.phonepe_merchant_order_id %}
@@ -420,10 +455,17 @@
 
         <!-- Expanded Details Row -->
         <tr class="order-details-row" id="details-row-{{ order.id }}" style="display:none; background:rgba(124, 83, 87, 0.01);">
-          <td colspan="8" style="padding: 15px 30px;">
+          <td colspan="9" style="padding: 15px 30px;">
             <div class="order-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
               <div>
                 <div class="detail-title" style="font-weight: 600; margin-bottom: 10px;">Shipping Address & Action Details</div>
+                <p style="margin: 0 0 5px 0;"><strong>Order Source:</strong>
+                  {% if order.payment_method == 'Cash' or order.payment_method == 'UPI' %}
+                    Admin Bill
+                  {% else %}
+                    Website Order
+                  {% endif %}
+                </p>
                 <p style="margin: 0 0 5px 0;"><strong>Name:</strong> {{ order.full_name }}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Phone:</strong> {{ order.phone }}</p>
                 <p style="margin: 0 0 5px 0;"><strong>Address:</strong> {{ order.street_address }}, {{ order.city }}, {{ order.state }}, {{ order.country }}{% if order.postal_code %} - {{ order.postal_code }}{% endif %}</p>
@@ -434,6 +476,9 @@
                 {% endif %}
                 {% if order.phonepe_transaction_id %}
                 <p style="margin: 0 0 5px 0;"><strong>PhonePe Transaction:</strong> {{ order.phonepe_transaction_id }}</p>
+                {% endif %}
+                {% if order.payment_id %}
+                <p style="margin: 0 0 5px 0;"><strong>Payment Reference:</strong> {{ order.payment_id }}</p>
                 {% endif %}
                 
                 {% if order.cancellation_reason %}
@@ -526,7 +571,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" style="text-align:center; color:var(--muted); padding:30px;">
+          <td colspan="9" style="text-align:center; color:var(--muted); padding:30px;">
             No orders matching the criteria.
           </td>
         </tr>
@@ -534,6 +579,31 @@
       </tbody>
     </table>
   </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination" style="padding: 16px 20px; justify-content: space-between; flex-wrap: wrap;">
+    <span style="color:var(--muted); font-weight:700;">
+      Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+    </span>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      {% if page_obj.has_previous %}
+        <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="ri-arrow-left-s-line"></i> Prev</a>
+      {% endif %}
+      {% for page_num in page_range %}
+        {% if page_num == page_obj.paginator.ELLIPSIS %}
+          <span style="border:0; background:transparent; color:var(--muted);">...</span>
+        {% elif page_num == page_obj.number %}
+          <span class="active">{{ page_num }}</span>
+        {% else %}
+          <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_num }}">{{ page_num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.next_page_number }}">Next <i class="ri-arrow-right-s-line"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 

@@ -27,7 +27,7 @@
 {% block content %}
 <div class="card">
   <div class="card-hd">
-    <h3>All products ({{ products|length }})</h3>
+    <h3>All products ({{ page_obj.paginator.count }})</h3>
   </div>
 
   <form class="filters" method="get">
@@ -134,6 +134,31 @@
       </tbody>
     </table>
   </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination" style="padding: 16px 20px; justify-content: space-between; flex-wrap: wrap;">
+    <span style="color:var(--muted); font-weight:700;">
+      Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+    </span>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      {% if page_obj.has_previous %}
+        <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="ri-arrow-left-s-line"></i> Prev</a>
+      {% endif %}
+      {% for page_num in page_range %}
+        {% if page_num == page_obj.paginator.ELLIPSIS %}
+          <span style="border:0; background:transparent; color:var(--muted);">...</span>
+        {% elif page_num == page_obj.number %}
+          <span class="active">{{ page_num }}</span>
+        {% else %}
+          <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_num }}">{{ page_num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a href="?{% if query_without_page %}{{ query_without_page }}&{% endif %}page={{ page_obj.next_page_number }}">Next <i class="ri-arrow-right-s-line"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 

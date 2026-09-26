@@ -27,6 +27,7 @@ urlpatterns = [
     path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
     path('customers/', admin_views.admin_customers, name='admin_customers'),
     path('customers/<int:pk>/delete/', admin_views.delete_customer, name='delete_customer'),
+    path('billing/', admin_views.admin_billing, name='admin_billing'),
     path('orders/', admin_views.admin_orders, name='admin_orders'),
     path('orders/notifications/', admin_views.admin_order_notifications, name='admin_order_notifications'),
     path('revenue/', admin_views.admin_revenue, name='admin_revenue'),

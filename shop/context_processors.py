@@ -88,10 +88,11 @@ def admin_order_context(request):
             Order.PaymentStatus.TIMEOUT,
         ],
     )
-    latest_order = visible_orders.order_by('-id').first()
+    waiting_orders = visible_orders.filter(status__in=waiting_statuses)
+    latest_order = waiting_orders.order_by('-id').first()
 
     return {
-        'admin_waiting_order_count': visible_orders.filter(status__in=waiting_statuses).count(),
+        'admin_waiting_order_count': waiting_orders.count(),
         'admin_latest_order_id': latest_order.id if latest_order else 0,
     }
 

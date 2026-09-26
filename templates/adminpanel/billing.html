@@ -1,0 +1,418 @@
+{% extends 'adminpanel/base.html' %}
+
+{% block title %}Admin Billing - Admin{% endblock %}
+{% block page_title %}Admin Billing{% endblock %}
+
+{% block topbar_right %}
+<a href="{% url 'admin_orders' %}" class="btn-secondary"><i class="ri-file-list-3-line"></i> Orders</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .billing-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: 18px;
+    align-items: start;
+  }
+  .billing-products {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+  .billing-product-toolbar {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .billing-product-toolbar input {
+    min-width: 220px;
+  }
+  .billing-product {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .billing-product img,
+  .billing-product-empty {
+    width: 58px;
+    height: 58px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    object-fit: cover;
+  }
+  .billing-product-empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 22px;
+  }
+  .billing-product-title {
+    overflow: hidden;
+    color: var(--text);
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .billing-product-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .qty-row {
+    display: grid;
+    grid-template-columns: 34px minmax(54px, 72px) 34px;
+    gap: 6px;
+    align-items: center;
+    width: max-content;
+  }
+  .qty-btn {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .qty-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-soft);
+  }
+  .qty-input {
+    height: 34px;
+    padding: 6px;
+    text-align: center;
+  }
+  .billing-side {
+    position: sticky;
+    top: 84px;
+  }
+  .billing-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .billing-section:last-child {
+    border-bottom: 0;
+  }
+  .billing-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .compact-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .summary-list {
+    display: grid;
+    gap: 9px;
+  }
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-muted);
+    font-weight: 700;
+  }
+  .summary-line strong {
+    color: var(--text);
+  }
+  .summary-total {
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 18px;
+  }
+  .payment-choice {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .payment-choice label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: none;
+  }
+  .payment-choice input {
+    width: auto;
+  }
+  .empty-billing {
+    padding: 42px 18px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .billing-product.hidden {
+    display: none;
+  }
+  @media (max-width: 1100px) {
+    .billing-grid {
+      grid-template-columns: 1fr;
+    }
+    .billing-side {
+      position: static;
+    }
+  }
+  @media (max-width: 560px) {
+    .billing-products,
+    .compact-fields,
+    .payment-choice {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="billingForm" class="billing-grid">
+  {% csrf_token %}
+
+  <div class="card">
+    <div class="card-hd">
+      <h3>Products</h3>
+      <span class="badge info" id="selectedCount">0 selected</span>
+    </div>
+    {% if products %}
+    <div class="billing-product-toolbar">
+      <div class="inp-wrap" style="width:100%;">
+        <span class="inp-icon"><i class="ri-search-line"></i></span>
+        <input type="text" id="productSearch" placeholder="Search product by name...">
+      </div>
+    </div>
+    <div class="billing-products">
+      {% for product in products %}
+      <div class="billing-product" data-product-card data-name="{{ product.name|escape }}" data-price="{{ product.discount_price|default:product.price }}" data-stock="{{ product.stock }}">
+        {% with img=product.images.all|first %}
+          {% if img %}
+            <img src="{{ img.image.url }}" alt="{{ product.name }}">
+          {% else %}
+            <div class="billing-product-empty"><i class="ri-shopping-bag-3-line"></i></div>
+          {% endif %}
+        {% endwith %}
+        <div>
+          <div class="billing-product-title" title="{{ product.name }}">{{ product.name }}</div>
+          <div class="billing-product-meta">
+            <span>Rs. {{ product.discount_price|default:product.price }}</span>
+            <span>Stock {{ product.stock }}</span>
+          </div>
+          <div class="qty-row">
+            <button type="button" class="qty-btn" data-qty-step="-1" aria-label="Decrease {{ product.name }}"><i class="ri-subtract-line"></i></button>
+            <input class="qty-input" type="number" min="0" max="{{ product.stock }}" step="1" name="quantity_{{ product.id }}" value="0" data-product-qty>
+            <button type="button" class="qty-btn" data-qty-step="1" aria-label="Increase {{ product.name }}"><i class="ri-add-line"></i></button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <div class="empty-billing">No available products with stock.</div>
+    {% endif %}
+  </div>
+
+  <div class="billing-side">
+    <div class="card">
+      <div class="card-hd">
+        <h3>Bill Details</h3>
+      </div>
+
+      <div class="billing-section">
+        <h4><i class="ri-user-3-line"></i> Customer</h4>
+        <div class="field">
+          <label for="full_name">Customer Name</label>
+          <input type="text" id="full_name" name="full_name" required>
+        </div>
+        <div class="compact-fields">
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="text" id="phone" name="phone" required>
+          </div>
+          <div class="field">
+            <label for="email">Email Optional</label>
+            <input type="email" id="email" name="email">
+          </div>
+        </div>
+      </div>
+
+      <div class="billing-section">
+        <h4><i class="ri-map-pin-line"></i> Address</h4>
+        <div class="field">
+          <label for="street_address">Street Address</label>
+          <textarea id="street_address" name="street_address" required></textarea>
+        </div>
+        <div class="compact-fields">
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" required>
+          </div>
+          <div class="field">
+            <label for="county">District</label>
+            <input type="text" id="county" name="county">
+          </div>
+          <div class="field">
+            <label for="state">State</label>
+            <input type="text" id="state" name="state" required>
+          </div>
+          <div class="field">
+            <label for="postal_code">Postal Code</label>
+            <input type="text" id="postal_code" name="postal_code" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="country">Country</label>
+          <input type="text" id="country" name="country" value="India" required>
+        </div>
+        <div class="field">
+          <label for="delivery_fee">Shipping Charge Optional</label>
+          <input type="number" id="delivery_fee" name="delivery_fee" min="0" step="0.01" value="0">
+        </div>
+      </div>
+
+      <div class="billing-section">
+        <h4><i class="ri-bank-card-line"></i> Payment</h4>
+        <div class="payment-choice">
+          <label><input type="radio" name="payment_method" value="cash" checked> Cash</label>
+          <label><input type="radio" name="payment_method" value="upi"> UPI</label>
+        </div>
+        <div class="field" id="upiField" style="display:none; margin-top:14px;">
+          <label for="upi_id">UPI ID</label>
+          <input type="text" id="upi_id" name="upi_id" placeholder="customer@upi">
+        </div>
+      </div>
+
+      <div class="billing-section">
+        <h4><i class="ri-receipt-line"></i> Summary</h4>
+        <div class="summary-list">
+          <div class="summary-line"><span>Items</span><strong id="summaryItems">0</strong></div>
+          <div class="summary-line"><span>Product Amount</span><strong id="summarySubtotal">Rs. 0.00</strong></div>
+          <div class="summary-line"><span>Shipping</span><strong id="summaryShipping">Rs. 0.00</strong></div>
+          <div class="summary-line"><span>GST</span><span>Calculated by store rules after submit</span></div>
+          <div class="summary-line summary-total"><span>Estimated Bill</span><strong id="summaryTotal">Rs. 0.00</strong></div>
+        </div>
+      </div>
+
+      <div class="submit-bar" style="position:static;">
+        <button type="submit" class="btn-primary" {% if not products %}disabled{% endif %}>
+          <i class="ri-check-line"></i> Finish Order
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function currency(value) {
+    return `Rs. ${Number(value || 0).toFixed(2)}`;
+  }
+
+  function updateBillingSummary() {
+    let totalItems = 0;
+    let subtotal = 0;
+    const shipping = Math.max(0, Number(document.getElementById('delivery_fee')?.value || 0));
+    let selectedProducts = 0;
+
+    document.querySelectorAll('[data-product-card]').forEach(card => {
+      const input = card.querySelector('[data-product-qty]');
+      const qty = Math.max(0, Number(input.value || 0));
+      const price = Number(card.dataset.price || 0);
+      totalItems += qty;
+      subtotal += qty * price;
+      if (qty > 0) selectedProducts += 1;
+    });
+
+    document.getElementById('summaryItems').textContent = totalItems;
+    document.getElementById('summarySubtotal').textContent = currency(subtotal);
+    document.getElementById('summaryShipping').textContent = currency(shipping);
+    document.getElementById('summaryTotal').textContent = currency(subtotal + shipping);
+    document.getElementById('selectedCount').textContent = `${selectedProducts} selected`;
+  }
+
+  function filterProducts() {
+    const query = (document.getElementById('productSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('[data-product-card]').forEach(card => {
+      const name = (card.dataset.name || '').toLowerCase();
+      card.classList.toggle('hidden', query && !name.includes(query));
+    });
+  }
+
+  function updatePaymentFields() {
+    const method = document.querySelector('input[name="payment_method"]:checked')?.value;
+    const upiField = document.getElementById('upiField');
+    const upiInput = document.getElementById('upi_id');
+    const needsUpi = method === 'upi';
+    upiField.style.display = needsUpi ? 'block' : 'none';
+    upiInput.required = needsUpi;
+    if (!needsUpi) upiInput.value = '';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-qty-step]').forEach(button => {
+      button.addEventListener('click', () => {
+        const card = button.closest('[data-product-card]');
+        const input = card.querySelector('[data-product-qty]');
+        const max = Number(input.max || card.dataset.stock || 0);
+        const next = Math.min(max, Math.max(0, Number(input.value || 0) + Number(button.dataset.qtyStep)));
+        input.value = next;
+        updateBillingSummary();
+      });
+    });
+
+    document.querySelectorAll('[data-product-qty]').forEach(input => {
+      input.addEventListener('input', () => {
+        const max = Number(input.max || 0);
+        input.value = Math.min(max, Math.max(0, Number(input.value || 0)));
+        updateBillingSummary();
+      });
+    });
+
+    document.querySelectorAll('input[name="payment_method"]').forEach(input => {
+      input.addEventListener('change', updatePaymentFields);
+    });
+    document.getElementById('productSearch')?.addEventListener('input', filterProducts);
+    document.getElementById('delivery_fee')?.addEventListener('input', updateBillingSummary);
+
+    document.getElementById('billingForm')?.addEventListener('submit', event => {
+      const hasProduct = [...document.querySelectorAll('[data-product-qty]')].some(input => Number(input.value || 0) > 0);
+      if (!hasProduct) {
+        event.preventDefault();
+        showToast('Select at least one product to bill.', 'danger');
+      }
+    });
+
+    updatePaymentFields();
+    updateBillingSummary();
+  });
+</script>
+{% endblock %}

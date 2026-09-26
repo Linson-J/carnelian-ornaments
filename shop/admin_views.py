@@ -8,6 +8,8 @@ from urllib.parse import quote
 import bcrypt
 from django.contrib import messages
 from django.core import signing
+from django.db import transaction
+from django.db.models import Sum, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,11 +17,11 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.models import User
-from django.db.models import Sum, Q
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 
 from .forms import CarouselItemForm
 from .decorators import admin_login_required
+from .tax import calculate_cart_totals, calculate_order_totals, calculate_shipping, money
 from .models import (
     AdminUser,
     CarouselItem,
@@ -70,6 +72,59 @@ def _admin_visible_orders():
             Order.PaymentStatus.TIMEOUT,
         ],
     )
+
+
+def _admin_countable_orders():
+    return _admin_visible_orders().exclude(
+        status__in=[Order.Status.DELIVERED, Order.Status.RETURNED],
+    )
+
+
+def _admin_waiting_orders():
+    return _admin_visible_orders().filter(status__in=ORDER_WAITING_STATUSES)
+
+
+def _find_matching_delivery_zone(country, state, county='', city=''):
+    allowed_zones = DeliveryZone.objects.filter(is_active=True)
+    if not allowed_zones.exists():
+        return None, True
+
+    matching_zones = allowed_zones.filter(country__iexact=country, state__iexact=state)
+    for zone in matching_zones:
+        if zone.county and zone.county.lower() != (county or '').lower():
+            continue
+        if zone.city and zone.city.lower() != (city or '').lower():
+            continue
+        return zone, True
+    return None, False
+
+
+def _admin_billing_user(full_name, phone, email=''):
+    clean_phone = re.sub(r'\D+', '', phone or '') or 'walkin'
+    clean_email = (email or '').strip().lower()
+    if clean_email:
+        existing = User.objects.filter(email__iexact=clean_email).first()
+        if existing:
+            return existing
+
+    username = f'admin_bill_{clean_phone}'[:140]
+    user, _ = User.objects.get_or_create(
+        username=username,
+        defaults={
+            'email': clean_email or f'{username}@admin-billing.local',
+            'first_name': (full_name or 'Admin Billing')[:150],
+        },
+    )
+    update_fields = []
+    if clean_email and user.email != clean_email:
+        user.email = clean_email
+        update_fields.append('email')
+    if full_name and user.first_name != full_name[:150]:
+        user.first_name = full_name[:150]
+        update_fields.append('first_name')
+    if update_fields:
+        user.save(update_fields=update_fields)
+    return user
 
 
 def _get_ip(request):
@@ -152,7 +207,7 @@ def admin_dashboard(request):
     new_this_week = Product.objects.filter(created_at__gte=week).count()
 
     # Dynamic Order Stats
-    total_orders = Order.objects.count()
+    total_orders = _admin_countable_orders().count()
     sales_agg = Order.objects.exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))
     total_sales = float(sales_agg['total_sum'] or 0.0)
     
@@ -238,8 +293,20 @@ def admin_products(request):
     if search:
         products = products.filter(name__icontains=search)
 
+    paginator = Paginator(products, 15)
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     return render(request, 'adminpanel/products.html', {
-        'products': products,
+        'products': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
+        'query_without_page': _revenue_querystring(request, page=''),
         'categories': categories,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'products',
@@ -1098,6 +1165,167 @@ def _build_order_whatsapp_url(order, store_address_settings, request=None, inclu
 
 
 @admin_login_required
+@require_http_methods(['GET', 'POST'])
+def admin_billing(request):
+    products = (
+        Product.objects
+        .filter(status=Product.Status.AVAILABLE, stock__gt=0)
+        .select_related('category', 'gst_rate', 'category__gst_rate')
+        .prefetch_related('images')
+        .order_by('name')
+    )
+    selected_quantities = {}
+
+    if request.method == 'POST':
+        full_name = request.POST.get('full_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        email = request.POST.get('email', '').strip()
+        country = request.POST.get('country', 'India').strip() or 'India'
+        state = request.POST.get('state', '').strip()
+        city = request.POST.get('city', '').strip()
+        county = request.POST.get('county', '').strip()
+        street_address = request.POST.get('street_address', '').strip()
+        postal_code = request.POST.get('postal_code', '').strip()
+        payment_method_raw = request.POST.get('payment_method', 'cash').strip().lower()
+        upi_id = request.POST.get('upi_id', '').strip()
+
+        required_missing = [
+            label for label, value in [
+                ('customer name', full_name),
+                ('phone number', phone),
+                ('state', state),
+                ('city', city),
+                ('street address', street_address),
+                ('postal code', postal_code),
+            ] if not value
+        ]
+        if required_missing:
+            messages.error(request, f"Please enter {', '.join(required_missing)}.")
+            return redirect('admin_billing')
+
+        if payment_method_raw not in {'cash', 'upi'}:
+            messages.error(request, 'Select Cash or UPI as the payment method.')
+            return redirect('admin_billing')
+        if payment_method_raw == 'upi' and not upi_id:
+            messages.error(request, 'UPI ID is required when payment method is UPI.')
+            return redirect('admin_billing')
+
+        cart = {}
+        for product in products:
+            qty_raw = request.POST.get(f'quantity_{product.id}', '').strip()
+            if not qty_raw:
+                continue
+            try:
+                qty = int(qty_raw)
+            except ValueError:
+                messages.error(request, f'Enter a valid quantity for {product.name}.')
+                return redirect('admin_billing')
+            if qty < 0:
+                messages.error(request, f'Quantity for {product.name} cannot be negative.')
+                return redirect('admin_billing')
+            if qty > 0:
+                cart[str(product.id)] = qty
+                selected_quantities[product.id] = qty
+
+        if not cart:
+            messages.error(request, 'Select at least one product to bill.')
+            return redirect('admin_billing')
+
+        delivery_fee_raw = request.POST.get('delivery_fee', '').strip()
+        try:
+            manual_delivery_fee = money(delivery_fee_raw or 0)
+        except (InvalidOperation, ValueError):
+            messages.error(request, 'Enter a valid shipping charge.')
+            return redirect('admin_billing')
+        if manual_delivery_fee < 0:
+            messages.error(request, 'Shipping charge cannot be negative.')
+            return redirect('admin_billing')
+
+        with transaction.atomic():
+            locked_products = {
+                product.id: product
+                for product in Product.objects.select_for_update().filter(id__in=[int(pid) for pid in cart.keys()])
+            }
+            for product_id, qty in cart.items():
+                product = locked_products.get(int(product_id))
+                if not product:
+                    messages.error(request, 'One or more selected products could not be found.')
+                    return redirect('admin_billing')
+                if product.status != Product.Status.AVAILABLE or product.stock < qty:
+                    messages.error(request, f'{product.name} has only {product.stock} item(s) available.')
+                    return redirect('admin_billing')
+
+            calculation = calculate_order_totals(cart, customer_state=state, shipping=manual_delivery_fee)
+            totals = calculation['totals']
+
+            customer = _admin_billing_user(full_name, phone, email)
+            payment_method = 'UPI' if payment_method_raw == 'upi' else 'Cash'
+            order = Order.objects.create(
+                user=customer,
+                full_name=full_name,
+                phone=phone,
+                country=country,
+                state=state,
+                city=city,
+                county=county,
+                street_address=street_address,
+                postal_code=postal_code,
+                subtotal=totals['subtotal'],
+                delivery_fee=totals['shipping'],
+                cod_extra_charge=money(0),
+                discount=money(0),
+                taxable_amount=totals['taxable_amount'],
+                gst_amount=totals['gst_amount'],
+                cgst_amount=totals['cgst_amount'],
+                sgst_amount=totals['sgst_amount'],
+                igst_amount=totals['igst_amount'],
+                tax_type=totals['tax_type'],
+                gst_enabled_snapshot=totals['gst_enabled'],
+                seller_state_snapshot=totals['seller_state'],
+                total=totals['grand_total'],
+                status=Order.Status.PROCESSING,
+                payment_method=payment_method,
+                payment_status=Order.PaymentStatus.PAID,
+                payment_id=upi_id if payment_method == 'UPI' else '',
+            )
+
+            for item in calculation['items']:
+                product = locked_products[item['product'].id]
+                qty = item['quantity']
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    product_name=product.name,
+                    price=item['unit_price'],
+                    quantity=qty,
+                    taxable_amount=item['taxable_amount'],
+                    gst_percentage=item['gst_percentage'],
+                    gst_amount=item['gst_amount'],
+                    cgst_amount=item['cgst_amount'],
+                    sgst_amount=item['sgst_amount'],
+                    igst_amount=item['igst_amount'],
+                    hsn_sac_code=item['hsn_sac_code'],
+                    final_amount=item['final_amount'],
+                )
+                product.stock -= qty
+                if product.stock <= 0:
+                    product.status = Product.Status.OUT_OF_STOCK
+                product.save(update_fields=['stock', 'status', 'updated_at'])
+
+        messages.success(request, f'Admin bill created as Order #{order.id}. Payment marked paid by {payment_method}.')
+        return redirect(f"{reverse('admin_orders')}?search={order.id}")
+
+    return render(request, 'adminpanel/billing.html', {
+        'products': products,
+        'selected_quantities': selected_quantities,
+        'admin_name': request.session.get('admin_name'),
+        'active_nav': 'billing',
+        'product_count': Product.objects.count(),
+        'order_count': _admin_countable_orders().count(),
+    })
+
+
+@admin_login_required
 def admin_orders(request):
     orders = (
         _admin_visible_orders()
@@ -1115,7 +1343,16 @@ def admin_orders(request):
             orders = orders.filter(id=search_query)
         else:
             orders = orders.filter(full_name__icontains=search_query)
-    orders = list(orders)
+    paginator = Paginator(orders, 15)
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    orders = list(page_obj.object_list)
     store_address_settings = StoreAddressSettings.current()
     for order in orders:
         order.status_whatsapp_url = _build_order_whatsapp_url(order, store_address_settings, request)
@@ -1127,20 +1364,23 @@ def admin_orders(request):
 
     return render(request, 'adminpanel/orders.html', {
         'orders': orders,
+        'page_obj': page_obj,
+        'page_range': paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
+        'query_without_page': _revenue_querystring(request, page=''),
         'status_filter': status_filter,
         'search_query': search_query,
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'orders',
-        'order_count': Order.objects.count(),
+        'order_count': _admin_countable_orders().count(),
         'choices': Order.Status.choices,
     })
 
 
 @admin_login_required
 def admin_order_notifications(request):
-    visible_orders = _admin_visible_orders()
-    latest_order = visible_orders.order_by('-id').first()
-    waiting_count = visible_orders.filter(status__in=ORDER_WAITING_STATUSES).count()
+    waiting_orders = _admin_waiting_orders()
+    latest_order = waiting_orders.order_by('-id').first()
+    waiting_count = waiting_orders.count()
 
     return JsonResponse({
         'success': True,
@@ -1344,7 +1584,7 @@ def admin_revenue(request):
         'payment_choices': Order.PaymentStatus.choices,
         'query_without_page': _revenue_querystring(request, page=''),
         'pdf_query': _revenue_querystring(request, page=''),
-        'order_count': Order.objects.count(),
+        'order_count': _admin_countable_orders().count(),
     })
 
 
@@ -1454,30 +1694,35 @@ def _pdf_escape(value):
     return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
 
 
-def _order_address_pdf_bytes(title, sections):
+def _order_address_pdf_bytes(title, left_sections, right_sections=None):
     width = 595
     height = 842
-    content = ['BT', '/F1 22 Tf', f'72 {height - 76} Td', f'({_pdf_escape(title)}) Tj']
-    y = height - 118
+    content = ['BT', '/F1 22 Tf', f'72 {height - 76} Td', f'({_pdf_escape(title)}) Tj', 'ET']
 
-    for section_title, lines in sections:
-        content.extend(['ET', 'BT', '/F1 13 Tf', f'72 {y} Td', f'({_pdf_escape(section_title)}) Tj'])
-        y -= 24
-        content.extend(['ET', 'BT', '/F1 10 Tf', f'72 {y} Td'])
-        first_line = True
-        for raw_line in lines:
-            wrapped_lines = wrap(str(raw_line), width=78) or ['']
-            for line in wrapped_lines:
-                if not first_line:
-                    content.append('0 -15 Td')
-                content.append(f'({_pdf_escape(line)}) Tj')
-                y -= 15
-                first_line = False
-            if raw_line == '':
-                content.append('0 -8 Td')
-                y -= 8
-        content.append('ET')
-        y -= 26
+    def add_sections(sections, x, y, wrap_width):
+        for section_title, lines in sections:
+            content.extend(['BT', '/F1 13 Tf', f'{x} {y} Td', f'({_pdf_escape(section_title)}) Tj', 'ET'])
+            y -= 24
+            first_line = True
+            content.extend(['BT', '/F1 10 Tf', f'{x} {y} Td'])
+            for raw_line in lines:
+                wrapped_lines = wrap(str(raw_line), width=wrap_width) or ['']
+                for line in wrapped_lines:
+                    if not first_line:
+                        content.append('0 -15 Td')
+                    content.append(f'({_pdf_escape(line)}) Tj')
+                    y -= 15
+                    first_line = False
+                if raw_line == '':
+                    content.append('0 -8 Td')
+                    y -= 8
+            content.append('ET')
+            y -= 26
+        return y
+
+    add_sections(left_sections, 72, height - 118, 34 if right_sections else 78)
+    if right_sections:
+        add_sections(right_sections, 315, height - 118, 36)
 
     stream = '\n'.join(content).encode('latin-1', errors='replace')
     objects = [
@@ -1503,7 +1748,7 @@ def _order_address_pdf_bytes(title, sections):
 
 @admin_login_required
 def download_order_address_pdf(request, pk):
-    order = get_object_or_404(Order.objects.select_related('user'), pk=pk)
+    order = get_object_or_404(Order.objects.select_related('user').prefetch_related('items'), pk=pk)
     store_address_settings = StoreAddressSettings.current()
     store_name = store_address_settings.sender_name.strip() or 'Store'
     from_address = [line.strip() for line in store_address_settings.sender_address.splitlines() if line.strip()]
@@ -1520,12 +1765,36 @@ def download_order_address_pdf(request, pk):
         ', '.join(part for part in [order.country, order.postal_code] if part),
     ]
 
-    sections = [
+    shipping_charge = 'Free' if money(order.delivery_fee) == 0 else f'Rs. {money(order.delivery_fee)}'
+    product_lines = []
+    for index, item in enumerate(order.items.all(), start=1):
+        product_lines.extend([
+            f'{index}. {item.product_name}',
+            f'Qty: {item.quantity}',
+            '',
+        ])
+    if not product_lines:
+        product_lines = ['No product details available.']
+
+    left_sections = [
         ('From Address', from_address),
         ('Customer Address', [line for line in customer_address if line]),
     ]
+    right_sections = [
+        ('Order Details', [
+            f'Order ID: ORDER-{order.id:06d}',
+            f'Order Date: {timezone.localtime(order.created_at).strftime("%d %b %Y, %I:%M %p")}',
+            f'Payment Method: {order.payment_method}',
+            f'Payment Status: {order.get_payment_status_display()}',
+        ]),
+        ('Product Details', product_lines),
+        ('Amount Details', [
+            f'Shipping Charge: {shipping_charge}',
+            f'Final Amount: Rs. {money(order.total)}',
+        ]),
+    ]
     response = HttpResponse(
-        _order_address_pdf_bytes(store_name, sections),
+        _order_address_pdf_bytes(store_name, left_sections, right_sections),
         content_type='application/pdf',
     )
     response['Content-Disposition'] = f'attachment; filename="order-{order.id}-address.pdf"'

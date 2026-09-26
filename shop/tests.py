@@ -350,7 +350,7 @@ class CarouselAPITests(APITestCase):
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
-from .models import Order, OrderItem
+from .models import Order, OrderItem, StoreAddressSettings
 
 class OrderCancellationAndReturnTests(APITestCase):
     def setUp(self):
@@ -498,6 +498,35 @@ class OrderCancellationAndReturnTests(APITestCase):
         self.assertContains(admin_resp, 'Wrong address entered')
         self.assertContains(admin_resp, 'Refund of ₹520.00 to be credited within 2 to 5 working days')
         self.assertContains(admin_resp, 'Cancelled (Locked)')
+
+    def test_admin_order_address_pdf_includes_products_and_amount_summary(self):
+        session = self.client.session
+        session['admin_authenticated'] = True
+        session.save()
+
+        settings = StoreAddressSettings.current()
+        settings.sender_name = 'Carmelian'
+        settings.sender_phone = '9999999999'
+        settings.sender_address = 'Sender Line 1\nSender Line 2'
+        settings.save()
+
+        self.order.delivery_fee = Decimal('0.00')
+        self.order.total = Decimal('500.00')
+        self.order.save()
+        item = self.order.items.first()
+        item.final_amount = Decimal('500.00')
+        item.save()
+
+        response = self.client.get(f'/admin-panel/orders/{self.order.id}/address-pdf/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        pdf_text = response.content.decode('latin-1')
+        self.assertIn('Customer Address', pdf_text)
+        self.assertIn('Product Details', pdf_text)
+        self.assertIn('Smartphone', pdf_text)
+        self.assertIn('Shipping Charge: Free', pdf_text)
+        self.assertIn('Final Amount: Rs. 500.00', pdf_text)
 
     def test_admin_can_change_status_of_returned_order(self):
         session = self.client.session
