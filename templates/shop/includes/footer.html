@@ -1,7 +1,20 @@
 <footer class="global-footer" aria-labelledby="global-footer-title">
     <div class="global-footer__inner">
         <section class="global-footer__brand">
-            <a href="/" class="global-footer__logo" id="global-footer-title">{{ store_contact.sender_name|default:"Carmelian" }}</a>
+            <a href="/" class="global-footer__logo footer-brand-draw" id="global-footer-title" aria-label="{{ store_contact.sender_name|default:'Carmelian' }}">
+                <span class="sr-only">{{ store_contact.sender_name|default:"Carmelian" }}</span>
+                <svg class="footer-brand-draw__svg" viewBox="0 0 282 64" role="img" aria-hidden="true">
+                    <path class="line footer-brand-draw__line" d="M43 17 C25 8 12 22 16 39 C21 58 48 58 58 41" />
+                    <path class="line footer-brand-draw__line" d="M70 39 C68 31 83 27 86 37 C89 48 72 51 70 40 M87 31 L87 50" />
+                    <path class="line footer-brand-draw__line" d="M101 50 L101 31 M101 38 C106 30 114 30 118 36" />
+                    <path class="line footer-brand-draw__line" d="M129 50 L129 31 M129 36 C134 30 143 31 143 40 L143 50 M143 38 C148 31 157 32 157 41 L157 50" />
+                    <path class="line footer-brand-draw__line" d="M172 40 C186 41 187 31 177 30 C166 30 163 49 179 50 C184 50 188 48 191 45" />
+                    <path class="line footer-brand-draw__line" d="M202 16 L202 50" />
+                    <path class="line footer-brand-draw__line" d="M215 31 L215 50 M215 20 L215 22" />
+                    <path class="line footer-brand-draw__line" d="M228 39 C226 31 241 27 244 37 C247 48 230 51 228 40 M245 31 L245 50" />
+                    <path class="line footer-brand-draw__line" d="M258 50 L258 31 M258 37 C263 30 273 31 273 42 L273 50" />
+                </svg>
+            </a>
             <p>Timeless pieces and curated essentials designed with soft minimalism, craft, and everyday elegance in mind.</p>
             {% if footer_social_links %}
             <div class="global-footer__social" aria-label="Social media links">
@@ -88,3 +101,15 @@
         </nav>
     </div>
 </footer>
+
+<script type="module">
+    import { animate, svg, stagger } from 'https://esm.sh/animejs';
+
+    animate(svg.createDrawable('.line'), {
+      draw: ['0 0', '0 1', '1 1'],
+      ease: 'inOutQuad',
+      duration: 2000,
+      delay: stagger(100),
+      loop: true
+    });
+</script>

@@ -4,22 +4,6 @@
 {% block body_class %}home-page{% endblock %}
 
 {% block content %}
-    {% if news_tickers %}
-        <section class="home-news-ticker" aria-label="Store news">
-            <div class="home-news-ticker__viewport">
-                <div class="home-news-ticker__track">
-                    {% for ticker in news_tickers %}
-                        {% if ticker.link_url %}
-                            <a class="home-news-ticker__item" href="{{ ticker.link_url }}">{{ ticker.message }}</a>
-                        {% else %}
-                            <span class="home-news-ticker__item">{{ ticker.message }}</span>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-        </section>
-    {% endif %}
-
     <main>
         <section class="hero-carousel" aria-label="Featured collections">
             <div class="hero-track" data-carousel-track>
@@ -38,10 +22,6 @@
         </section>
 
         <div data-home-sections></div>
-
-        <div id="homepagePromoBannersMarkup" hidden>
-            {% include 'shop/includes/homepage_promo_banner.html' %}
-        </div>
 
         <section class="story-section" aria-labelledby="story-title" data-review-stories hidden>
             <div class="story-heading">
@@ -273,13 +253,9 @@
 
         function renderHomeSections(sections) {
             const visibleSections = sections.filter(section => section.items && section.items.length);
-            const promoBannersMarkup = document.getElementById('homepagePromoBannersMarkup')?.innerHTML || '';
-            let insertedPromoBanner = false;
 
             if (!visibleSections.length) {
-                homeSectionsWrap.innerHTML = promoBannersMarkup.trim() 
-                    ? promoBannersMarkup 
-                    : '<section class="home-section"><p class="home-empty">Homepage sections will appear after they are configured from the admin panel.</p></section>';
+                homeSectionsWrap.innerHTML = '<section class="home-section"><p class="home-empty">Homepage sections will appear after they are configured from the admin panel.</p></section>';
                 return;
             }
 
@@ -303,10 +279,6 @@
                             <div class="category-mosaic">${renderCategoryCards(section.items)}</div>
                         </section>
                     `;
-                    if (!insertedPromoBanner && promoBannersMarkup.trim()) {
-                        sectionContent += promoBannersMarkup;
-                        insertedPromoBanner = true;
-                    }
                     return sectionContent;
                 }
                 if (section.section_type === 'mixed') {
@@ -327,10 +299,6 @@
                 `;
                 return sectionContent;
             }).join('');
-
-            if (!insertedPromoBanner && promoBannersMarkup.trim()) {
-                html += promoBannersMarkup;
-            }
 
             homeSectionsWrap.innerHTML = html;
         }

@@ -93,15 +93,15 @@
 </nav>
 
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a href="/shop/" class="bottom-nav-item active" aria-current="page">
+    <a href="/shop/" class="bottom-nav-item{% if request.path == '/shop/' %} active{% endif %}" {% if request.path == '/shop/' %}aria-current="page"{% endif %}>
         <i class="ri-store-2-fill"></i>
         <span>Shop</span>
     </a>
-    <a href="/wishlist/" class="bottom-nav-item">
+    <a href="/wishlist/" class="bottom-nav-item{% if request.path == '/wishlist/' %} active{% endif %}" {% if request.path == '/wishlist/' %}aria-current="page"{% endif %}>
         <i class="ri-heart-line"></i>
         <span>Wishlist</span>
     </a>
-    <a href="/cart/" class="bottom-nav-item">
+    <a href="/cart/" class="bottom-nav-item{% if request.path == '/cart/' %} active{% endif %}" {% if request.path == '/cart/' %}aria-current="page"{% endif %}>
         <span class="bottom-nav-icon">
             <i class="ri-shopping-bag-line"></i>
             <span class="bottom-nav-badge" aria-label="{{ cart_count|default:0 }} cart items">{{ cart_count|default:0 }}</span>
@@ -109,7 +109,7 @@
         <span>Cart</span>
     </a>
     {% if request.user.is_authenticated %}
-    <a href="/profile/" class="bottom-nav-item">
+    <a href="/profile/" class="bottom-nav-item{% if request.path == '/profile/' %} active{% endif %}" {% if request.path == '/profile/' %}aria-current="page"{% endif %}>
         <i class="ri-user-line"></i>
         <span>Profile</span>
     </a>

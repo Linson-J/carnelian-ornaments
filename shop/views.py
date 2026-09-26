@@ -61,6 +61,10 @@ def about_page(request):
     return render(request, 'shop/about.html')
 
 
+def loading_demo(request):
+    return render(request, 'shop/loading_demo.html')
+
+
 @require_POST
 def send_contact_message(request):
     try:

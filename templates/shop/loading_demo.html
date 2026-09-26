@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            background: #faf9f6;
+            color: #1a1c1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .loading-screen {
+            width: min(100%, 420px);
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            padding: 28px 22px;
+            background: #ffffff;
+            border: 1px solid rgba(124, 83, 87, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 16px 40px rgba(124, 83, 87, 0.12);
+        }
+
+        .loader-ring {
+            width: 42px;
+            height: 42px;
+            border: 3px solid rgba(124, 83, 87, 0.15);
+            border-top-color: #7c5357;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        p {
+            width: 100%;
+            max-width: 340px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            line-height: 1.5;
+            letter-spacing: 0;
+            text-align: center;
+        }
+
+        p .word {
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 18px;
+            }
+
+            .loading-screen {
+                min-height: 156px;
+                padding: 24px 18px;
+            }
+
+            .loader-ring {
+                width: 34px;
+                height: 34px;
+            }
+
+            p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="loading-screen" aria-live="polite" aria-busy="true">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <p>Loading your mobile app</p>
+    </main>
+
+    <script type="module">
+        import { animate, splitText, stagger } from 'https://esm.sh/animejs';
+
+        const { words } = splitText('p', {
+            words: { wrap: 'clip' },
+        });
+
+        animate(words, {
+            y: [
+                { to: ['100%', '0%'] },
+                { to: '-100%', delay: 750, ease: 'in(3)' },
+            ],
+            duration: 750,
+            ease: 'out(3)',
+            delay: stagger(100),
+            loop: true,
+        });
+    </script>
+</body>
+</html>

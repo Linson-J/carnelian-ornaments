@@ -603,11 +603,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
-    padding: 28px 38px;
+    gap: 16px;
+    width: min(86vw, 420px);
+    min-height: 132px;
+    padding: 28px 24px;
     background: #ffffff;
     border: 1px solid rgba(124, 83, 87, 0.15);
-    border-radius: 20px;
+    border-radius: 8px;
     box-shadow: 0 16px 40px rgba(124, 83, 87, 0.12);
 }
 
@@ -626,10 +628,41 @@
 
 .loader-text {
     font-family: 'Inter', sans-serif;
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-dark, #1a1c1a);
-    letter-spacing: 0.2px;
+    letter-spacing: 0;
+    line-height: 1.5;
+    text-align: center;
+    max-width: 100%;
+}
+
+.loader-text .word {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+@media (max-width: 480px) {
+    .global-page-loader {
+        padding: 18px;
+    }
+
+    .loader-content {
+        width: 100%;
+        min-height: 124px;
+        padding: 24px 18px;
+    }
+
+    .loader-spinner-ring {
+        width: 34px;
+        height: 34px;
+        border-width: 3px;
+    }
+
+    .loader-text {
+        font-size: 0.88rem;
+    }
 }
 
 /* Button Loading Shimmer Effects */
@@ -665,6 +698,37 @@
         <div class="loader-text" id="globalPageLoaderText">Processing...</div>
     </div>
 </div>
+
+<script type="module">
+import { animate, splitText, stagger } from 'https://esm.sh/animejs';
+
+let loaderTextAnimation = null;
+
+window.renderGlobalLoaderWords = function(message = 'Processing...') {
+    const text = document.getElementById('globalPageLoaderText');
+    if (!text) return;
+
+    if (loaderTextAnimation && typeof loaderTextAnimation.pause === 'function') {
+        loaderTextAnimation.pause();
+    }
+
+    text.textContent = message;
+    const { words } = splitText(text, {
+        words: { wrap: 'clip' },
+    });
+
+    loaderTextAnimation = animate(words, {
+        y: [
+            { to: ['100%', '0%'] },
+            { to: '-100%', delay: 750, ease: 'in(3)' },
+        ],
+        duration: 750,
+        ease: 'out(3)',
+        delay: stagger(100),
+        loop: true,
+    });
+};
+</script>
 
 <script>
 (function() {
@@ -1400,7 +1464,11 @@
     window.showGlobalLoader = function(msg = 'Processing...') {
         const loader = document.getElementById('globalPageLoader');
         const text = document.getElementById('globalPageLoaderText');
-        if (text) text.textContent = msg;
+        if (window.renderGlobalLoaderWords) {
+            window.renderGlobalLoaderWords(msg);
+        } else if (text) {
+            text.textContent = msg;
+        }
         if (loader) {
             loader.hidden = false;
             loader.style.display = 'flex';
