@@ -62,6 +62,17 @@ ORDER_WAITING_STATUSES = [
 ]
 
 
+def _admin_order_status_choices():
+    return [
+        (value, 'Accepted' if value == Order.Status.PROCESSING else label)
+        for value, label in Order.Status.choices
+    ]
+
+
+def _admin_order_status_label(status):
+    return dict(_admin_order_status_choices()).get(status, status)
+
+
 def _admin_visible_orders():
     return Order.objects.exclude(
         payment_method='PhonePe',
@@ -1098,6 +1109,9 @@ def _build_shared_invoice_url(request, order):
 
 
 def _build_order_whatsapp_url(order, store_address_settings, request=None, include_invoice=False):
+    if order.status == Order.Status.PROCESSING and not include_invoice:
+        return ''
+
     customer_phone = _whatsapp_phone_number(order.phone, order.country)
     if not customer_phone:
         return ''
@@ -1327,22 +1341,42 @@ def admin_billing(request):
 
 @admin_login_required
 def admin_orders(request):
-    orders = (
+    base_orders = (
         _admin_visible_orders()
         .prefetch_related('items', 'items__product', 'items__product__images')
         .order_by('-created_at')
     )
     
     status_filter = request.GET.get('status', '').strip()
-    if status_filter:
-        orders = orders.filter(status=status_filter)
-        
     search_query = request.GET.get('search', '').strip()
+
+    orders = base_orders
     if search_query:
         if search_query.isdigit():
             orders = orders.filter(id=search_query)
         else:
             orders = orders.filter(full_name__icontains=search_query)
+
+    admin_orders_url = reverse('admin_orders')
+    search_suffix = f"&search={quote(search_query)}" if search_query else ''
+    all_url = admin_orders_url + (f"?search={quote(search_query)}" if search_query else '')
+    status_chips = [{
+        'value': '',
+        'label': 'All',
+        'count': orders.count(),
+        'url': all_url,
+    }]
+    for value, label in _admin_order_status_choices():
+        status_chips.append({
+            'value': value,
+            'label': label,
+            'count': orders.filter(status=value).count(),
+            'url': f"{admin_orders_url}?status={value}{search_suffix}",
+        })
+
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
     paginator = Paginator(orders, 15)
     page_number = request.GET.get('page', 1)
     try:
@@ -1372,7 +1406,8 @@ def admin_orders(request):
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'orders',
         'order_count': _admin_countable_orders().count(),
-        'choices': Order.Status.choices,
+        'choices': _admin_order_status_choices(),
+        'status_chips': status_chips,
     })
 
 
@@ -1905,7 +1940,7 @@ def bulk_update_order_status(request):
             updated_count += 1
 
     if updated_count:
-        messages.success(request, f'{updated_count} selected orders updated to {dict(Order.Status.choices)[new_status]}.')
+        messages.success(request, f'{updated_count} selected orders updated to {_admin_order_status_label(new_status)}.')
     else:
         messages.info(request, 'Selected orders already have that status.')
     return redirect(redirect_to)
@@ -1942,8 +1977,8 @@ def update_order_status(request, pk):
     if new_status in dict(Order.Status.choices):
         if new_status != old_status:
             updated = _apply_order_status_change(order, new_status)
-            messages.success(request, f"Order #{order.id} status updated to '{order.get_status_display()}'.")
-            if updated:
+            messages.success(request, f"Order #{order.id} status updated to '{_admin_order_status_label(order.status)}'.")
+            if updated and new_status != Order.Status.PROCESSING:
                 whatsapp_url = _build_order_whatsapp_url(
                     order,
                     StoreAddressSettings.current(),

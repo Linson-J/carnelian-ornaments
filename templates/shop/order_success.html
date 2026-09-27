@@ -169,7 +169,7 @@
       <h1 class="success-title">Thank You For Your Order!</h1>
     {% endif %}
     {% if order.payment_status == 'paid' %}
-      <p class="success-sub">Your payment has been verified and order #{{ order.id }} is being processed.</p>
+      <p class="success-sub">Your payment has been verified and order #{{ order.id }} has been placed.</p>
     {% elif order.payment_status == 'failed' %}
       <p class="success-sub">Payment failed. Your order has not been placed. You can retry online payment or continue shopping.</p>
     {% elif order.payment_status == 'cancelled' %}

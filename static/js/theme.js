@@ -38,11 +38,42 @@ function initThemeToggle() {
 function initSidebar() {
   const button = document.getElementById('mobileMenuToggle');
   const backdrop = document.getElementById('sidebarBackdrop');
+  const collapseButton = document.getElementById('sidebarCollapseToggle');
+  const resizeHandle = document.getElementById('sidebarResizeHandle');
+  const sidebar = document.getElementById('adminSidebar');
+  const collapsedKey = 'admin-sidebar-collapsed';
+  const widthKey = 'admin-sidebar-width';
+  const minWidth = 220;
+  const maxWidth = 360;
 
   function closeSidebar() {
     document.body.classList.remove('sidebar-open');
     if (button) button.setAttribute('aria-expanded', 'false');
   }
+
+  function isDesktop() {
+    return window.matchMedia('(min-width: 901px)').matches;
+  }
+
+  function applySidebarWidth(width) {
+    const parsedWidth = Number(width);
+    if (!Number.isFinite(parsedWidth)) return;
+    const nextWidth = Math.min(maxWidth, Math.max(minWidth, parsedWidth));
+    document.documentElement.style.setProperty('--sidebar-w', `${nextWidth}px`);
+  }
+
+  function setCollapsed(collapsed) {
+    document.body.classList.toggle('sidebar-collapsed', collapsed && isDesktop());
+    if (collapseButton) {
+      const expanded = !(collapsed && isDesktop());
+      collapseButton.setAttribute('aria-expanded', String(expanded));
+      collapseButton.setAttribute('aria-label', expanded ? 'Collapse sidebar' : 'Expand sidebar');
+      collapseButton.setAttribute('title', expanded ? 'Collapse sidebar' : 'Expand sidebar');
+    }
+  }
+
+  applySidebarWidth(localStorage.getItem(widthKey));
+  setCollapsed(localStorage.getItem(collapsedKey) === 'true');
 
   if (button) {
     button.addEventListener('click', () => {
@@ -56,6 +87,60 @@ function initSidebar() {
 
   document.querySelectorAll('.sidebar .nav-item').forEach(link => {
     link.addEventListener('click', closeSidebar);
+  });
+
+  if (collapseButton) {
+    collapseButton.addEventListener('click', () => {
+      const collapsed = !document.body.classList.contains('sidebar-collapsed');
+      localStorage.setItem(collapsedKey, String(collapsed));
+      setCollapsed(collapsed);
+    });
+  }
+
+  if (resizeHandle && sidebar) {
+    let resizing = false;
+
+    function stopResize() {
+      if (!resizing) return;
+      resizing = false;
+      document.body.classList.remove('sidebar-resizing');
+    }
+
+    resizeHandle.addEventListener('pointerdown', event => {
+      if (!isDesktop()) return;
+      resizing = true;
+      document.body.classList.remove('sidebar-collapsed');
+      localStorage.setItem(collapsedKey, 'false');
+      document.body.classList.add('sidebar-resizing');
+      resizeHandle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    resizeHandle.addEventListener('pointermove', event => {
+      if (!resizing) return;
+      const nextWidth = Math.min(maxWidth, Math.max(minWidth, event.clientX));
+      applySidebarWidth(nextWidth);
+      localStorage.setItem(widthKey, String(nextWidth));
+    });
+
+    resizeHandle.addEventListener('pointerup', stopResize);
+    resizeHandle.addEventListener('pointercancel', stopResize);
+
+    resizeHandle.addEventListener('keydown', event => {
+      if (!isDesktop() || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+      const currentWidth = sidebar.getBoundingClientRect().width;
+      const step = event.shiftKey ? 40 : 12;
+      const nextWidth = currentWidth + (event.key === 'ArrowRight' ? step : -step);
+      document.body.classList.remove('sidebar-collapsed');
+      localStorage.setItem(collapsedKey, 'false');
+      applySidebarWidth(nextWidth);
+      localStorage.setItem(widthKey, String(Math.min(maxWidth, Math.max(minWidth, nextWidth))));
+      event.preventDefault();
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    setCollapsed(localStorage.getItem(collapsedKey) === 'true');
   });
 
   window.addEventListener('keydown', event => {

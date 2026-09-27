@@ -117,6 +117,48 @@
   .filter-input::placeholder {
     color: #94a3b8;
   }
+  .status-chip-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 15px 15px;
+  }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.18s ease;
+  }
+  .status-chip:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .status-chip.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+  .status-chip-count {
+    min-width: 22px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: inherit;
+    text-align: center;
+    font-size: 0.75rem;
+  }
   .filter-select {
     padding: 8px 12px;
     border-radius: 6px;
@@ -326,18 +368,19 @@
   <form class="filters" method="get" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:15px;">
     <input type="text" name="search" placeholder="Search by ID or customer..." value="{{ search_query }}" class="filter-input"/>
     
-    <select name="status" class="filter-select status-{{ status_filter|slugify }}">
-      <option value="">All Statuses</option>
-      {% for val, lbl in choices %}
-        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ lbl }}</option>
-      {% endfor %}
-    </select>
-
-    <button type="submit" class="btn-primary" style="padding:8px 20px; border-radius:6px; border:none; cursor:pointer;">Filter</button>
     {% if search_query or status_filter %}
       <a href="{% url 'admin_orders' %}" class="btn-sm" style="text-decoration:none; padding:8px 15px; display:inline-flex; align-items:center;">Clear</a>
     {% endif %}
   </form>
+
+  <div class="status-chip-row" aria-label="Quick order status filters">
+    {% for chip in status_chips %}
+      <a href="{{ chip.url }}" class="status-chip {% if status_filter == chip.value %}active{% endif %}">
+        <span>{{ chip.label }}</span>
+        <span class="status-chip-count">{{ chip.count }}</span>
+      </a>
+    {% endfor %}
+  </div>
 
   <form class="bulk-order-bar" id="bulkStatusForm" method="POST" action="{% url 'bulk_update_order_status' %}">
     {% csrf_token %}

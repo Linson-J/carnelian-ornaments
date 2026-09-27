@@ -1,16 +1,26 @@
 <aside class="sidebar" id="adminSidebar">
   <div class="sidebar-brand">
     <div class="brand-logo"><i class="ri-store-2-line"></i></div>
-    <div>
+    <div class="brand-copy">
       <div class="brand-name">Store Admin</div>
       <div class="brand-sub">Store management</div>
     </div>
+    <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
+      <i class="ri-side-bar-line"></i>
+    </button>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Store</div>
     <a href="{% url 'admin_dashboard' %}" class="nav-item{% if active_nav == 'dashboard' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-dashboard-line"></i></span> Dashboard
+    </a>
+    <a href="{% url 'admin_orders' %}" class="nav-item{% if active_nav == 'orders' %} active{% endif %}">
+      <span class="nav-icon"><i class="ri-file-list-3-line"></i></span> Orders
+      <span class="nav-badge order-waiting-badge admin-waiting-order-badge{% if not admin_waiting_order_count %} hidden{% endif %}" title="Orders waiting">
+        <i class="ri-notification-3-line"></i>
+        <span class="admin-waiting-order-count">{{ admin_waiting_order_count|default:0 }}</span>
+      </span>
     </a>
     <a href="{% url 'admin_products' %}" class="nav-item{% if active_nav == 'products' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-shopping-bag-3-line"></i></span> Products
@@ -19,13 +29,6 @@
     <a href="{% url 'admin_categories' %}" class="nav-item{% if active_nav == 'categories' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-price-tag-3-line"></i></span> Product Categories
       {% if category_count %}<span class="nav-badge">{{ category_count }}</span>{% endif %}
-    </a>
-    <a href="{% url 'admin_orders' %}" class="nav-item{% if active_nav == 'orders' %} active{% endif %}">
-      <span class="nav-icon"><i class="ri-file-list-3-line"></i></span> Orders
-      <span class="nav-badge order-waiting-badge admin-waiting-order-badge{% if not admin_waiting_order_count %} hidden{% endif %}" title="Orders waiting">
-        <i class="ri-notification-3-line"></i>
-        <span class="admin-waiting-order-count">{{ admin_waiting_order_count|default:0 }}</span>
-      </span>
     </a>
     <a href="{% url 'admin_billing' %}" class="nav-item{% if active_nav == 'billing' %} active{% endif %}">
       <span class="nav-icon"><i class="ri-bill-line"></i></span> Admin Billing
@@ -96,4 +99,5 @@
       <a href="{% url 'admin_logout' %}" class="logout-btn" title="Logout">Logout</a>
     </div>
   </div>
+  <div class="sidebar-resize-handle" id="sidebarResizeHandle" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
 </aside>

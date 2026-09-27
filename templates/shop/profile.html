@@ -1014,7 +1014,7 @@
                 {% elif order.status == 'return_requested' %}status-return_requested
                 {% elif order.status == 'returned' %}status-returned
                 {% else %}status-cancelled{% endif %}">
-                {{ order.get_status_display }}
+                {% if order.status == 'processing' %}Order Placed{% else %}{{ order.get_status_display }}{% endif %}
               </span>
             </div>
           </div>
