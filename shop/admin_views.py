@@ -522,6 +522,73 @@ def admin_settings(request):
     store_address_settings = StoreAddressSettings.current()
     gst_rates = GSTRate.objects.all()
 
+    def save_store_address_settings(data, files=None):
+        sender_name = data.get('sender_name', '').strip() or 'Carmelian'
+        sender_phone = data.get('sender_phone', '').strip()
+        sender_address = data.get('sender_address', '').strip()
+        contact_email = data.get('contact_email', '').strip()
+        contact_phone = data.get('contact_phone', '').strip()
+        whatsapp_number = data.get('whatsapp_number', '').strip()
+        business_hours = data.get('business_hours', '').strip()
+        instagram_url = data.get('instagram_url', '').strip()
+        facebook_url = data.get('facebook_url', '').strip()
+        pinterest_url = data.get('pinterest_url', '').strip()
+        youtube_url = data.get('youtube_url', '').strip()
+        x_url = data.get('x_url', '').strip()
+        cod_enabled = str(data.get('cod_enabled', 'true')).lower() in ('1', 'true', 'on', 'yes')
+        try:
+            cod_extra_charge = Decimal(str(data.get('cod_extra_charge', 0) or 0))
+        except (InvalidOperation, TypeError, ValueError):
+            return JsonResponse({'success': False, 'message': 'Enter a valid COD extra charge.'}, status=400)
+        if cod_extra_charge < 0:
+            return JsonResponse({'success': False, 'message': 'COD extra charge cannot be negative.'}, status=400)
+
+        if str(data.get('clear_brand_logo', '')).lower() in ('1', 'true', 'on', 'yes') and store_address_settings.brand_logo:
+            store_address_settings.brand_logo.delete(save=False)
+
+        uploaded_logo = files.get('brand_logo') if files else None
+        if uploaded_logo:
+            if store_address_settings.brand_logo:
+                store_address_settings.brand_logo.delete(save=False)
+            store_address_settings.brand_logo = uploaded_logo
+
+        store_address_settings.sender_name = sender_name
+        store_address_settings.sender_phone = sender_phone
+        store_address_settings.sender_address = sender_address
+        store_address_settings.contact_email = contact_email
+        store_address_settings.contact_phone = contact_phone
+        store_address_settings.whatsapp_number = whatsapp_number
+        store_address_settings.business_hours = business_hours
+        store_address_settings.instagram_url = instagram_url
+        store_address_settings.facebook_url = facebook_url
+        store_address_settings.pinterest_url = pinterest_url
+        store_address_settings.youtube_url = youtube_url
+        store_address_settings.x_url = x_url
+        store_address_settings.cod_enabled = cod_enabled
+        store_address_settings.cod_extra_charge = cod_extra_charge
+        store_address_settings.save()
+        return JsonResponse({
+            'success': True,
+            'message': 'Store contact, logo, social, and COD settings updated.',
+            'store_address_settings': {
+                'sender_name': store_address_settings.sender_name,
+                'brand_logo_url': store_address_settings.brand_logo.url if store_address_settings.brand_logo else '',
+                'sender_phone': store_address_settings.sender_phone,
+                'sender_address': store_address_settings.sender_address,
+                'contact_email': store_address_settings.contact_email,
+                'contact_phone': store_address_settings.contact_phone,
+                'whatsapp_number': store_address_settings.whatsapp_number,
+                'business_hours': store_address_settings.business_hours,
+                'instagram_url': store_address_settings.instagram_url,
+                'facebook_url': store_address_settings.facebook_url,
+                'pinterest_url': store_address_settings.pinterest_url,
+                'youtube_url': store_address_settings.youtube_url,
+                'x_url': store_address_settings.x_url,
+                'cod_enabled': store_address_settings.cod_enabled,
+                'cod_extra_charge': float(store_address_settings.cod_extra_charge),
+            }
+        })
+
     if request.method == 'POST':
         # Check if JSON request
         if 'application/json' in (request.content_type or ''):
@@ -532,60 +599,7 @@ def admin_settings(request):
                 return JsonResponse({'success': False, 'message': 'Invalid JSON data.'}, status=400)
 
             if data.get('form_type') == 'store_address_settings':
-                sender_name = data.get('sender_name', '').strip() or 'Carmelian'
-                sender_phone = data.get('sender_phone', '').strip()
-                sender_address = data.get('sender_address', '').strip()
-                contact_email = data.get('contact_email', '').strip()
-                contact_phone = data.get('contact_phone', '').strip()
-                whatsapp_number = data.get('whatsapp_number', '').strip()
-                business_hours = data.get('business_hours', '').strip()
-                instagram_url = data.get('instagram_url', '').strip()
-                facebook_url = data.get('facebook_url', '').strip()
-                pinterest_url = data.get('pinterest_url', '').strip()
-                youtube_url = data.get('youtube_url', '').strip()
-                x_url = data.get('x_url', '').strip()
-                cod_enabled = bool(data.get('cod_enabled', True))
-                try:
-                    cod_extra_charge = Decimal(str(data.get('cod_extra_charge', 0) or 0))
-                except (InvalidOperation, TypeError, ValueError):
-                    return JsonResponse({'success': False, 'message': 'Enter a valid COD extra charge.'}, status=400)
-                if cod_extra_charge < 0:
-                    return JsonResponse({'success': False, 'message': 'COD extra charge cannot be negative.'}, status=400)
-                store_address_settings.sender_name = sender_name
-                store_address_settings.sender_phone = sender_phone
-                store_address_settings.sender_address = sender_address
-                store_address_settings.contact_email = contact_email
-                store_address_settings.contact_phone = contact_phone
-                store_address_settings.whatsapp_number = whatsapp_number
-                store_address_settings.business_hours = business_hours
-                store_address_settings.instagram_url = instagram_url
-                store_address_settings.facebook_url = facebook_url
-                store_address_settings.pinterest_url = pinterest_url
-                store_address_settings.youtube_url = youtube_url
-                store_address_settings.x_url = x_url
-                store_address_settings.cod_enabled = cod_enabled
-                store_address_settings.cod_extra_charge = cod_extra_charge
-                store_address_settings.save()
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Store contact, social, and COD settings updated.',
-                    'store_address_settings': {
-                        'sender_name': store_address_settings.sender_name,
-                        'sender_phone': store_address_settings.sender_phone,
-                        'sender_address': store_address_settings.sender_address,
-                        'contact_email': store_address_settings.contact_email,
-                        'contact_phone': store_address_settings.contact_phone,
-                        'whatsapp_number': store_address_settings.whatsapp_number,
-                        'business_hours': store_address_settings.business_hours,
-                        'instagram_url': store_address_settings.instagram_url,
-                        'facebook_url': store_address_settings.facebook_url,
-                        'pinterest_url': store_address_settings.pinterest_url,
-                        'youtube_url': store_address_settings.youtube_url,
-                        'x_url': store_address_settings.x_url,
-                        'cod_enabled': store_address_settings.cod_enabled,
-                        'cod_extra_charge': float(store_address_settings.cod_extra_charge),
-                    }
-                })
+                return save_store_address_settings(data)
 
             if data.get('form_type') == 'gst_settings':
                 default_rate = None
@@ -655,6 +669,9 @@ def admin_settings(request):
                 }
             })
         else:
+            if request.POST.get('form_type') == 'store_address_settings':
+                return save_store_address_settings(request.POST, request.FILES)
+
             company_name = request.POST.get('company_name', '').strip() or 'Carmelian'
             sender_email = request.POST.get('sender_email', '').strip()
             smtp_host_user = request.POST.get('smtp_host_user', '').strip()

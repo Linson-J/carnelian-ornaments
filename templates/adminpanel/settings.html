@@ -328,10 +328,24 @@
           <input type="text" id="sender_name" value="{{ store_address_settings.sender_name }}" placeholder="Carmelian">
         </div>
         <div class="field" style="margin-bottom:0;">
+          <label for="brand_logo">Brand Logo</label>
+          <input type="file" id="brand_logo" accept="image/*">
+          <div class="muted-small">Optional. Shown in the customer header and footer when uploaded.</div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
           <label for="sender_phone">Sender / WhatsApp Phone</label>
           <input type="text" id="sender_phone" value="{{ store_address_settings.sender_phone }}" placeholder="+91 98765 43210">
         </div>
       </div>
+      {% if store_address_settings.brand_logo %}
+      <div style="margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <img src="{{ store_address_settings.brand_logo.url }}" alt="{{ store_address_settings.sender_name }} logo" style="height:48px;max-width:180px;object-fit:contain;background:#fff;border-radius:8px;padding:8px;">
+        <button type="button" class="btn-danger" id="removeBrandLogoBtn" style="padding:9px 12px;border-radius:8px;">
+          <i class="ri-delete-bin-line"></i> Remove Logo
+        </button>
+      </div>
+      {% endif %}
+      <input type="hidden" id="clear_brand_logo" value="false">
       <div class="field" style="margin-top:18px;">
         <label for="sender_address">From Address</label>
         <textarea id="sender_address" rows="3" placeholder="Enter the sender/from address shown in address PDFs">{{ store_address_settings.sender_address }}</textarea>
@@ -696,37 +710,44 @@ Customer pays Rs. 1000</div>
     btn.disabled = true;
     btn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving...';
 
-    const payload = {
-      form_type: 'store_address_settings',
-      sender_name: document.getElementById('sender_name').value.trim(),
-      sender_phone: document.getElementById('sender_phone').value.trim(),
-      sender_address: document.getElementById('sender_address').value.trim(),
-      contact_email: document.getElementById('contact_email').value.trim(),
-      contact_phone: document.getElementById('contact_phone').value.trim(),
-      whatsapp_number: document.getElementById('whatsapp_number').value.trim(),
-      business_hours: document.getElementById('business_hours').value.trim(),
-      instagram_url: document.getElementById('instagram_url').value.trim(),
-      facebook_url: document.getElementById('facebook_url').value.trim(),
-      pinterest_url: document.getElementById('pinterest_url').value.trim(),
-      youtube_url: document.getElementById('youtube_url').value.trim(),
-      x_url: document.getElementById('x_url').value.trim(),
-      cod_enabled: document.getElementById('cod_enabled').checked,
-      cod_extra_charge: document.getElementById('cod_extra_charge').value || '0'
-    };
+    const payload = new FormData();
+    payload.append('form_type', 'store_address_settings');
+    payload.append('sender_name', document.getElementById('sender_name').value.trim());
+    payload.append('sender_phone', document.getElementById('sender_phone').value.trim());
+    payload.append('sender_address', document.getElementById('sender_address').value.trim());
+    payload.append('contact_email', document.getElementById('contact_email').value.trim());
+    payload.append('contact_phone', document.getElementById('contact_phone').value.trim());
+    payload.append('whatsapp_number', document.getElementById('whatsapp_number').value.trim());
+    payload.append('business_hours', document.getElementById('business_hours').value.trim());
+    payload.append('instagram_url', document.getElementById('instagram_url').value.trim());
+    payload.append('facebook_url', document.getElementById('facebook_url').value.trim());
+    payload.append('pinterest_url', document.getElementById('pinterest_url').value.trim());
+    payload.append('youtube_url', document.getElementById('youtube_url').value.trim());
+    payload.append('x_url', document.getElementById('x_url').value.trim());
+    payload.append('cod_enabled', document.getElementById('cod_enabled').checked ? 'true' : 'false');
+    payload.append('cod_extra_charge', document.getElementById('cod_extra_charge').value || '0');
+
+    const logoInput = document.getElementById('brand_logo');
+    if (logoInput?.files?.[0]) payload.append('brand_logo', logoInput.files[0]);
+    const clearLogo = document.getElementById('clear_brand_logo');
+    const shouldClearLogo = clearLogo?.value === 'true';
+    if (shouldClearLogo) payload.append('clear_brand_logo', 'true');
 
     try {
       const response = await fetch("{% url 'admin_settings' %}", {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
         },
-        body: JSON.stringify(payload)
+        body: payload
       });
       const data = await response.json();
       if (response.ok && data.success) {
         showToast(data.message || successMessage, 'success');
         hideToast();
+        if (shouldClearLogo || logoInput?.files?.[0]) {
+          window.setTimeout(() => window.location.reload(), 700);
+        }
       } else {
         showToast(data.message || errorMessage, 'danger');
         hideToast();
@@ -737,6 +758,7 @@ Customer pays Rs. 1000</div>
     } finally {
       btn.disabled = false;
       btn.innerHTML = original;
+      if (clearLogo) clearLogo.value = 'false';
     }
   }
 
@@ -748,6 +770,17 @@ Customer pays Rs. 1000</div>
       document.getElementById('btnSaveStoreAddress'),
       'Store sender address saved',
       'Could not save store sender address'
+    );
+  });
+
+  document.getElementById('removeBrandLogoBtn')?.addEventListener('click', async () => {
+    if (!confirm('Remove the current brand logo?')) return;
+    const clearLogo = document.getElementById('clear_brand_logo');
+    if (clearLogo) clearLogo.value = 'true';
+    await saveStoreAndCodSettings(
+      document.getElementById('removeBrandLogoBtn'),
+      'Brand logo removed',
+      'Could not remove brand logo'
     );
   });
 

@@ -1,8 +1,11 @@
 <footer class="global-footer" aria-labelledby="global-footer-title">
     <div class="global-footer__inner">
         <section class="global-footer__brand">
-            <a href="/" class="global-footer__logo footer-brand-draw" id="global-footer-title" aria-label="{{ store_contact.sender_name|default:'Carmelian' }}">
+            <a href="/" class="global-footer__logo footer-brand-draw{% if store_contact.brand_logo %} footer-brand-with-logo{% endif %}" id="global-footer-title" aria-label="{{ store_contact.sender_name|default:'Carmelian' }}">
                 <span class="sr-only">{{ store_contact.sender_name|default:"Carmelian" }}</span>
+                {% if store_contact.brand_logo %}
+                <img class="footer-brand-logo-img" src="{{ store_contact.brand_logo.url }}" alt="" aria-hidden="true">
+                {% endif %}
                 <svg class="footer-brand-draw__svg" viewBox="0 0 282 64" role="img" aria-hidden="true">
                     <path class="line footer-brand-draw__line" d="M43 17 C25 8 12 22 16 39 C21 58 48 58 58 41" />
                     <path class="line footer-brand-draw__line" d="M70 39 C68 31 83 27 86 37 C89 48 72 51 70 40 M87 31 L87 50" />

@@ -352,6 +352,10 @@ def request_otp(request):
     from django.template.loader import render_to_string
 
     company = otp_config.company_name or 'Carmelian'
+    store_settings = StoreAddressSettings.current()
+    brand_logo_url = ''
+    if store_settings.brand_logo:
+        brand_logo_url = request.build_absolute_uri(store_settings.brand_logo.url)
     smtp_user = (otp_config.smtp_host_user or getattr(settings, 'EMAIL_HOST_USER', '')).strip()
     smtp_pass = (otp_config.smtp_host_password or getattr(settings, 'EMAIL_HOST_PASSWORD', '')).strip()
     sender_addr = smtp_user if smtp_user else (otp_config.sender_email or 'webmaster@localhost')
@@ -367,6 +371,7 @@ def request_otp(request):
 
     html_content = render_to_string('emails/otp_email.html', {
         'company_name': company,
+        'brand_logo_url': brand_logo_url,
         'otp_code': otp_code,
         'expiry_minutes': otp_config.otp_expiry_minutes,
     })

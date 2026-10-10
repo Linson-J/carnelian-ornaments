@@ -96,6 +96,34 @@ a{
     font-weight:500;
 }
 
+.brand-logo-link{
+    display:inline-flex;
+    align-items:center;
+    flex:0 0 auto;
+    line-height:1;
+}
+
+.brand-logo-link--with-image{
+    gap:12px;
+}
+
+.brand-logo-text{
+    display:inline-block;
+}
+
+.brand-logo-img{
+    display:block;
+    width:auto;
+    max-width:190px;
+    height:52px;
+    object-fit:contain;
+}
+
+.brand-logo-img--mobile{
+    max-width:170px;
+    height:44px;
+}
+
 .nav-links{
 
     display:flex;
@@ -1780,11 +1808,22 @@ a.home-news-ticker__item:hover{
     line-height:1;
 }
 
+.footer-brand-with-logo{
+    width:auto;
+    max-width:100%;
+    gap:14px;
+}
+
 .footer-brand-draw__svg{
     display:block;
     width:100%;
     height:auto;
     overflow:visible;
+}
+
+.footer-brand-with-logo .footer-brand-draw__svg{
+    width:250px;
+    max-width:calc(100vw - 150px);
 }
 
 .footer-brand-draw__line{
@@ -1793,6 +1832,14 @@ a.home-news-ticker__item:hover{
     stroke-width:3.6;
     stroke-linecap:round;
     stroke-linejoin:round;
+}
+
+.footer-brand-logo-img{
+    display:block;
+    width:auto;
+    max-width:220px;
+    max-height:64px;
+    object-fit:contain;
 }
 
 .global-footer p,
@@ -2002,6 +2049,23 @@ a.home-news-ticker__item:hover{
 
     .logo{
         font-size:36px;
+    }
+
+    .brand-logo-img{
+        max-width:64px;
+        height:44px;
+    }
+
+    .brand-logo-img--mobile{
+        max-width:58px;
+        height:40px;
+    }
+
+    .brand-logo-text{
+        max-width:130px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
     }
 
     .mobile-menu{
@@ -2240,6 +2304,11 @@ a.home-news-ticker__item:hover{
 
     .global-footer__logo{
         font-size:30px;
+    }
+
+    .footer-brand-logo-img{
+        max-width:190px;
+        max-height:56px;
     }
 
     .global-footer__subscribe-row{

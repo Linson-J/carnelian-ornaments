@@ -1,10 +1,36 @@
 import logging
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.mail import get_connection, EmailMultiAlternatives
 from django.template.loader import render_to_string
-from .models import OTPSettings
+from .models import OTPSettings, StoreAddressSettings
 
 logger = logging.getLogger(__name__)
+
+
+def _brand_logo_url():
+    store_settings = StoreAddressSettings.current()
+    if not store_settings.brand_logo:
+        return ''
+
+    logo_url = store_settings.brand_logo.url
+    if logo_url.startswith(('http://', 'https://')):
+        return logo_url
+
+    base_url = getattr(settings, 'SITE_URL', '').strip().rstrip('/')
+    if base_url:
+        return f'{base_url}{logo_url}'
+
+    try:
+        domain = Site.objects.get_current().domain.strip().rstrip('/')
+    except Exception:
+        domain = ''
+
+    if not domain:
+        return logo_url
+
+    scheme = 'http' if domain.startswith(('localhost', '127.0.0.1')) else 'https'
+    return f'{scheme}://{domain}{logo_url}'
 
 EVENT_CONFIG = {
     'placed': {
@@ -86,6 +112,7 @@ def send_order_status_email(order, event_type):
     config = EVENT_CONFIG[event_type]
     otp_config = OTPSettings.current()
     company = otp_config.company_name or 'Carmelian'
+    brand_logo_url = _brand_logo_url()
 
     smtp_user = (otp_config.smtp_host_user or getattr(settings, 'EMAIL_HOST_USER', '')).strip()
     smtp_pass = (otp_config.smtp_host_password or getattr(settings, 'EMAIL_HOST_PASSWORD', '')).strip()
@@ -100,6 +127,7 @@ def send_order_status_email(order, event_type):
     # Render HTML template
     html_content = render_to_string('emails/order_status_email.html', {
         'company_name': company,
+        'brand_logo_url': brand_logo_url,
         'order': order,
         'items': items,
         'event_config': config,

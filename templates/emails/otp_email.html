@@ -43,6 +43,15 @@
       text-transform: uppercase;
       margin: 0;
     }
+    .company-logo-image {
+      display: block;
+      max-width: 160px;
+      max-height: 72px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 14px auto 0 auto;
+    }
     .header-badge {
       display: inline-block;
       margin-top: 10px;
@@ -130,6 +139,9 @@
     <div class="email-card">
       <div class="email-header">
         <h1 class="company-logo">{{ company_name }}</h1>
+        {% if brand_logo_url %}
+          <img class="company-logo-image" src="{{ brand_logo_url }}" alt="{{ company_name }} logo">
+        {% endif %}
         <div class="header-badge">Security Verification</div>
       </div>
       

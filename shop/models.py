@@ -239,6 +239,7 @@ class GSTConfig(models.Model):
 # ─── Product Images (gallery) ─────────────────────────────────
 class StoreAddressSettings(models.Model):
     sender_name = models.CharField(max_length=150, default='Carmelian')
+    brand_logo = models.ImageField(upload_to='store/logos/', blank=True, null=True)
     sender_phone = models.CharField(max_length=20, blank=True, default='')
     sender_address = models.TextField(blank=True, default='')
     contact_email = models.EmailField(blank=True, default='')

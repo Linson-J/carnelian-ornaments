@@ -168,7 +168,7 @@ class GSTConfigAdmin(admin.ModelAdmin):
 
 @admin.register(StoreAddressSettings)
 class StoreAddressSettingsAdmin(admin.ModelAdmin):
-    list_display = ('sender_name', 'contact_email', 'contact_phone', 'whatsapp_number', 'cod_enabled', 'cod_extra_charge', 'updated_at')
+    list_display = ('sender_name', 'brand_logo', 'contact_email', 'contact_phone', 'whatsapp_number', 'cod_enabled', 'cod_extra_charge', 'updated_at')
 
 
 class OrderItemInline(admin.TabularInline):
@@ -241,5 +241,4 @@ class CouponAdmin(admin.ModelAdmin):
     list_filter = ('discount_type', 'is_active', 'created_at')
     search_fields = ('code',)
     ordering = ('-created_at',)
-
 
