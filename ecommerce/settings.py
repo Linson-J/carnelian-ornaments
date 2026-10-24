@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(override=True)
+_env_file = os.environ.get('ENV_FILE', str(BASE_DIR / '.env'))
+load_dotenv(_env_file, override=True)
 
 
 def env_bool(name, default=False):
