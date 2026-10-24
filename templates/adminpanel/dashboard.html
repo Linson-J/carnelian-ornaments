@@ -24,6 +24,11 @@
     font-size: 12px;
     padding: 6px 10px;
     text-decoration: none;
+    transition: background 150ms, color 150ms, border-color 150ms;
+  }
+  .chart-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
   .chart-tab.active {
     background: var(--accent);
@@ -50,9 +55,101 @@
     font-size: 12px;
     margin-top: 10px;
   }
+
+  /* Order statistics grid */
+  .order-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 16px;
+  }
+  .order-stat-item {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .order-stat-item .osl {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  .order-stat-item .osv {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  /* Top selling products */
+  .top-product-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-product-row:last-child { border-bottom: 0; }
+  .top-rank {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .top-rank.r1 { background: rgba(251,191,36,.15); color: #b45309; }
+  .top-rank.r2 { background: rgba(148,163,184,.18); color: var(--text-muted); }
+  .top-rank.r3 { background: rgba(180,112,36,.12); color: #92400e; }
+  .top-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-sold {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* Recent order rows */
+  .recent-order-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .recent-order-row:last-child { border-bottom: 0; }
+  .ro-icon {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ro-body { flex: 1; min-width: 0; }
+  .ro-id { font-weight: 700; font-size: 14px; }
+  .ro-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .ro-right { text-align: right; flex-shrink: 0; }
+  .ro-amount { font-weight: 700; font-size: 14px; }
+
   @media (max-width: 900px) {
     .card-recent-products .table-wrap {
       overflow-x: auto !important;
+    }
+    .order-stats-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 </style>
@@ -66,38 +163,38 @@
 {% block content %}
 
 <div class="stat-grid">
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#7c5cfc,#4f8ef7)">
-    <div class="stat-icon" style="--icon-bg:rgba(124,92,252,.12)">💰</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#7c5cfc,#4f8ef7);--icon-bg:rgba(124,92,252,.12);--icon-color:#7c5cfc">
+    <div class="stat-icon"><i class="ri-money-dollar-circle-line"></i></div>
     <div class="stat-label">Total Sales</div>
     <div class="stat-val">₹{{ total_sales }}</div>
     <div class="stat-sub">Revenue overall</div>
   </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#4f46e5,#06b6d4)">
-    <div class="stat-icon" style="--icon-bg:rgba(79,70,229,.08)">🧾</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#4f46e5,#06b6d4);--icon-bg:rgba(79,70,229,.1);--icon-color:#4f46e5">
+    <div class="stat-icon"><i class="ri-file-list-3-line"></i></div>
     <div class="stat-label">Total Orders</div>
     <div class="stat-val">{{ total_orders }}</div>
     <div class="stat-sub">All time</div>
   </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#f87171,#fb7185)">
-    <div class="stat-icon" style="--icon-bg:rgba(248,113,113,.06)">⏳</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#f87171,#fb7185);--icon-bg:rgba(248,113,113,.1);--icon-color:#dc2626">
+    <div class="stat-icon"><i class="ri-time-line"></i></div>
     <div class="stat-label">Pending Orders</div>
     <div class="stat-val">{{ pending_orders }}</div>
     <div class="stat-sub">Needs attention</div>
   </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#fbbf24,#f97316)">
-    <div class="stat-icon" style="--icon-bg:rgba(251,191,36,.1)">⚠️</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#fbbf24,#f97316);--icon-bg:rgba(251,191,36,.12);--icon-color:#b45309">
+    <div class="stat-icon"><i class="ri-alert-line"></i></div>
     <div class="stat-label">Low Stock Products</div>
     <div class="stat-val">{{ low_stock_products }}</div>
     <div class="stat-sub">Stock ≤ 5</div>
   </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#06b6d4,#34d399)">
-    <div class="stat-icon" style="--icon-bg:rgba(6,182,212,.08)">📈</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#06b6d4,#34d399);--icon-bg:rgba(6,182,212,.1);--icon-color:#0891b2">
+    <div class="stat-icon"><i class="ri-line-chart-line"></i></div>
     <div class="stat-label">Revenue This Month</div>
     <div class="stat-val">₹{{ revenue_this_month }}</div>
     <div class="stat-sub">This month</div>
   </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#7c5cfc,#4f8ef7)">
-    <div class="stat-icon" style="--icon-bg:rgba(124,92,252,.12)">🕐</div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#7c5cfc,#4f8ef7);--icon-bg:rgba(124,92,252,.12);--icon-color:#7c5cfc">
+    <div class="stat-icon"><i class="ri-login-box-line"></i></div>
     <div class="stat-label">Last Login</div>
     <div class="stat-val" style="font-size:16px;margin-top:4px">{{ last_login|date:"d M, h:i A" }}</div>
     <div class="stat-sub">Your account</div>
@@ -140,24 +237,22 @@
 
     <div class="card" style="margin-top:16px">
       <div class="card-hd"><h3>Order Statistics</h3></div>
-      <div style="padding:12px">
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:12px;color:var(--muted)">Today</div>
-            <div style="font-weight:700;font-size:18px">{{ order_statistics.today|default:0 }}</div>
-          </div>
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:12px;color:var(--muted)">This week</div>
-            <div style="font-weight:700;font-size:18px">{{ order_statistics.this_week|default:0 }}</div>
-          </div>
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:12px;color:var(--muted)">This month</div>
-            <div style="font-weight:700;font-size:18px">{{ order_statistics.this_month|default:0 }}</div>
-          </div>
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:12px;color:var(--muted)">Pending</div>
-            <div style="font-weight:700;font-size:18px">{{ order_statistics.pending|default:0 }}</div>
-          </div>
+      <div class="order-stats-grid">
+        <div class="order-stat-item">
+          <div class="osl">Today</div>
+          <div class="osv">{{ order_statistics.today|default:0 }}</div>
+        </div>
+        <div class="order-stat-item">
+          <div class="osl">This week</div>
+          <div class="osv">{{ order_statistics.this_week|default:0 }}</div>
+        </div>
+        <div class="order-stat-item">
+          <div class="osl">This month</div>
+          <div class="osv">{{ order_statistics.this_month|default:0 }}</div>
+        </div>
+        <div class="order-stat-item">
+          <div class="osl">Pending</div>
+          <div class="osv" style="color:var(--warning)">{{ order_statistics.pending|default:0 }}</div>
         </div>
       </div>
     </div>
@@ -166,13 +261,14 @@
   <div>
     <div class="card">
       <div class="card-hd"><h3>Top Selling Products</h3></div>
-      <div style="padding:12px">
+      <div style="padding:12px 16px">
         {% if top_selling %}
           <ul class="list-plain">
             {% for it in top_selling %}
-              <li style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-                <span>{{ it.name }}</span>
-                <span style="color:var(--muted)">Sold: {{ it.sold }}</span>
+              <li class="top-product-row">
+                <span class="top-rank {% if forloop.counter == 1 %}r1{% elif forloop.counter == 2 %}r2{% elif forloop.counter == 3 %}r3{% endif %}">{{ forloop.counter }}</span>
+                <span class="top-name">{{ it.name }}</span>
+                <span class="top-sold"><i class="ri-shopping-cart-2-line" style="vertical-align:-2px;margin-right:3px"></i>{{ it.sold }}</span>
               </li>
             {% endfor %}
           </ul>
@@ -184,19 +280,28 @@
 
     <div class="card" style="margin-top:16px">
       <div class="card-hd"><h3>Recent Orders</h3></div>
-      <div style="padding:12px">
+      <div style="padding:12px 16px">
         {% if recent_orders %}
           <ul class="list-plain">
             {% for o in recent_orders %}
-              <li style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-                <div style="display:flex;justify-content:space-between">
-                  <div>
-                    <strong>Order #{{ o.id }}</strong><br>
-                    <span style="font-size:12px;color:var(--muted)">{{ o.customer_name }} • {{ o.created_at }}</span>
-                  </div>
-                  <div style="text-align:right">
-                    <div>₹{{ o.total }}</div>
-                    <div style="font-size:12px;color:var(--muted)">{{ o.status }}</div>
+              <li class="recent-order-row">
+                <div class="ro-icon"><i class="ri-shopping-bag-3-line"></i></div>
+                <div class="ro-body">
+                  <div class="ro-id">#{{ o.id }}</div>
+                  <div class="ro-meta">{{ o.customer_name }} &middot; {{ o.created_at }}</div>
+                </div>
+                <div class="ro-right">
+                  <div class="ro-amount">₹{{ o.total }}</div>
+                  <div style="margin-top:3px">
+                    {% if o.status == 'delivered' %}
+                      <span class="badge success" style="font-size:11px;padding:2px 7px">{{ o.status }}</span>
+                    {% elif o.status == 'pending' %}
+                      <span class="badge warning" style="font-size:11px;padding:2px 7px">{{ o.status }}</span>
+                    {% elif o.status == 'cancelled' %}
+                      <span class="badge danger" style="font-size:11px;padding:2px 7px">{{ o.status }}</span>
+                    {% else %}
+                      <span class="badge info" style="font-size:11px;padding:2px 7px">{{ o.status }}</span>
+                    {% endif %}
                   </div>
                 </div>
               </li>
@@ -236,7 +341,7 @@
               {% if img %}
                 <img src="{{ img.image.url }}" class="product-thumb" alt="{{ product.name }}">
               {% else %}
-                <div class="product-thumb-placeholder">📦</div>
+                <div class="product-thumb-placeholder"><i class="ri-box-3-line"></i></div>
               {% endif %}
             {% endwith %}
           </td>
