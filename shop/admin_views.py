@@ -190,40 +190,19 @@ def admin_logout(request):
 @admin_login_required
 def admin_dashboard(request):
     now = timezone.now()
-    since = now - timedelta(days=30)
     week = now - timedelta(days=7)
     admin = get_object_or_404(AdminUser, pk=request.session['admin_id'])
 
-    success_logins = LoginAttempt.objects.filter(success=True, attempted_at__gte=since).count()
-    failed_logins = LoginAttempt.objects.filter(success=False, attempted_at__gte=since).count()
-    recent_attempts = LoginAttempt.objects.order_by('-attempted_at')[:6]
-
-    daily_attempts = []
-    week_labels = []
-    for i in range(6, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        count = LoginAttempt.objects.filter(
-            attempted_at__gte=day_start,
-            attempted_at__lt=day_start + timedelta(days=1)
-        ).count()
-        daily_attempts.append(count)
-        week_labels.append(day.strftime('%a'))
-
-    mx = max(daily_attempts) if max(daily_attempts) > 0 else 1
-    daily_pct = [round((c / mx) * 90) + 10 for c in daily_attempts]
-
     products = Product.objects.select_related('category').prefetch_related('images').order_by('-created_at')[:10]
     product_count = Product.objects.count()
-    new_this_week = Product.objects.filter(created_at__gte=week).count()
 
     # Dynamic Order Stats
     total_orders = _admin_countable_orders().count()
     sales_agg = Order.objects.exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))
     total_sales = float(sales_agg['total_sum'] or 0.0)
     
-    total_customers = User.objects.filter(is_superuser=False, is_staff=False).count()
-    pending_orders = Order.objects.filter(status=Order.Status.PENDING).count()
+    visible_orders = _admin_countable_orders()
+    pending_orders = visible_orders.filter(status=Order.Status.PENDING).count()
     low_stock_products = Product.objects.filter(stock__lte=5).count()
     
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -238,50 +217,102 @@ def admin_dashboard(request):
         
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     order_statistics = {
-        'today': Order.objects.filter(created_at__gte=today_start).count(),
-        'this_week': Order.objects.filter(created_at__gte=week).count(),
-        'this_month': Order.objects.filter(created_at__gte=month_start).count(),
+        'today': visible_orders.filter(created_at__gte=today_start).count(),
+        'this_week': visible_orders.filter(created_at__gte=week).count(),
+        'this_month': visible_orders.filter(created_at__gte=month_start).count(),
+        'pending': pending_orders,
     }
     
     top_selling_data = OrderItem.objects.values('product__name').annotate(sold=Sum('quantity')).order_by('-sold')[:5]
     top_selling = [{'name': item['product__name'], 'sold': item['sold']} for item in top_selling_data if item['product__name']]
     
+    sales_periods = ('day', 'week', 'month', 'year')
+    requested_sales_period = request.GET.get('sales_period', 'day')
+    if requested_sales_period not in sales_periods:
+        requested_sales_period = 'day'
+
+    sales_qs = Order.objects.exclude(status=Order.Status.CANCELLED)
+
+    def month_bounds(year, month):
+        start = now.replace(year=year, month=month, day=1, hour=0, minute=0, second=0, microsecond=0)
+        if month == 12:
+            end = start.replace(year=year + 1, month=1)
+        else:
+            end = start.replace(month=month + 1)
+        return start, end
+
+    def build_sales_chart(period):
+        rows = []
+        if period == 'day':
+            for i in range(6, -1, -1):
+                day = now - timedelta(days=i)
+                start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+                rows.append((day.strftime('%a'), start, start + timedelta(days=1)))
+        elif period == 'week':
+            current_week = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.weekday())
+            for i in range(7, -1, -1):
+                start = current_week - timedelta(weeks=i)
+                rows.append((start.strftime('%d %b'), start, start + timedelta(days=7)))
+        elif period == 'month':
+            month_index = now.year * 12 + now.month - 1
+            for i in range(11, -1, -1):
+                index = month_index - i
+                year = index // 12
+                month = index % 12 + 1
+                start, end = month_bounds(year, month)
+                rows.append((start.strftime('%b'), start, end))
+        else:
+            for year in range(now.year - 4, now.year + 1):
+                start = now.replace(year=year, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                end = start.replace(year=year + 1)
+                rows.append((str(year), start, end))
+
+        chart = []
+        for label, start, end in rows:
+            amount = sales_qs.filter(created_at__gte=start, created_at__lt=end).aggregate(total_sum=Sum('total'))['total_sum'] or 0.0
+            chart.append({'label': label, 'amount': float(amount), 'value': 0})
+
+        total = sum(item['amount'] for item in chart)
+        max_val = max((item['amount'] for item in chart), default=0)
+        if max_val > 0:
+            for item in chart:
+                item['value'] = round((item['amount'] / max_val) * 90) + 10 if item['amount'] else 4
+        return chart, total
+
+    requested_index = sales_periods.index(requested_sales_period)
     sales_chart = []
-    for i in range(6, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        day_sum = Order.objects.filter(created_at__gte=day_start, created_at__lt=day_end).exclude(status=Order.Status.CANCELLED).aggregate(total_sum=Sum('total'))['total_sum'] or 0.0
-        sales_chart.append({
-            'label': day.strftime('%a'),
-            'value': float(day_sum)
-        })
-        
-    max_val = max(item['value'] for item in sales_chart) if sales_chart else 0
-    if max_val > 0:
-        for item in sales_chart:
-            item['original_value'] = item['value']
-            item['value'] = round((item['original_value'] / max_val) * 90) + 10
+    sales_period = requested_sales_period
+    sales_period_auto = False
+    for period in sales_periods[requested_index:]:
+        chart, total = build_sales_chart(period)
+        if total > 0:
+            sales_chart = chart
+            sales_period = period
+            sales_period_auto = period != requested_sales_period
+            break
+
+    sales_period_labels = {
+        'day': 'Day wise',
+        'week': 'Week wise',
+        'month': 'Month wise',
+        'year': 'Year wise',
+    }
 
     return render(request, 'adminpanel/dashboard.html', {
         'admin_name': request.session.get('admin_name'),
         'active_nav': 'dashboard',
         'last_login': admin.last_login,
-        'success_logins': success_logins,
-        'failed_logins': failed_logins,
-        'recent_attempts': recent_attempts,
-        'daily_attempts': daily_pct,
-        'week_labels': week_labels,
         'products': products,
         'product_count': product_count,
-        'new_this_week': new_this_week,
         'total_sales': total_sales,
         'total_orders': total_orders,
-        'total_customers': total_customers,
         'pending_orders': pending_orders,
         'low_stock_products': low_stock_products,
         'revenue_this_month': revenue_this_month,
         'sales_chart': sales_chart,
+        'sales_period': sales_period,
+        'sales_period_label': sales_period_labels[sales_period],
+        'sales_period_auto': sales_period_auto,
         'order_statistics': order_statistics,
         'top_selling': top_selling,
         'recent_orders': recent_orders,
@@ -502,16 +533,6 @@ def delete_carousel_item(request, pk):
     item.delete()
     messages.success(request, 'Carousel item deleted.')
     return redirect('admin_carousel')
-
-
-@admin_login_required
-def admin_login_logs(request):
-    logs = LoginAttempt.objects.order_by('-attempted_at')[:100]
-    return render(request, 'adminpanel/admin_login_logs.html', {
-        'logs': logs,
-        'admin_name': request.session.get('admin_name'),
-        'active_nav': 'login_logs',
-    })
 
 
 @admin_login_required

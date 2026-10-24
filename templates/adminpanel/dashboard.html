@@ -12,6 +12,44 @@
     overflow: visible !important;
     min-height: 240px;
   }
+  .chart-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .chart-tab {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 10px;
+    text-decoration: none;
+  }
+  .chart-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .chart-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .chart-labels span {
+    color: var(--muted);
+    flex: 1;
+    font-size: 11px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chart-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 10px;
+  }
   @media (max-width: 900px) {
     .card-recent-products .table-wrap {
       overflow-x: auto !important;
@@ -39,18 +77,6 @@
     <div class="stat-label">Total Orders</div>
     <div class="stat-val">{{ total_orders }}</div>
     <div class="stat-sub">All time</div>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#10b981,#34d399)">
-    <div class="stat-icon" style="--icon-bg:rgba(52,211,153,.1)">📦</div>
-    <div class="stat-label">Total Products</div>
-    <div class="stat-val">{{ product_count }}</div>
-    <div class="stat-sub"><span class="up">↑ {{ new_this_week }}</span> added this week</div>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,#f97316,#f9737f)">
-    <div class="stat-icon" style="--icon-bg:rgba(249,115,22,.08)">👥</div>
-    <div class="stat-label">Total Customers</div>
-    <div class="stat-val">{{ total_customers }}</div>
-    <div class="stat-sub">Registered users</div>
   </div>
   <div class="stat-card" style="--card-accent:linear-gradient(90deg,#f87171,#fb7185)">
     <div class="stat-icon" style="--icon-bg:rgba(248,113,113,.06)">⏳</div>
@@ -82,14 +108,30 @@
 <div class="two-col">
   <div>
     <div class="card">
-      <div class="card-hd"><h3>Sales Chart</h3></div>
+      <div class="card-hd">
+        <h3>Sales Chart - {{ sales_period_label }}</h3>
+        <div class="chart-tabs" aria-label="Sales chart period">
+          <a class="chart-tab{% if sales_period == 'day' %} active{% endif %}" href="?sales_period=day">Day</a>
+          <a class="chart-tab{% if sales_period == 'week' %} active{% endif %}" href="?sales_period=week">Week</a>
+          <a class="chart-tab{% if sales_period == 'month' %} active{% endif %}" href="?sales_period=month">Month</a>
+          <a class="chart-tab{% if sales_period == 'year' %} active{% endif %}" href="?sales_period=year">Year</a>
+        </div>
+      </div>
       <div style="padding:18px;min-height:180px">
         {% if sales_chart %}
           <div class="mini-chart" style="height:120px">
             {% for p in sales_chart %}
-              <div class="bar" style="height:{{ p.value }}%" title="{{ p.label }}: {{ p.value }}"></div>
+              <div class="bar" style="height:{{ p.value }}%" title="{{ p.label }}: Rs {{ p.amount|floatformat:2 }}"></div>
             {% endfor %}
           </div>
+          <div class="chart-labels">
+            {% for p in sales_chart %}
+              <span title="{{ p.label }}">{{ p.label }}</span>
+            {% endfor %}
+          </div>
+          {% if sales_period_auto %}
+            <div class="chart-note">No sales found for the selected period, so the chart is showing the next available wider view.</div>
+          {% endif %}
         {% else %}
           <div style="color:var(--muted)">No sales data yet. Chart will appear here when sales are available.</div>
         {% endif %}
@@ -111,6 +153,10 @@
           <div style="flex:1;min-width:140px">
             <div style="font-size:12px;color:var(--muted)">This month</div>
             <div style="font-weight:700;font-size:18px">{{ order_statistics.this_month|default:0 }}</div>
+          </div>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:12px;color:var(--muted)">Pending</div>
+            <div style="font-weight:700;font-size:18px">{{ order_statistics.pending|default:0 }}</div>
           </div>
         </div>
       </div>
@@ -161,62 +207,6 @@
         {% endif %}
       </div>
     </div>
-  </div>
-</div>
-
-<div class="two-col">
-  <div class="card">
-    <div class="card-hd"><h3>Login activity — last 7 days</h3></div>
-    <div style="padding:20px">
-      <div class="mini-chart">
-        {% for h in daily_attempts %}
-        <div class="bar" style="height:{{ h }}%" title="{{ h }}%"></div>
-        {% empty %}
-        <div class="bar" style="height:20%"></div>
-        <div class="bar" style="height:45%"></div>
-        <div class="bar" style="height:30%"></div>
-        <div class="bar" style="height:70%"></div>
-        <div class="bar" style="height:55%"></div>
-        <div class="bar" style="height:90%"></div>
-        <div class="bar" style="height:40%"></div>
-        {% endfor %}
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px">
-        {% for d in week_labels %}
-        <span style="font-size:11px;color:var(--muted)">{{ d }}</span>
-        {% empty %}
-        <span style="font-size:11px;color:var(--muted)">Mon</span>
-        <span style="font-size:11px;color:var(--muted)">Tue</span>
-        <span style="font-size:11px;color:var(--muted)">Wed</span>
-        <span style="font-size:11px;color:var(--muted)">Thu</span>
-        <span style="font-size:11px;color:var(--muted)">Fri</span>
-        <span style="font-size:11px;color:var(--muted)">Sat</span>
-        <span style="font-size:11px;color:var(--muted)">Sun</span>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-hd"><h3>Recent login activity</h3></div>
-    {% for attempt in recent_attempts %}
-    <div class="feed-item">
-      <div class="feed-dot" style="background:{% if attempt.success %}var(--success){% else %}var(--danger){% endif %}"></div>
-      <div>
-        <div class="feed-text">
-          <strong>{{ attempt.username }}</strong>
-          {% if attempt.success %}signed in{% else %}failed login{% endif %}
-          from {{ attempt.ip_address }}
-        </div>
-        <div class="feed-time">{{ attempt.attempted_at|timesince }} ago</div>
-      </div>
-    </div>
-    {% empty %}
-    <div class="feed-item">
-      <div class="feed-dot" style="background:var(--muted2)"></div>
-      <div class="feed-text" style="color:var(--muted)">No activity yet</div>
-    </div>
-    {% endfor %}
   </div>
 </div>
 

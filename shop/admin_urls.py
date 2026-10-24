@@ -22,7 +22,6 @@ urlpatterns = [
     path('news-tickers/<int:pk>/delete/', admin_views.delete_news_ticker, name='delete_news_ticker'),
     path('news-tickers/<int:pk>/toggle/', admin_views.toggle_news_ticker, name='toggle_news_ticker'),
     path('news-tickers/<int:pk>/move/<str:direction>/', admin_views.move_news_ticker, name='move_news_ticker'),
-    path('login-logs/', admin_views.admin_login_logs, name='admin_login_logs'),
     path('subscriptions/', admin_views.admin_subscriptions, name='admin_subscriptions'),
     path('subscriptions/<int:pk>/delete/', admin_views.delete_subscription, name='delete_subscription'),
     path('customers/', admin_views.admin_customers, name='admin_customers'),
